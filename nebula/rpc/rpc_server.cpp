@@ -1,5 +1,6 @@
 #include "nebula/rpc/rpc_server.h"
 
+#include "nebula/net/tcp_connection.h"
 #include "nebula/rpc/rpc_closure.h"
 
 #include <google/protobuf/descriptor.h>
