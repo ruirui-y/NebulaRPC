@@ -1,0 +1,10 @@
+/build/
+/out/
+/.cache/
+/.vs/
+
+compile_commands.json
+
+*.o
+*.a
+*.so
