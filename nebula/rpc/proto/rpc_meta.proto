@@ -1,0 +1,19 @@
+syntax = "proto3";
+
+package nebula.rpc.proto;
+
+message RpcMeta {
+  enum MessageType {
+    REQUEST = 0;
+    RESPONSE = 1;
+    ERROR = 2;
+  }
+
+  MessageType type = 1;
+  uint64 request_id = 2;
+  string service_name = 3;
+  string method_name = 4;
+  uint32 payload_size = 5;
+  int32 error_code = 6;
+  string error_text = 7;
+}

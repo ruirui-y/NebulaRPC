@@ -1,0 +1,17 @@
+syntax = "proto3";
+
+package nebula.example;
+option cc_generic_services = true;
+
+message EchoRequest {
+  string text = 1;
+}
+
+message EchoResponse {
+  string text = 1;
+  uint64 server_sequence = 2;
+}
+
+service EchoService {
+  rpc Echo(EchoRequest) returns (EchoResponse);
+}

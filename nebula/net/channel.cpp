@@ -1,25 +1,89 @@
 #include "nebula/net/channel.h"
 
-#include <utility>
+#include "nebula/net/event_loop.h"
 
-namespace nebula::net
-{
+#include <sys/epoll.h>
 
-Channel::Channel(EventLoop* loop, int fd) noexcept
-    : loop_(loop),
-      fd_(fd)
-{
+namespace nebula::net {
+
+const std::uint32_t Channel::kReadEvent = EPOLLIN | EPOLLPRI | EPOLLRDHUP;
+const std::uint32_t Channel::kWriteEvent = EPOLLOUT;
+
+Channel::Channel(EventLoop* loop, int fd) : loop_(loop), fd_(fd) {}
+
+void Channel::Tie(const std::shared_ptr<void>& owner) {
+    tie_ = owner;
+    tied_ = true;
 }
 
-void Channel::HandleEvent()
-{
-    // TODO(NRPC-S1-01):
-    // 根据 epoll 返回的 revents 决定是否调用 read_callback_。
+void Channel::HandleEvent() {
+    if (!tied_) {
+        HandleEventWithGuard();
+        return;
+    }
+
+    if (auto guard = tie_.lock()) {
+        HandleEventWithGuard();
+    }
 }
 
-void Channel::SetReadCallback(EventCallback callback)
-{
-    read_callback_ = std::move(callback);
+void Channel::HandleEventWithGuard() {
+    if ((revents_ & EPOLLHUP) != 0U && (revents_ & EPOLLIN) == 0U) {
+        if (close_callback_) {
+            close_callback_();
+        }
+    }
+
+    if ((revents_ & EPOLLERR) != 0U) {
+        if (error_callback_) {
+            error_callback_();
+        }
+    }
+
+    if ((revents_ & (EPOLLIN | EPOLLPRI | EPOLLRDHUP)) != 0U) {
+        if (read_callback_) {
+            read_callback_();
+        }
+    }
+
+    if ((revents_ & EPOLLOUT) != 0U) {
+        if (write_callback_) {
+            write_callback_();
+        }
+    }
 }
 
-} // namespace nebula::net
+void Channel::EnableReading() {
+    events_ |= kReadEvent;
+    Update();
+}
+
+void Channel::DisableReading() {
+    events_ &= ~kReadEvent;
+    Update();
+}
+
+void Channel::EnableWriting() {
+    events_ |= kWriteEvent;
+    Update();
+}
+
+void Channel::DisableWriting() {
+    events_ &= ~kWriteEvent;
+    Update();
+}
+
+void Channel::DisableAll() {
+    events_ = kNoneEvent;
+    Update();
+}
+
+void Channel::Remove() {
+    loop_->RemoveChannel(this);
+}
+
+void Channel::Update() {
+    loop_->UpdateChannel(this);
+}
+
+}  // namespace nebula::net

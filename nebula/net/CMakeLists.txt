@@ -1,12 +1,16 @@
-# ============================================================
-# 最小网络 Runtime
-# Stage 1 从这里开始逐步补齐 EventLoop / Channel / TcpConnection
-# ============================================================
+find_package(Threads REQUIRED)
 
 add_library(nebula_net STATIC
-    event_loop.cpp
     channel.cpp
+    poller.cpp
+    epoll_poller.cpp
+    event_loop.cpp
+    socket.cpp
+    acceptor.cpp
     tcp_connection.cpp
+    event_loop_thread.cpp
+    event_loop_thread_pool.cpp
+    tcp_server.cpp
 )
 
 target_include_directories(nebula_net
@@ -17,4 +21,5 @@ target_include_directories(nebula_net
 target_link_libraries(nebula_net
     PUBLIC
         nebula_build_options
+        Threads::Threads
 )

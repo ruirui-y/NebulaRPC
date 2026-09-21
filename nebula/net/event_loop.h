@@ -1,29 +1,60 @@
 #pragma once
 
+#include "nebula/base/noncopyable.h"
+
 #include <atomic>
+#include <functional>
+#include <memory>
+#include <mutex>
 #include <thread>
+#include <vector>
 
-namespace nebula::net
-{
+namespace nebula::net {
 
-class EventLoop
-{
+class Channel;
+class Poller;
+
+class EventLoop final : private base::Noncopyable {
 public:
+    using Functor = std::function<void()>;
+
     EventLoop();
-    ~EventLoop() = default;
+    ~EventLoop();
 
-    EventLoop(const EventLoop&) = delete;
-    EventLoop& operator=(const EventLoop&) = delete;
-
-    // Stage 1 / NRPC-S1-01：这里开始实现 epoll_wait -> Channel::HandleEvent。
     void Loop();
-    void Quit() noexcept;
+    void Quit();
 
-    [[nodiscard]] bool IsInLoopThread() const noexcept;
+    void RunInLoop(Functor cb);
+    void QueueInLoop(Functor cb);
+
+    void UpdateChannel(Channel* channel);
+    void RemoveChannel(Channel* channel);
+    [[nodiscard]] bool HasChannel(Channel* channel) const;
+
+    [[nodiscard]] bool IsInLoopThread() const noexcept {
+        return thread_id_ == std::this_thread::get_id();
+    }
+    void AssertInLoopThread() const;
 
 private:
+    void WakeUp();
+    void HandleWakeUpRead();
+    void DoPendingFunctors();
+
+    using ChannelList = std::vector<Channel*>;
+
+    std::atomic_bool looping_{false};
     std::atomic_bool quit_{false};
+    std::atomic_bool calling_pending_functors_{false};
     const std::thread::id thread_id_;
+
+    std::unique_ptr<Poller> poller_;
+    int wakeup_fd_;
+    std::unique_ptr<Channel> wakeup_channel_;
+    ChannelList active_channels_;
+
+    mutable std::mutex mutex_;
+    std::vector<Functor> pending_functors_;
 };
 
-} // namespace nebula::net
+}  // namespace nebula::net

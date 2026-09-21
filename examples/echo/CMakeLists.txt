@@ -1,0 +1,2 @@
+add_executable(nebula_echo_server echo_server.cpp)
+target_link_libraries(nebula_echo_server PRIVATE nebula_net)
