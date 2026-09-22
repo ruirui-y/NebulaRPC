@@ -1,59 +1,245 @@
-# NebulaRPC 总路线
+# NebulaRPC 技术路线总览
 
-这份目录只服务于两件事：
+## 1. Linux Reactor / epoll
 
-1. 记录 NebulaRPC 已经真正实现、验证过的技术；
-2. 项目成熟后，用这些实现反推面试八股、设计题和二次优化点。
+来源：
 
-**项目开发本身不再被学习节点、打卡流程或拆任务软件驱动。**
+    MyMuduo 能力迁入
 
-## 能力总路线
+目标：
 
-```text
-Linux Reactor / epoll
-    <- MyMuduo 能力迁入
+-   理解 Reactor 模型
+-   epoll 事件分发
+-   EventLoop 生命周期
+-   Channel / Poller 关系
+-   网络事件如何进入业务逻辑
 
-TCP 字节流 / partial read-write
-    <- MyMuduo 能力迁入
+NebulaRPC 中对应：
 
-多线程 / 生命周期 / 并发安全
-    <- 旧能力 + NebulaRPC 重构
+    EventLoop
+    Channel
+    Poller
+    EPollPoller
 
-Protobuf / RPC Protocol
-    <- game_rpc_project 能力迁入
+------------------------------------------------------------------------
 
-Request Correlation / request_id(seq_id)
-    <- game_rpc_project 能力迁入
+## 2. TCP 字节流 / partial read-write
 
-Async RPC
-    <- NebulaRPC 新能力
+来源：
 
-Timeout / Cancel / Race / Exactly-Once Completion
-    <- NebulaRPC 新能力
+    MyMuduo 能力迁入
 
-C++20 Coroutine RPC
-    <- NebulaRPC 新能力
+目标：
 
-Backpressure / Resource Limits / Overload Control
-    <- NebulaRPC 新能力
+-   TCP 无消息边界
+-   半包/粘包处理
+-   Buffer 设计
+-   非阻塞读写
+-   EPOLLOUT 发送流程
 
-Client Runtime / Connection Pool / LB / Retry / Reconnect
-    <- NebulaRPC 新能力
+对应：
 
-Observability / Metrics / Trace / Structured Log / Graceful Shutdown
-    <- NebulaRPC 新能力
+    Buffer
+    TcpConnection
 
-性能分析 / Benchmark / perf / FlameGraph / contention / allocation
-    <- NebulaRPC 新能力
+------------------------------------------------------------------------
 
-bRPC / gRPC 对照
-    <- 最终工程证据
-```
+## 3. 多线程 / 生命周期 / 并发安全
 
-## 工作方式
+来源：
 
-每次只围绕 NebulaRPC 本身增加一个真实能力：设计 -> 写代码 -> 编译 -> 运行 -> 测试 -> 压测/故障验证 -> code review -> commit。
+    旧能力 + NebulaRPC 重构
 
-功能完成后，再在 `notes/` 下增加对应文档，总结：核心原理、当前代码路径、常见面试题、踩坑、可以继续优化的点。
+目标：
 
-因此笔记永远落后于代码，而不是代码跟着笔记走。
+-   EventLoop 线程归属
+-   fd 生命周期
+-   shared_ptr/weak_ptr 使用
+-   对象销毁时机
+-   跨线程任务投递
+
+------------------------------------------------------------------------
+
+## 4. Protobuf / RPC Protocol
+
+来源：
+
+    game_rpc_project 能力迁入
+
+目标：
+
+-   protobuf service
+-   RPC message framing
+-   编解码流程
+-   服务注册与调用分发
+
+------------------------------------------------------------------------
+
+## 5. Request Correlation / request_id(seq_id)
+
+来源：
+
+    game_rpc_project 能力迁入
+
+目标：
+
+-   多请求并发关联响应
+-   pending request 管理
+-   response 匹配 request
+
+核心：
+
+    request_id
+        ↓
+    PendingCall
+        ↓
+    Response
+
+------------------------------------------------------------------------
+
+## 6. Async RPC
+
+来源：
+
+    NebulaRPC 新能力
+
+目标：
+
+-   移除阻塞等待模型
+-   Reactor 驱动 RPC
+-   callback completion
+-   pending call 生命周期
+
+------------------------------------------------------------------------
+
+## 7. Timeout / Cancel / Race / Exactly-Once Completion
+
+来源：
+
+    NebulaRPC 新能力
+
+目标：
+
+-   RPC 超时
+-   请求取消
+-   Response/Timeout 竞争
+-   保证一次完成
+
+核心问题：
+
+    Response
+         \
+          -> Complete()
+         /
+    Timeout
+
+只能执行一次。
+
+------------------------------------------------------------------------
+
+## 8. C++20 Coroutine RPC
+
+来源：
+
+    NebulaRPC 新能力
+
+目标：
+
+-   callback 转 coroutine
+-   co_await RPC
+-   coroutine 生命周期
+-   resume 调度线程
+
+------------------------------------------------------------------------
+
+## 9. Backpressure / Resource Limits / Overload Control
+
+来源：
+
+    NebulaRPC 新能力
+
+目标：
+
+-   输出缓冲限制
+-   请求数量限制
+-   过载保护
+-   服务降级
+
+------------------------------------------------------------------------
+
+## 10. Client Runtime / Connection Pool / LB / Retry / Reconnect
+
+来源：
+
+    NebulaRPC 新能力
+
+目标：
+
+-   客户端连接管理
+-   长连接复用
+-   负载均衡
+-   重试策略
+-   故障恢复
+
+------------------------------------------------------------------------
+
+## 11. Observability / Metrics / Trace / Structured Log / Graceful Shutdown
+
+来源：
+
+    NebulaRPC 新能力
+
+目标：
+
+-   spdlog 日志
+-   指标采集
+-   请求追踪
+-   优雅关闭
+
+------------------------------------------------------------------------
+
+## 12. 性能分析 / Benchmark / perf / FlameGraph / contention / allocation
+
+来源：
+
+    NebulaRPC 新能力
+
+目标：
+
+-   QPS
+-   latency
+-   CPU 分析
+-   内存分析
+-   锁竞争
+-   分配优化
+
+------------------------------------------------------------------------
+
+## 13. bRPC / gRPC 对照
+
+来源：
+
+    工程验证模块
+
+目标：
+
+-   同场景测试
+-   架构对比
+-   性能差异分析
+-   设计取舍总结
+
+------------------------------------------------------------------------
+
+## 项目推进原则
+
+    先实现功能
+        ↓
+    测试验证
+        ↓
+    整理代码
+        ↓
+    补充技术笔记
+        ↓
+    形成面试材料
+
+笔记服务于已经完成的项目能力，不反向驱动开发。
