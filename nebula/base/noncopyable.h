@@ -1,8 +1,10 @@
 #pragma once
 
-namespace nebula::base {
+namespace nebula::base
+{
 
-class Noncopyable {
+class Noncopyable
+{
 protected:
     Noncopyable() = default;
     ~Noncopyable() = default;
