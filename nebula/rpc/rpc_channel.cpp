@@ -1,133 +1,42 @@
 #include "nebula/rpc/rpc_channel.h"
 
-#include <arpa/inet.h>
-#include <cerrno>
-#include <cstring>
-#include <exception>
-#include <netinet/in.h>
-#include <stdexcept>
-#include <sys/socket.h>
-#include <unistd.h>
+#include "nebula/net/buffer.h"
+#include "nebula/net/event_loop.h"
+#include "nebula/net/tcp_client.h"
+#include "nebula/net/tcp_connection.h"
+
+#include <cassert>
+#include <utility>
 
 namespace nebula::rpc {
 namespace {
 
-void SetControllerFailure(google::protobuf::RpcController* controller, const std::string& reason) {
+void SetControllerFailure(google::protobuf::RpcController* controller,
+                          const std::string& reason) {
     if (controller != nullptr) {
         controller->SetFailed(reason);
     }
 }
 
-}  // namespace
-
-RpcChannel::RpcChannel(std::string ip,
-                       std::uint16_t port,
-                       std::chrono::milliseconds timeout)
-    : ip_(std::move(ip)), port_(port), timeout_(timeout) {
-    Connect();
-    running_ = true;
-    receiver_thread_ = std::thread([this] { ReceiverLoop(); });
+void CompleteFailure(google::protobuf::RpcController* controller,
+                     google::protobuf::Closure* done,
+                     const std::string& reason) {
+    SetControllerFailure(controller, reason);
+    if (done != nullptr) {
+        done->Run();
+    }
 }
 
-RpcChannel::~RpcChannel() {
-    running_ = false;
-    if (socket_fd_ >= 0) {
-        ::shutdown(socket_fd_, SHUT_RDWR);
-    }
-    if (receiver_thread_.joinable()) {
-        receiver_thread_.join();
-    }
-    if (socket_fd_ >= 0) {
-        ::close(socket_fd_);
-        socket_fd_ = -1;
-    }
-    FailAllPending("RPC channel closed");
-}
-
-void RpcChannel::CallMethod(const google::protobuf::MethodDescriptor* method,
-                            google::protobuf::RpcController* controller,
-                            const google::protobuf::Message* request,
-                            google::protobuf::Message* response,
-                            google::protobuf::Closure* done) {
-    if (method == nullptr || request == nullptr || response == nullptr) {
-        SetControllerFailure(controller, "invalid RPC call arguments");
-        if (done != nullptr) {
-            done->Run();
-        }
-        return;
-    }
-
-    const std::uint64_t request_id = next_request_id_.fetch_add(1);
-
-    std::string payload;
-    if (!request->SerializeToString(&payload)) {
-        SetControllerFailure(controller, "request protobuf serialization failed");
-        if (done != nullptr) {
-            done->Run();
-        }
-        return;
-    }
-
-    proto::RpcMeta meta;
-    meta.set_type(proto::RpcMeta::REQUEST);
-    meta.set_request_id(request_id);
-    meta.set_service_name(method->service()->full_name());
-    meta.set_method_name(method->name());
-
-    const std::string bytes = RpcCodec::Encode(std::move(meta), payload);
-    if (bytes.empty()) {
-        SetControllerFailure(controller, "request frame encoding failed");
-        if (done != nullptr) {
-            done->Run();
-        }
-        return;
-    }
-
-    auto promise = std::make_shared<PendingPromise>();
-    auto future = promise->get_future();
-    {
-        std::lock_guard<std::mutex> lock(pending_mutex_);
-        pending_calls_.emplace(request_id, promise);
-    }
-
-    {
-        std::lock_guard<std::mutex> lock(write_mutex_);
-        if (!SendAll(bytes)) {
-            {
-                std::lock_guard<std::mutex> pending_lock(pending_mutex_);
-                pending_calls_.erase(request_id);
-            }
-            SetControllerFailure(controller, "socket send failed: " + std::string(std::strerror(errno)));
-            if (done != nullptr) {
-                done->Run();
-            }
-            return;
-        }
-    }
-
-    if (future.wait_for(timeout_) != std::future_status::ready) {
-        {
-            std::lock_guard<std::mutex> lock(pending_mutex_);
-            pending_calls_.erase(request_id);
-        }
-        SetControllerFailure(controller, "RPC timeout");
-        if (done != nullptr) {
-            done->Run();
-        }
-        return;
-    }
-
-    try {
-        RpcFrame frame = future.get();
-        if (frame.meta.type() == proto::RpcMeta::ERROR) {
-            SetControllerFailure(controller, frame.meta.error_text());
-        } else if (frame.meta.type() != proto::RpcMeta::RESPONSE) {
-            SetControllerFailure(controller, "unexpected RPC frame type");
-        } else if (!response->ParseFromString(frame.payload)) {
-            SetControllerFailure(controller, "response protobuf parse failed");
-        }
-    } catch (const std::exception& ex) {
-        SetControllerFailure(controller, ex.what());
+void CompleteFrame(google::protobuf::Message* response,
+                   google::protobuf::RpcController* controller,
+                   google::protobuf::Closure* done,
+                   RpcFrame frame) {
+    if (frame.meta.type() == proto::RpcMeta::ERROR) {
+        SetControllerFailure(controller, frame.meta.error_text());
+    } else if (frame.meta.type() != proto::RpcMeta::RESPONSE) {
+        SetControllerFailure(controller, "unexpected RPC frame type");
+    } else if (!response->ParseFromString(frame.payload)) {
+        SetControllerFailure(controller, "response protobuf parse failed");
     }
 
     if (done != nullptr) {
@@ -135,118 +44,227 @@ void RpcChannel::CallMethod(const google::protobuf::MethodDescriptor* method,
     }
 }
 
-void RpcChannel::Connect() {
-    socket_fd_ = ::socket(AF_INET, SOCK_STREAM | SOCK_CLOEXEC, IPPROTO_TCP);
-    if (socket_fd_ < 0) {
-        throw std::runtime_error("socket failed: " + std::string(std::strerror(errno)));
-    }
+}  // namespace
 
-    sockaddr_in address{};
-    address.sin_family = AF_INET;
-    address.sin_port = htons(port_);
-    if (::inet_pton(AF_INET, ip_.c_str(), &address.sin_addr) != 1) {
-        ::close(socket_fd_);
-        socket_fd_ = -1;
-        throw std::invalid_argument("invalid IPv4 address: " + ip_);
-    }
-
-    if (::connect(socket_fd_, reinterpret_cast<sockaddr*>(&address), sizeof(address)) < 0) {
-        const std::string reason = std::strerror(errno);
-        ::close(socket_fd_);
-        socket_fd_ = -1;
-        throw std::runtime_error("connect failed: " + reason);
-    }
+RpcChannel::RpcChannel(net::EventLoop* loop, std::string ip, std::uint16_t port)
+    : loop_(loop),
+      client_(std::make_unique<net::TcpClient>(loop, std::move(ip), port)) {
+    client_->SetConnectionCallback([this](const net::TcpConnectionPtr& conn) {
+        OnConnection(conn);
+    });
+    client_->SetMessageCallback([this](const net::TcpConnectionPtr& conn,
+                                       net::Buffer* buffer) {
+        OnMessage(conn, buffer);
+    });
+    client_->SetConnectErrorCallback([this](const std::string& reason) {
+        OnConnectError(reason);
+    });
+    client_->Connect();
 }
 
-void RpcChannel::ReceiverLoop() {
-    while (running_.load()) {
-        std::uint32_t frame_size_be = 0;
-        if (!RecvExactly(&frame_size_be, sizeof(frame_size_be))) {
-            break;
-        }
+RpcChannel::~RpcChannel() {
+    assert(loop_->IsInLoopThread());
 
-        const std::uint32_t frame_size = ntohl(frame_size_be);
-        if (frame_size < sizeof(std::uint32_t) || frame_size > RpcCodec::kMaxFrameSize) {
-            break;
-        }
+    client_->SetConnectionCallback({});
+    client_->SetMessageCallback({});
+    client_->SetWriteCompleteCallback({});
+    client_->SetConnectErrorCallback({});
+    client_.reset();
 
-        std::string body(frame_size, '\0');
-        if (!RecvExactly(body.data(), body.size())) {
-            break;
-        }
+    connection_.reset();
+    FailAllPendingNow("RPC channel closed");
+}
 
+void RpcChannel::CallMethod(const google::protobuf::MethodDescriptor* method,
+                            google::protobuf::RpcController* controller,
+                            const google::protobuf::Message* request,
+                            google::protobuf::Message* response,
+                            google::protobuf::Closure* done) {
+    // 这一版 RpcChannel 是纯异步接口，不再同步等待响应。
+    if (done == nullptr) {
+        SetControllerFailure(controller, "async RpcChannel requires a non-null done callback");
+        return;
+    }
+
+    if (method == nullptr || request == nullptr || response == nullptr) {
+        loop_->RunInLoop([controller, done] {
+            CompleteFailure(controller, done, "invalid RPC call arguments");
+        });
+        return;
+    }
+
+    std::string payload;
+    if (!request->SerializeToString(&payload)) {
+        loop_->RunInLoop([controller, done] {
+            CompleteFailure(controller, done, "request protobuf serialization failed");
+        });
+        return;
+    }
+
+    const std::uint64_t request_id = next_request_id_.fetch_add(1);
+
+    proto::RpcMeta meta;
+    meta.set_type(proto::RpcMeta::REQUEST);
+    meta.set_request_id(request_id);
+    meta.set_service_name(method->service()->full_name());
+    meta.set_method_name(method->name());
+
+    std::string bytes = RpcCodec::Encode(std::move(meta), payload);
+    if (bytes.empty()) {
+        loop_->RunInLoop([controller, done] {
+            CompleteFailure(controller, done, "request frame encoding failed");
+        });
+        return;
+    }
+
+    PendingCall pending_call{
+        .response = response,
+        .controller = controller,
+        .done = done,
+    };
+
+    loop_->RunInLoop([this,
+                      request_id,
+                      bytes = std::move(bytes),
+                      pending_call]() mutable {
+        RegisterAndSend(request_id, std::move(bytes), pending_call);
+    });
+}
+
+void RpcChannel::RegisterAndSend(std::uint64_t request_id,
+                                 std::string bytes,
+                                 PendingCall pending_call) {
+    loop_->AssertInLoopThread();
+
+    if (connection_state_ == ConnectionState::kDisconnected) {
+        CompleteFailure(pending_call.controller,
+                        pending_call.done,
+                        connection_error_.empty()
+                            ? "RPC connection is not available"
+                            : connection_error_);
+        return;
+    }
+
+    pending_calls_.emplace(request_id, pending_call);
+
+    if (connection_state_ == ConnectionState::kConnected &&
+        connection_ &&
+        connection_->Connected()) {
+        connection_->Send(bytes);
+        return;
+    }
+
+    pending_writes_.push_back(PendingWrite{request_id, std::move(bytes)});
+}
+
+void RpcChannel::OnConnection(const net::TcpConnectionPtr& conn) {
+    loop_->AssertInLoopThread();
+
+    if (conn->Connected()) {
+        connection_ = conn;
+        connection_state_ = ConnectionState::kConnected;
+        connection_error_.clear();
+
+        while (!pending_writes_.empty()) {
+            PendingWrite write = std::move(pending_writes_.front());
+            pending_writes_.pop_front();
+
+            if (!pending_calls_.contains(write.request_id)) {
+                continue;
+            }
+            connection_->Send(write.bytes);
+        }
+        return;
+    }
+
+    if (connection_ == conn) {
+        connection_.reset();
+    }
+
+    connection_state_ = ConnectionState::kDisconnected;
+    connection_error_ = "RPC connection closed";
+    FailAllPending(connection_error_);
+}
+
+void RpcChannel::OnMessage(const net::TcpConnectionPtr& conn,
+                           net::Buffer* buffer) {
+    loop_->AssertInLoopThread();
+
+    while (true) {
         RpcFrame frame;
         std::string error;
-        if (!RpcCodec::DecodeBody(body, &frame, &error)) {
-            continue;
+        const RpcCodec::DecodeResult result = RpcCodec::Decode(buffer, &frame, &error);
+
+        if (result == RpcCodec::DecodeResult::kNeedMore) {
+            return;
         }
 
-        std::shared_ptr<PendingPromise> promise;
-        {
-            std::lock_guard<std::mutex> lock(pending_mutex_);
-            const auto it = pending_calls_.find(frame.meta.request_id());
-            if (it != pending_calls_.end()) {
-                promise = it->second;
-                pending_calls_.erase(it);
-            }
+        if (result == RpcCodec::DecodeResult::kError) {
+            connection_state_ = ConnectionState::kDisconnected;
+            connection_error_ = "RPC protocol error: " + error;
+            FailAllPending(connection_error_);
+            conn->Shutdown();
+            return;
         }
 
-        if (promise != nullptr) {
-            promise->set_value(std::move(frame));
-        }
+        HandleFrame(std::move(frame));
     }
-
-    running_ = false;
-    FailAllPending("RPC connection closed");
 }
 
-bool RpcChannel::SendAll(std::string_view bytes) {
-    std::size_t sent = 0;
-    while (sent < bytes.size()) {
-        const ssize_t n = ::send(socket_fd_, bytes.data() + sent, bytes.size() - sent, MSG_NOSIGNAL);
-        if (n > 0) {
-            sent += static_cast<std::size_t>(n);
-            continue;
-        }
-        if (n < 0 && errno == EINTR) {
-            continue;
-        }
-        return false;
-    }
-    return true;
+void RpcChannel::OnConnectError(const std::string& reason) {
+    loop_->AssertInLoopThread();
+    connection_state_ = ConnectionState::kDisconnected;
+    connection_error_ = reason;
+    connection_.reset();
+    FailAllPending(reason);
 }
 
-bool RpcChannel::RecvExactly(void* data, std::size_t size) {
-    auto* cursor = static_cast<char*>(data);
-    std::size_t received = 0;
-    while (received < size && running_.load()) {
-        const ssize_t n = ::recv(socket_fd_, cursor + received, size - received, 0);
-        if (n > 0) {
-            received += static_cast<std::size_t>(n);
-            continue;
-        }
-        if (n < 0 && errno == EINTR) {
-            continue;
-        }
-        return false;
+void RpcChannel::HandleFrame(RpcFrame frame) {
+    loop_->AssertInLoopThread();
+
+    const std::uint64_t request_id = frame.meta.request_id();
+    const auto it = pending_calls_.find(request_id);
+    if (it == pending_calls_.end()) {
+        return;
     }
-    return received == size;
+
+    PendingCall pending_call = it->second;
+    pending_calls_.erase(it);
+
+    // 先清状态，再回调，避免 callback 重入时看到旧 PendingCall。
+    loop_->QueueInLoop([response = pending_call.response,
+                        controller = pending_call.controller,
+                        done = pending_call.done,
+                        frame = std::move(frame)]() mutable {
+        CompleteFrame(response, controller, done, std::move(frame));
+    });
 }
 
 void RpcChannel::FailAllPending(const std::string& reason) {
-    std::unordered_map<std::uint64_t, std::shared_ptr<PendingPromise>> pending;
-    {
-        std::lock_guard<std::mutex> lock(pending_mutex_);
-        pending.swap(pending_calls_);
-    }
+    loop_->AssertInLoopThread();
 
-    for (auto& [request_id, promise] : pending) {
+    auto pending = std::move(pending_calls_);
+    pending_calls_.clear();
+    pending_writes_.clear();
+
+    for (auto& [request_id, call] : pending) {
         (void)request_id;
-        try {
-            throw std::runtime_error(reason);
-        } catch (...) {
-            promise->set_exception(std::current_exception());
-        }
+        loop_->QueueInLoop([controller = call.controller,
+                            done = call.done,
+                            reason] {
+            CompleteFailure(controller, done, reason);
+        });
+    }
+}
+
+void RpcChannel::FailAllPendingNow(const std::string& reason) {
+    auto pending = std::move(pending_calls_);
+    pending_calls_.clear();
+    pending_writes_.clear();
+
+    for (auto& [request_id, call] : pending) {
+        (void)request_id;
+        CompleteFailure(call.controller, call.done, reason);
     }
 }
 

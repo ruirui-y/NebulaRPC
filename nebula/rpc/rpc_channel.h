@@ -1,29 +1,30 @@
 #pragma once
 
 #include "nebula/base/noncopyable.h"
+#include "nebula/net/callbacks.h"
 #include "nebula/rpc/rpc_codec.h"
 
 #include <google/protobuf/service.h>
 
 #include <atomic>
-#include <chrono>
 #include <cstdint>
-#include <future>
+#include <deque>
 #include <memory>
-#include <mutex>
 #include <string>
-#include <string_view>
-#include <thread>
 #include <unordered_map>
+
+namespace nebula::net {
+class Buffer;
+class EventLoop;
+class TcpClient;
+}  // namespace nebula::net
 
 namespace nebula::rpc {
 
 class RpcChannel final : public google::protobuf::RpcChannel,
                          private base::Noncopyable {
 public:
-    RpcChannel(std::string ip,
-               std::uint16_t port,
-               std::chrono::milliseconds timeout = std::chrono::seconds(5));
+    RpcChannel(net::EventLoop* loop, std::string ip, std::uint16_t port);
     ~RpcChannel() override;
 
     void CallMethod(const google::protobuf::MethodDescriptor* method,
@@ -33,24 +34,43 @@ public:
                     google::protobuf::Closure* done) override;
 
 private:
-    using PendingPromise = std::promise<RpcFrame>;
+    struct PendingCall {
+        google::protobuf::Message* response{};
+        google::protobuf::RpcController* controller{};
+        google::protobuf::Closure* done{};
+    };
 
-    void Connect();
-    void ReceiverLoop();
-    [[nodiscard]] bool SendAll(std::string_view bytes);
-    [[nodiscard]] bool RecvExactly(void* data, std::size_t size);
+    struct PendingWrite {
+        std::uint64_t request_id{};
+        std::string bytes;
+    };
+
+    enum class ConnectionState {
+        kConnecting,
+        kConnected,
+        kDisconnected,
+    };
+
+    void RegisterAndSend(std::uint64_t request_id,
+                         std::string bytes,
+                         PendingCall pending_call);
+    void OnConnection(const net::TcpConnectionPtr& conn);
+    void OnMessage(const net::TcpConnectionPtr& conn, net::Buffer* buffer);
+    void OnConnectError(const std::string& reason);
+    void HandleFrame(RpcFrame frame);
     void FailAllPending(const std::string& reason);
+    void FailAllPendingNow(const std::string& reason);
 
-    std::string ip_;
-    std::uint16_t port_;
-    std::chrono::milliseconds timeout_;
-    int socket_fd_{-1};
-    std::atomic_bool running_{false};
-    std::thread receiver_thread_;
+    net::EventLoop* loop_;
+    std::unique_ptr<net::TcpClient> client_;
+    net::TcpConnectionPtr connection_;
 
-    std::mutex write_mutex_;
-    std::mutex pending_mutex_;
-    std::unordered_map<std::uint64_t, std::shared_ptr<PendingPromise>> pending_calls_;
+    // 只允许 EventLoop owner thread 访问，因此不需要 mutex。
+    std::unordered_map<std::uint64_t, PendingCall> pending_calls_;
+    std::deque<PendingWrite> pending_writes_;
+
+    ConnectionState connection_state_{ConnectionState::kConnecting};
+    std::string connection_error_;
 
     inline static std::atomic_uint64_t next_request_id_{1};
 };

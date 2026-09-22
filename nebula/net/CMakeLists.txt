@@ -11,6 +11,8 @@ add_library(nebula_net STATIC
     event_loop_thread.cpp
     event_loop_thread_pool.cpp
     tcp_server.cpp
+    connector.cpp
+    tcp_client.cpp
 )
 
 target_include_directories(nebula_net
