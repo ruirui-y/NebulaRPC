@@ -2,9 +2,11 @@
 
 #include <iostream>
 
-int main() {
+int main()
+{
     nebula::net::EventLoop loop;
-    if (!loop.IsInLoopThread()) {
+    if (!loop.IsInLoopThread())
+    {
         return 1;
     }
     std::cout << "EventLoop owner-thread check passed\n";

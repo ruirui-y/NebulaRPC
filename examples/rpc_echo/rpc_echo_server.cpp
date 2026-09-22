@@ -7,18 +7,22 @@
 #include <cstdlib>
 #include <iostream>
 
-namespace {
+namespace
+{
 
-class EchoServiceImpl final : public nebula::example::EchoService {
+class EchoServiceImpl final : public nebula::example::EchoService
+{
 public:
     void Echo(::google::protobuf::RpcController* controller,
               const ::nebula::example::EchoRequest* request,
               ::nebula::example::EchoResponse* response,
-              ::google::protobuf::Closure* done) override {
+              ::google::protobuf::Closure* done) override
+{
         (void)controller;
         response->set_text(request->text());
         response->set_server_sequence(next_sequence_.fetch_add(1));
-        if (done != nullptr) {
+        if (done != nullptr)
+        {
             done->Run();
         }
     }
@@ -29,7 +33,8 @@ private:
 
 }  // namespace
 
-int main(int argc, char** argv) {
+int main(int argc, char** argv)
+{
     const std::uint16_t port = argc > 1 ? static_cast<std::uint16_t>(std::atoi(argv[1])) : 9000;
 
     nebula::net::EventLoop loop;
