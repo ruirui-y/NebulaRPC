@@ -1,3 +1,5 @@
+find_package(spdlog REQUIRED)
+
 find_package(Protobuf REQUIRED)
 find_package(Threads REQUIRED)
 
@@ -40,3 +42,6 @@ target_link_libraries(nebula_rpc
         protobuf::libprotobuf
         Threads::Threads
 )
+
+# spdlog logging dependency
+target_link_libraries(nebula_rpc PUBLIC spdlog::spdlog)

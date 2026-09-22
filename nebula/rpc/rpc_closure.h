@@ -5,17 +5,23 @@
 #include <functional>
 #include <utility>
 
-namespace nebula::rpc {
+namespace nebula::rpc
+{
 
-class RpcClosure final : public google::protobuf::Closure {
+class RpcClosure final : public google::protobuf::Closure
+{
 public:
     explicit RpcClosure(std::function<void()> callback)
-        : callback_(std::move(callback)) {}
+        : callback_(std::move(callback))
+        {
+        }
 
-    void Run() override {
+    void Run() override
+    {
         auto callback = std::move(callback_);
         delete this;
-        if (callback) {
+        if (callback)
+        {
             callback();
         }
     }

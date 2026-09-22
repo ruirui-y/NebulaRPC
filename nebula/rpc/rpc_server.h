@@ -12,9 +12,11 @@
 #include <string>
 #include <unordered_map>
 
-namespace nebula::rpc {
+namespace nebula::rpc
+{
 
-class RpcServer final : private base::Noncopyable {
+class RpcServer final : private base::Noncopyable
+{
 public:
     RpcServer(net::EventLoop* loop, std::string ip, std::uint16_t port);
 

@@ -6,16 +6,20 @@
 #include <string>
 #include <string_view>
 
-namespace nebula::rpc {
+namespace nebula::rpc
+{
 
-struct RpcFrame {
+struct RpcFrame
+{
     proto::RpcMeta meta;
     std::string payload;
 };
 
-class RpcCodec {
+class RpcCodec
+{
 public:
-    enum class DecodeResult {
+    enum class DecodeResult
+    {
         kNeedMore,
         kOk,
         kError,
