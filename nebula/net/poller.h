@@ -6,16 +6,20 @@
 #include <unordered_map>
 #include <vector>
 
-namespace nebula::net {
+namespace nebula::net
+{
 
 class Channel;
 class EventLoop;
 
-class Poller : private base::Noncopyable {
+class Poller : private base::Noncopyable
+{
 public:
     using ChannelList = std::vector<Channel*>;
 
-    explicit Poller(EventLoop* owner_loop) : owner_loop_(owner_loop) {}
+    explicit Poller(EventLoop* owner_loop) : owner_loop_(owner_loop)
+    {
+    }
     virtual ~Poller() = default;
 
     virtual void Poll(int timeout_ms, ChannelList* active_channels) = 0;

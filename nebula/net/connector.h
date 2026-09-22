@@ -9,7 +9,8 @@
 #include <string>
 #include <utility>
 
-namespace nebula::net {
+namespace nebula::net
+{
 
 class Channel;
 class EventLoop;
@@ -23,10 +24,12 @@ public:
     Connector(EventLoop* loop, std::string ip, std::uint16_t port);
     ~Connector();
 
-    void SetNewConnectionCallback(NewConnectionCallback cb) {
+    void SetNewConnectionCallback(NewConnectionCallback cb)
+    {
         new_connection_callback_ = std::move(cb);
     }
-    void SetErrorCallback(ErrorCallback cb) {
+    void SetErrorCallback(ErrorCallback cb)
+    {
         error_callback_ = std::move(cb);
     }
 
@@ -34,7 +37,8 @@ public:
     void Stop();
 
 private:
-    enum class State {
+    enum class State
+    {
         kDisconnected,
         kConnecting,
         kConnected,

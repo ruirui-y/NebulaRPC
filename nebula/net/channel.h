@@ -6,11 +6,13 @@
 #include <functional>
 #include <memory>
 
-namespace nebula::net {
+namespace nebula::net
+{
 
 class EventLoop;
 
-class Channel final : private base::Noncopyable {
+class Channel final : private base::Noncopyable
+{
 public:
     using EventCallback = std::function<void()>;
 
@@ -20,18 +22,48 @@ public:
     void HandleEvent();
     void Tie(const std::shared_ptr<void>& owner);
 
-    void SetReadCallback(EventCallback cb) { read_callback_ = std::move(cb); }
-    void SetWriteCallback(EventCallback cb) { write_callback_ = std::move(cb); }
-    void SetCloseCallback(EventCallback cb) { close_callback_ = std::move(cb); }
-    void SetErrorCallback(EventCallback cb) { error_callback_ = std::move(cb); }
+    void SetReadCallback(EventCallback cb)
+    {
+        read_callback_ = std::move(cb);
+    }
+    void SetWriteCallback(EventCallback cb)
+    {
+        write_callback_ = std::move(cb);
+    }
+    void SetCloseCallback(EventCallback cb)
+    {
+        close_callback_ = std::move(cb);
+    }
+    void SetErrorCallback(EventCallback cb)
+    {
+        error_callback_ = std::move(cb);
+    }
 
-    [[nodiscard]] int Fd() const noexcept { return fd_; }
-    [[nodiscard]] std::uint32_t Events() const noexcept { return events_; }
-    void SetRevents(std::uint32_t revents) noexcept { revents_ = revents; }
+    [[nodiscard]] int Fd() const noexcept
+    {
+        return fd_;
+    }
+    [[nodiscard]] std::uint32_t Events() const noexcept
+    {
+        return events_;
+    }
+    void SetRevents(std::uint32_t revents) noexcept
+    {
+        revents_ = revents;
+    }
 
-    [[nodiscard]] bool IsNoneEvent() const noexcept { return events_ == kNoneEvent; }
-    [[nodiscard]] bool IsWriting() const noexcept { return (events_ & kWriteEvent) != 0U; }
-    [[nodiscard]] bool IsReading() const noexcept { return (events_ & kReadEvent) != 0U; }
+    [[nodiscard]] bool IsNoneEvent() const noexcept
+    {
+        return events_ == kNoneEvent;
+    }
+    [[nodiscard]] bool IsWriting() const noexcept
+    {
+        return (events_ & kWriteEvent) != 0U;
+    }
+    [[nodiscard]] bool IsReading() const noexcept
+    {
+        return (events_ & kReadEvent) != 0U;
+    }
 
     void EnableReading();
     void DisableReading();
@@ -40,9 +72,18 @@ public:
     void DisableAll();
     void Remove();
 
-    [[nodiscard]] int Index() const noexcept { return index_; }
-    void SetIndex(int index) noexcept { index_ = index; }
-    [[nodiscard]] EventLoop* OwnerLoop() const noexcept { return loop_; }
+    [[nodiscard]] int Index() const noexcept
+    {
+        return index_;
+    }
+    void SetIndex(int index) noexcept
+    {
+        index_ = index;
+    }
+    [[nodiscard]] EventLoop* OwnerLoop() const noexcept
+    {
+        return loop_;
+    }
 
 private:
     void Update();

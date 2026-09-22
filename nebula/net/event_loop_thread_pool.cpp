@@ -5,20 +5,26 @@
 
 #include <stdexcept>
 
-namespace nebula::net {
+namespace nebula::net
+{
 
-EventLoopThreadPool::EventLoopThreadPool(EventLoop* base_loop) : base_loop_(base_loop) {}
+EventLoopThreadPool::EventLoopThreadPool(EventLoop* base_loop) : base_loop_(base_loop)
+{
+}
 
 EventLoopThreadPool::~EventLoopThreadPool() = default;
 
-void EventLoopThreadPool::Start(std::size_t thread_count) {
+void EventLoopThreadPool::Start(std::size_t thread_count)
+{
     base_loop_->AssertInLoopThread();
-    if (started_) {
+    if (started_)
+    {
         throw std::logic_error("EventLoopThreadPool already started");
     }
     started_ = true;
 
-    for (std::size_t i = 0; i < thread_count; ++i) {
+    for (std::size_t i = 0; i < thread_count; ++i)
+    {
         auto thread = std::make_unique<EventLoopThread>();
         EventLoop* loop = thread->StartLoop();
         loops_.push_back(loop);
@@ -26,9 +32,11 @@ void EventLoopThreadPool::Start(std::size_t thread_count) {
     }
 }
 
-EventLoop* EventLoopThreadPool::GetNextLoop() {
+EventLoop* EventLoopThreadPool::GetNextLoop()
+{
     base_loop_->AssertInLoopThread();
-    if (loops_.empty()) {
+    if (loops_.empty())
+    {
         return base_loop_;
     }
 
@@ -37,8 +45,10 @@ EventLoop* EventLoopThreadPool::GetNextLoop() {
     return loop;
 }
 
-std::vector<EventLoop*> EventLoopThreadPool::GetAllLoops() const {
-    if (loops_.empty()) {
+std::vector<EventLoop*> EventLoopThreadPool::GetAllLoops() const
+{
+    if (loops_.empty())
+    {
         return {base_loop_};
     }
     return loops_;

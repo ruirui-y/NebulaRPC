@@ -6,9 +6,11 @@
 
 #include <vector>
 
-namespace nebula::net {
+namespace nebula::net
+{
 
-class EPollPoller final : public Poller {
+class EPollPoller final : public Poller
+{
 public:
     explicit EPollPoller(EventLoop* loop);
     ~EPollPoller() override;

@@ -10,18 +10,29 @@
 #include <string>
 #include <unordered_map>
 
-namespace nebula::net {
+namespace nebula::net
+{
 
 class EventLoop;
 
-class TcpServer final : private base::Noncopyable {
+class TcpServer final : private base::Noncopyable
+{
 public:
     TcpServer(EventLoop* loop, std::string ip, std::uint16_t port, bool reuse_port = true);
     ~TcpServer();
 
-    void SetConnectionCallback(ConnectionCallback cb) { connection_callback_ = std::move(cb); }
-    void SetMessageCallback(MessageCallback cb) { message_callback_ = std::move(cb); }
-    void SetWriteCompleteCallback(WriteCompleteCallback cb) { write_complete_callback_ = std::move(cb); }
+    void SetConnectionCallback(ConnectionCallback cb)
+    {
+        connection_callback_ = std::move(cb);
+    }
+    void SetMessageCallback(MessageCallback cb)
+    {
+        message_callback_ = std::move(cb);
+    }
+    void SetWriteCompleteCallback(WriteCompleteCallback cb)
+    {
+        write_complete_callback_ = std::move(cb);
+    }
 
     void Start(std::size_t io_thread_count = 0);
 

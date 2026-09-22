@@ -2,32 +2,44 @@
 
 #include "nebula/net/event_loop.h"
 
-namespace nebula::net {
+namespace nebula::net
+{
 
-EventLoopThread::~EventLoopThread() {
+EventLoopThread::~EventLoopThread()
+{
     exiting_ = true;
     EventLoop* loop = nullptr;
     {
         std::lock_guard<std::mutex> lock(mutex_);
         loop = loop_;
     }
-    if (loop != nullptr) {
+    if (loop != nullptr)
+    {
         loop->Quit();
     }
-    if (thread_.joinable()) {
+    if (thread_.joinable())
+    {
         thread_.join();
     }
 }
 
-EventLoop* EventLoopThread::StartLoop() {
-    thread_ = std::thread([this] { ThreadFunc(); });
+EventLoop* EventLoopThread::StartLoop()
+{
+    thread_ = std::thread([this]
+        {
+            ThreadFunc();
+        });
 
     std::unique_lock<std::mutex> lock(mutex_);
-    condition_.wait(lock, [this] { return loop_ != nullptr; });
+    condition_.wait(lock, [this]
+        {
+            return loop_ != nullptr;
+        });
     return loop_;
 }
 
-void EventLoopThread::ThreadFunc() {
+void EventLoopThread::ThreadFunc()
+{
     EventLoop loop;
     {
         std::lock_guard<std::mutex> lock(mutex_);

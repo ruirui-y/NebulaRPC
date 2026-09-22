@@ -8,22 +8,28 @@
 #include <functional>
 #include <string>
 
-namespace nebula::net {
+namespace nebula::net
+{
 
 class EventLoop;
 
-class Acceptor final : private base::Noncopyable {
+class Acceptor final : private base::Noncopyable
+{
 public:
     using NewConnectionCallback = std::function<void(int)>;
 
     Acceptor(EventLoop* loop, std::string ip, std::uint16_t port, bool reuse_port);
     ~Acceptor() = default;
 
-    void SetNewConnectionCallback(NewConnectionCallback cb) {
+    void SetNewConnectionCallback(NewConnectionCallback cb)
+    {
         new_connection_callback_ = std::move(cb);
     }
 
-    [[nodiscard]] bool Listening() const noexcept { return listening_; }
+    [[nodiscard]] bool Listening() const noexcept
+    {
+        return listening_;
+    }
     void Listen();
 
 private:

@@ -5,6 +5,7 @@ add_library(nebula_net STATIC
     poller.cpp
     epoll_poller.cpp
     event_loop.cpp
+    timer_queue.cpp
     socket.cpp
     acceptor.cpp
     tcp_connection.cpp
@@ -25,3 +26,6 @@ target_link_libraries(nebula_net
         nebula_build_options
         Threads::Threads
 )
+
+# spdlog is header-only but linked for dependency propagation
+target_link_libraries(nebula_net PUBLIC spdlog::spdlog)

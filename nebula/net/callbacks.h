@@ -3,7 +3,8 @@
 #include <functional>
 #include <memory>
 
-namespace nebula::net {
+namespace nebula::net
+{
 
 class Buffer;
 class TcpConnection;

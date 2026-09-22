@@ -12,48 +12,66 @@
 #include <sys/socket.h>
 #include <unistd.h>
 
-namespace nebula::net {
+namespace nebula::net
+{
 
 Connector::Connector(EventLoop* loop, std::string ip, std::uint16_t port)
-    : loop_(loop), ip_(std::move(ip)), port_(port) {}
+    : loop_(loop), ip_(std::move(ip)), port_(port)
+{
+}
 
-Connector::~Connector() {
+Connector::~Connector()
+{
     loop_->AssertInLoopThread();
 
-    if (channel_) {
+    if (channel_)
+    {
         channel_->DisableAll();
         channel_->Remove();
         channel_.reset();
     }
 
-    if (socket_fd_ >= 0) {
+    if (socket_fd_ >= 0)
+    {
         ::close(socket_fd_);
         socket_fd_ = -1;
     }
 }
 
-void Connector::Start() {
+void Connector::Start()
+{
     connect_ = true;
     auto self = shared_from_this();
-    loop_->RunInLoop([self] { self->StartInLoop(); });
+    loop_->RunInLoop([self]
+        {
+            self->StartInLoop();
+        });
 }
 
-void Connector::Stop() {
+void Connector::Stop()
+{
     connect_ = false;
     auto self = shared_from_this();
-    loop_->RunInLoop([self] { self->StopInLoop(); });
+    loop_->RunInLoop([self]
+        {
+            self->StopInLoop();
+        });
 }
 
-void Connector::StartInLoop() {
+void Connector::StartInLoop()
+{
     loop_->AssertInLoopThread();
-    if (connect_.load() && state_ == State::kDisconnected) {
+    if (connect_.load() && state_ == State::kDisconnected)
+    {
         ConnectInLoop();
     }
 }
 
-void Connector::StopInLoop() {
+void Connector::StopInLoop()
+{
     loop_->AssertInLoopThread();
-    if (state_ != State::kConnecting) {
+    if (state_ != State::kConnecting)
+    {
         return;
     }
 
@@ -63,13 +81,17 @@ void Connector::StopInLoop() {
     ::close(socket_fd);
 }
 
-void Connector::ConnectInLoop() {
+void Connector::ConnectInLoop()
+{
     loop_->AssertInLoopThread();
 
     int socket_fd = -1;
-    try {
+    try
+    {
         socket_fd = Socket::CreateNonblocking();
-    } catch (const std::exception& ex) {
+    }
+    catch (const std::exception& ex)
+    {
         ReportError(ex.what());
         return;
     }
@@ -78,7 +100,8 @@ void Connector::ConnectInLoop() {
     address.sin_family = AF_INET;
     address.sin_port = htons(port_);
 
-    if (::inet_pton(AF_INET, ip_.c_str(), &address.sin_addr) != 1) {
+    if (::inet_pton(AF_INET, ip_.c_str(), &address.sin_addr) != 1)
+    {
         ::close(socket_fd);
         ReportError("invalid IPv4 address: " + ip_);
         return;
@@ -89,24 +112,30 @@ void Connector::ConnectInLoop() {
                                  sizeof(address));
     const int saved_errno = result == 0 ? 0 : errno;
 
-    if (result == 0 || saved_errno == EISCONN) {
+    if (result == 0 || saved_errno == EISCONN)
+    {
         state_ = State::kConnected;
-        if (!connect_.load()) {
+        if (!connect_.load())
+        {
             ::close(socket_fd);
             state_ = State::kDisconnected;
             return;
         }
 
-        if (new_connection_callback_) {
+        if (new_connection_callback_)
+        {
             new_connection_callback_(socket_fd);
-        } else {
+        }
+        else
+        {
             ::close(socket_fd);
             state_ = State::kDisconnected;
         }
         return;
     }
 
-    if (saved_errno == EINPROGRESS || saved_errno == EINTR) {
+    if (saved_errno == EINPROGRESS || saved_errno == EINTR)
+    {
         Connecting(socket_fd);
         return;
     }
@@ -116,7 +145,8 @@ void Connector::ConnectInLoop() {
     ReportError("connect failed: " + reason);
 }
 
-void Connector::Connecting(int socket_fd) {
+void Connector::Connecting(int socket_fd)
+{
     loop_->AssertInLoopThread();
 
     state_ = State::kConnecting;
@@ -126,24 +156,30 @@ void Connector::Connecting(int socket_fd) {
     // weak_ptr 避免 Connector -> Channel callback -> Connector 引用环。
     std::weak_ptr<Connector> weak_self = shared_from_this();
 
-    channel_->SetWriteCallback([weak_self] {
-        if (auto self = weak_self.lock()) {
-            self->HandleWrite();
-        }
-    });
+    channel_->SetWriteCallback([weak_self]
+        {
+            if (auto self = weak_self.lock())
+            {
+                self->HandleWrite();
+            }
+        });
 
-    channel_->SetErrorCallback([weak_self] {
-        if (auto self = weak_self.lock()) {
-            self->HandleError();
-        }
-    });
+    channel_->SetErrorCallback([weak_self]
+        {
+            if (auto self = weak_self.lock())
+            {
+                self->HandleError();
+            }
+        });
 
     channel_->EnableWriting();
 }
 
-void Connector::HandleWrite() {
+void Connector::HandleWrite()
+{
     loop_->AssertInLoopThread();
-    if (state_ != State::kConnecting) {
+    if (state_ != State::kConnecting)
+    {
         return;
     }
 
@@ -152,31 +188,38 @@ void Connector::HandleWrite() {
     const int socket_fd = RemoveAndResetChannel();
     socket_fd_ = -1;
 
-    if (socket_error != 0) {
+    if (socket_error != 0)
+    {
         state_ = State::kDisconnected;
         ::close(socket_fd);
         ReportError("connect failed: " + std::string(std::strerror(socket_error)));
         return;
     }
 
-    if (!connect_.load()) {
+    if (!connect_.load())
+    {
         state_ = State::kDisconnected;
         ::close(socket_fd);
         return;
     }
 
     state_ = State::kConnected;
-    if (new_connection_callback_) {
+    if (new_connection_callback_)
+    {
         new_connection_callback_(socket_fd);
-    } else {
+    }
+    else
+    {
         ::close(socket_fd);
         state_ = State::kDisconnected;
     }
 }
 
-void Connector::HandleError() {
+void Connector::HandleError()
+{
     loop_->AssertInLoopThread();
-    if (state_ != State::kConnecting) {
+    if (state_ != State::kConnecting)
+    {
         return;
     }
 
@@ -190,7 +233,8 @@ void Connector::HandleError() {
     ReportError("connect failed: " + std::string(std::strerror(error)));
 }
 
-int Connector::RemoveAndResetChannel() {
+int Connector::RemoveAndResetChannel()
+{
     loop_->AssertInLoopThread();
 
     const int socket_fd = channel_->Fd();
@@ -199,26 +243,34 @@ int Connector::RemoveAndResetChannel() {
 
     // 当前可能仍在 Channel::HandleEvent 调用栈中，延迟释放。
     auto self = shared_from_this();
-    loop_->QueueInLoop([self] { self->ResetChannel(); });
+    loop_->QueueInLoop([self]
+        {
+            self->ResetChannel();
+        });
     return socket_fd;
 }
 
-void Connector::ResetChannel() {
+void Connector::ResetChannel()
+{
     loop_->AssertInLoopThread();
     channel_.reset();
 }
 
-void Connector::ReportError(const std::string& reason) {
+void Connector::ReportError(const std::string& reason)
+{
     state_ = State::kDisconnected;
-    if (error_callback_) {
+    if (error_callback_)
+    {
         error_callback_(reason);
     }
 }
 
-int Connector::GetSocketError(int socket_fd) {
+int Connector::GetSocketError(int socket_fd)
+{
     int error = 0;
     socklen_t length = sizeof(error);
-    if (::getsockopt(socket_fd, SOL_SOCKET, SO_ERROR, &error, &length) < 0) {
+    if (::getsockopt(socket_fd, SOL_SOCKET, SO_ERROR, &error, &length) < 0)
+    {
         return errno;
     }
     return error;

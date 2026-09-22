@@ -6,12 +6,14 @@
 #include <memory>
 #include <vector>
 
-namespace nebula::net {
+namespace nebula::net
+{
 
 class EventLoop;
 class EventLoopThread;
 
-class EventLoopThreadPool final : private base::Noncopyable {
+class EventLoopThreadPool final : private base::Noncopyable
+{
 public:
     explicit EventLoopThreadPool(EventLoop* base_loop);
     ~EventLoopThreadPool();

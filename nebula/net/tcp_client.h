@@ -9,28 +9,45 @@
 #include <string>
 #include <utility>
 
-namespace nebula::net {
+namespace nebula::net
+{
 
 class Connector;
 class EventLoop;
 
-class TcpClient final : private base::Noncopyable {
+class TcpClient final : private base::Noncopyable
+{
 public:
     using ConnectErrorCallback = std::function<void(const std::string&)>;
 
     TcpClient(EventLoop* loop, std::string ip, std::uint16_t port);
     ~TcpClient();
 
-    void SetConnectionCallback(ConnectionCallback cb) { connection_callback_ = std::move(cb); }
-    void SetMessageCallback(MessageCallback cb) { message_callback_ = std::move(cb); }
-    void SetWriteCompleteCallback(WriteCompleteCallback cb) { write_complete_callback_ = std::move(cb); }
-    void SetConnectErrorCallback(ConnectErrorCallback cb) { connect_error_callback_ = std::move(cb); }
+    void SetConnectionCallback(ConnectionCallback cb)
+    {
+        connection_callback_ = std::move(cb);
+    }
+    void SetMessageCallback(MessageCallback cb)
+    {
+        message_callback_ = std::move(cb);
+    }
+    void SetWriteCompleteCallback(WriteCompleteCallback cb)
+    {
+        write_complete_callback_ = std::move(cb);
+    }
+    void SetConnectErrorCallback(ConnectErrorCallback cb)
+    {
+        connect_error_callback_ = std::move(cb);
+    }
 
     void Connect();
     void Disconnect();
     void Stop();
 
-    [[nodiscard]] const TcpConnectionPtr& Connection() const noexcept { return connection_; }
+    [[nodiscard]] const TcpConnectionPtr& Connection() const noexcept
+    {
+        return connection_;
+    }
 
 private:
     void NewConnection(int socket_fd);

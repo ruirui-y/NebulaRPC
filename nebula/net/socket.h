@@ -5,14 +5,21 @@
 #include <cstdint>
 #include <string>
 
-namespace nebula::net {
+namespace nebula::net
+{
 
-class Socket final : private base::Noncopyable {
+class Socket final : private base::Noncopyable
+{
 public:
-    explicit Socket(int fd) : fd_(fd) {}
+    explicit Socket(int fd) : fd_(fd)
+    {
+    }
     ~Socket();
 
-    [[nodiscard]] int Fd() const noexcept { return fd_; }
+    [[nodiscard]] int Fd() const noexcept
+    {
+        return fd_;
+    }
 
     static int CreateNonblocking();
     void BindAddress(const std::string& ip, std::uint16_t port) const;

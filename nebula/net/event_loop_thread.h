@@ -6,11 +6,13 @@
 #include <mutex>
 #include <thread>
 
-namespace nebula::net {
+namespace nebula::net
+{
 
 class EventLoop;
 
-class EventLoopThread final : private base::Noncopyable {
+class EventLoopThread final : private base::Noncopyable
+{
 public:
     EventLoopThread() = default;
     ~EventLoopThread();
