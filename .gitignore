@@ -2,6 +2,7 @@
 /out/
 .cache/
 /.vs/
+/.workbuddy/
 
 compile_commands.json
 
@@ -9,3 +10,6 @@ compile_commands.json
 *.a
 *.so
 *.log
+
+# 本地打包/交付压缩包不入库（历史提交 77f05e4 曾专门删除过一个）
+*.zip
