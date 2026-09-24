@@ -48,7 +48,8 @@ public:
 
         const std::string text = request->text();
 
-        loop_->RunInLoop([this, text, response, done]
+        // 真正延迟回包：slow 请求 250ms 后才响应，必然晚于客户端 100ms 超时
+        loop_->RunAfter(delay, [this, text, response, done]
             {
                 timer_fired_count_.fetch_add(1);
 
@@ -185,17 +186,23 @@ int main()
         {
             std::cout << "RPC timeout test timeout\n";
 
-const bool fast_ok =
+            // Case 1：fast 在超时前收到响应，正常完成
+            const bool fast_ok =
                 fast_done_count->load() == 1 &&
                 !fast->controller.Failed() &&
                 fast->response.text() == "fast";
 
+            // Case 2：slow 超时先完成，迟到响应被丢弃，done 恰好一次且错误为 "RPC timeout"
             const bool slow_ok =
                 slow_done_count->load() == 1 &&
-                !slow->controller.Failed() &&
-                slow->response.text() == "slow";
+                slow->controller.Failed() &&
+                slow->controller.ErrorText() == "RPC timeout";
 
-// ===== 新增打印日志 =====
+            // 迟到响应验证：服务端 250ms 后确实回了包，但客户端已超时完成，不能再触发第二次 done
+            const bool late_response_ok =
+                service.SlowTimerFiredCount() == 1 &&
+                slow_done_count->load() == 1;
+
             std::cout << "---------- RPC timeout test detail ----------\n";
             std::cout << "[fast] done_count=" << fast_done_count->load()
                 << ", failed=" << fast->controller.Failed()
@@ -207,10 +214,12 @@ const bool fast_ok =
                 << ", error_text=\"" << slow->controller.ErrorText() << "\""
                 << ", response_text=\"" << slow->response.text() << "\""
                 << "\n";
-std::cout << "---------------------------------------------\n";
-            // ========================
+            std::cout << "[late] slow_timer_fired=" << service.SlowTimerFiredCount()
+                << ", slow_done_count=" << slow_done_count->load()
+                << "\n";
+            std::cout << "---------------------------------------------\n";
 
-            passed = fast_ok && slow_ok;
+            passed = fast_ok && slow_ok && late_response_ok;
             loop.Quit();
         });
 
