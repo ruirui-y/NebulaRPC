@@ -22,3 +22,20 @@ target_link_libraries(nebula_rpc_timeout_test
 )
 add_test(NAME nebula_rpc_timeout_test COMMAND nebula_rpc_timeout_test)
 set_tests_properties(nebula_rpc_timeout_test PROPERTIES RUN_SERIAL TRUE)
+
+add_executable(nebula_rpc_call_test rpc_call_test.cpp)
+target_link_libraries(nebula_rpc_call_test PRIVATE nebula_rpc)
+add_test(NAME nebula_rpc_call_test COMMAND nebula_rpc_call_test)
+
+add_executable(nebula_rpc_cancel_test rpc_cancel_test.cpp)
+target_include_directories(nebula_rpc_cancel_test
+    PRIVATE
+        ${PROJECT_BINARY_DIR}/examples/rpc_echo
+)
+target_link_libraries(nebula_rpc_cancel_test
+    PRIVATE
+        nebula_rpc
+        nebula_rpc_echo_proto
+)
+add_test(NAME nebula_rpc_cancel_test COMMAND nebula_rpc_cancel_test)
+set_tests_properties(nebula_rpc_cancel_test PROPERTIES RUN_SERIAL TRUE)

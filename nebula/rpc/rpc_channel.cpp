@@ -4,6 +4,7 @@
 #include "nebula/net/event_loop.h"
 #include "nebula/net/tcp_client.h"
 #include "nebula/net/tcp_connection.h"
+#include "nebula/rpc/rpc_closure.h"
 #include "nebula/rpc/rpc_controller.h"
 
 #include <algorithm>
@@ -90,8 +91,10 @@ std::optional<RpcController::TimePoint> ResolveDeadline(
 
 RpcChannel::RpcChannel(net::EventLoop* loop, std::string ip, std::uint16_t port)
     : loop_(loop),
-      client_(std::make_unique<net::TcpClient>(loop, std::move(ip), port))
+      client_(std::make_unique<net::TcpClient>(loop, std::move(ip), port)),
+      alive_guard_(std::make_shared<AliveGuard>())
 {
+    alive_guard_->channel.store(this, std::memory_order_release);
     client_->SetConnectionCallback([this](const net::TcpConnectionPtr& conn)
         {
             OnConnection(conn);
@@ -115,6 +118,9 @@ RpcChannel::~RpcChannel()
 {
     assert(loop_->IsInLoopThread());
 
+    // 先失效存活守卫：此后任何迟到/在途的取消回调都会看到空指针直接放弃
+    alive_guard_->channel.store(nullptr, std::memory_order_release);
+
     client_->SetConnectionCallback({});
     client_->SetMessageCallback({});
     client_->SetWriteCompleteCallback({});
@@ -131,7 +137,6 @@ void RpcChannel::CallMethod(const google::protobuf::MethodDescriptor* method,
                             google::protobuf::Message* response,
                             google::protobuf::Closure* done)
 {
-    // 这一版 RpcChannel 是纯异步接口，不再同步等待响应。
     if (done == nullptr)
     {
         SetControllerFailure(controller, "async RpcChannel requires a non-null done callback");
@@ -179,20 +184,23 @@ void RpcChannel::CallMethod(const google::protobuf::MethodDescriptor* method,
         return;
     }
 
-    PendingCall pending_call{
+    // PendingCall 里的 RpcCall 不可拷贝，过投递边界只能用 shared_ptr
+    auto pending_call = std::make_shared<PendingCall>(PendingCall{
         .response = response,
         .controller = controller,
         .done = done,
         .deadline = deadline,
         .timeout_timer = {},
-    };
+        .cancel_token = -1,
+        .call = {},
+    });
 
     loop_->RunInLoop([this,
                       request_id,
                       bytes = std::move(bytes),
-                      pending_call = std::move(pending_call)]() mutable
+                      pending_call]() mutable
         {
-            RegisterAndSend(request_id, std::move(bytes), std::move(pending_call));
+            RegisterAndSend(request_id, std::move(bytes), std::move(*pending_call));
         });
 }
 
@@ -201,6 +209,9 @@ void RpcChannel::RegisterAndSend(std::uint64_t request_id,
                                  PendingCall pending_call)
 {
     loop_->AssertInLoopThread();
+
+    // 取消回调与超时定时器都可能活到 channel 析构之后，一律经 weak_ptr 校验，禁止捕获 this
+    const std::weak_ptr<AliveGuard> weak_guard = alive_guard_;
 
     if (connection_state_ == ConnectionState::kDisconnected)
     {
@@ -223,16 +234,83 @@ void RpcChannel::RegisterAndSend(std::uint64_t request_id,
         request_id, std::move(pending_call));
     assert(inserted);
 
-    if (it->second.deadline.has_value())
+    // ---- 第一步：注册取消回调，业务线程随时可能 StartCancel ----
+    auto* rpc_controller = dynamic_cast<RpcController*>(it->second.controller);
+    int cancel_token = -1;
+
+    if (rpc_controller != nullptr)
     {
-        it->second.timeout_timer = loop_->RunAt(
-            *it->second.deadline,
-            [this, request_id]
+        // RegisterOnCancel 在 controller 已取消时会内联执行并摘掉 pending → it 失效，token 要先存
+        cancel_token = rpc_controller->RegisterOnCancel(
+            new RpcClosure([weak_guard, request_id, loop = loop_]
                 {
-                    OnTimeout(request_id);
+                    // StartCancel 在任意业务线程：先确认 channel 活（活则 loop 活），否则这里是唯一的裸 loop 解引用
+                    auto guard = weak_guard.lock();
+
+                    if (guard == nullptr || guard->Acquire() == nullptr)
+                    {
+                        return;
+                    }
+
+                    loop->RunInLoop([weak_guard, request_id]
+                        {
+                            // 投递与执行之间 channel 仍可能析构，进 loop 线程后再校验一次
+                            auto inner_guard = weak_guard.lock();
+
+                            if (inner_guard == nullptr)
+                            {
+                                return;
+                            }
+
+                            RpcChannel* channel = inner_guard->Acquire();
+
+                            if (channel == nullptr)
+                            {
+                                return;
+                            }
+
+                            channel->CompleteCallWithCancel(request_id);
+                        });
+                }));
+    }
+
+    // ---- 第二步：重新查表；注册前已被取消的调用会在这里发现条目已摘除 ----
+    const auto alive_it = pending_calls_.find(request_id);
+
+    if (alive_it == pending_calls_.end())
+    {
+        return;                                         // 已走取消完成路径
+    }
+
+    alive_it->second.cancel_token = cancel_token;
+
+    // ---- 第三步：有 deadline 就挂超时定时器 ----
+    if (alive_it->second.deadline.has_value())
+    {
+        alive_it->second.timeout_timer = loop_->RunAt(
+            *alive_it->second.deadline,
+            [weak_guard, request_id]
+                {
+                    // 定时器可能比 channel 长寿，捕 this 会在 channel 析构后打进已释放对象
+                    auto guard = weak_guard.lock();
+
+                    if (guard == nullptr)
+                    {
+                        return;
+                    }
+
+                    RpcChannel* channel = guard->Acquire();
+
+                    if (channel == nullptr)
+                    {
+                        return;
+                    }
+
+                    channel->OnTimeout(request_id);
                 });
     }
 
+    // ---- 第四步：已连接直接发，未连接进写排队 ----
     if (connection_state_ == ConnectionState::kConnected &&
         connection_ &&
         connection_->Connected())
@@ -322,13 +400,13 @@ void RpcChannel::OnConnectError(const std::string& reason)
 void RpcChannel::OnTimeout(std::uint64_t request_id)
 {
     loop_->AssertInLoopThread();
-    CompleteCallWithFailure(request_id, "RPC timeout");
+    CompleteCallWithFailure(request_id, "RPC timeout", RpcCallState::Timeout);
 }
 
 void RpcChannel::HandleFrame(RpcFrame frame)
 {
     loop_->AssertInLoopThread();
-auto request_id = frame.meta.request_id();
+    auto request_id = frame.meta.request_id();
     CompleteCallWithFrame(request_id, std::move(frame));
 }
 
@@ -352,6 +430,17 @@ std::optional<RpcChannel::PendingCall> RpcChannel::TakePendingCall(
         loop_->CancelTimer(pending_call.timeout_timer);
     }
 
+    // ---- 反注册取消回调：四条完成路径唯一收口（取消路径自身触发时已被换走，摘不到属正常）----
+    if (pending_call.cancel_token >= 0)
+    {
+        auto* rpc_controller = dynamic_cast<RpcController*>(pending_call.controller);
+
+        if (rpc_controller != nullptr)
+        {
+            rpc_controller->RemoveOnCancel(pending_call.cancel_token);
+        }
+    }
+
     RemovePendingWrite(request_id);
     return pending_call;
 }
@@ -359,14 +448,29 @@ std::optional<RpcChannel::PendingCall> RpcChannel::TakePendingCall(
 void RpcChannel::CompleteCallWithFrame(std::uint64_t request_id,
                                        RpcFrame frame)
 {
-auto pending_call = TakePendingCall(request_id);
+    // ---- 第一步：找到在途调用，CAS 抢占完成权 ----
+    auto it = pending_calls_.find(request_id);
 
-    if (!pending_call.has_value())
+    if (it == pending_calls_.end())
     {
-        // timeout/disconnect 已经完成的调用，其迟到响应直接丢弃。
+        // timeout/cancel/disconnect 已完成的调用，其迟到响应直接丢弃
         return;
     }
 
+    if (!it->second.call.TryComplete(RpcCallState::Completed))
+    {
+        return;                                         // 其他完成来源抢先
+    }
+
+    // ---- 第二步：仲裁成功，摘除并清理资源 ----
+    auto pending_call = TakePendingCall(request_id);
+
+    if (!pending_call.has_value())
+    {
+        return;
+    }
+
+    // ---- 第三步：写结果并执行回调 ----
     loop_->RunInLoop([response = pending_call->response,
                         controller = pending_call->controller,
                         done = pending_call->done,
@@ -377,8 +481,23 @@ auto pending_call = TakePendingCall(request_id);
 }
 
 void RpcChannel::CompleteCallWithFailure(std::uint64_t request_id,
-                                         const std::string& reason)
+                                         const std::string& reason,
+                                         RpcCallState state)
 {
+    // ---- 第一步：找到在途调用，CAS 抢占完成权 ----
+    auto it = pending_calls_.find(request_id);
+
+    if (it == pending_calls_.end())
+    {
+        return;                                         // 已被其他来源完成
+    }
+
+    if (!it->second.call.TryComplete(state))
+    {
+        return;                                         // 其他完成来源抢先
+    }
+
+    // ---- 第二步：仲裁成功，摘除并清理资源 ----
     auto pending_call = TakePendingCall(request_id);
 
     if (!pending_call.has_value())
@@ -386,11 +505,55 @@ void RpcChannel::CompleteCallWithFailure(std::uint64_t request_id,
         return;
     }
 
+    // ---- 第三步：写错误并执行回调 ----
     loop_->QueueInLoop([controller = pending_call->controller,
                         done = pending_call->done,
                         reason]
         {
             CompleteFailure(controller, done, reason);
+        });
+}
+
+void RpcChannel::CompleteCallWithCancel(std::uint64_t request_id)
+{
+    loop_->AssertInLoopThread();
+
+    // ---- 第一步：找到在途调用，CAS 抢占完成权 ----
+    auto it = pending_calls_.find(request_id);
+
+    if (it == pending_calls_.end())
+    {
+        return;                                         // 已被其他来源完成
+    }
+
+    if (!it->second.call.TryComplete(RpcCallState::Cancelled))
+    {
+        return;                                         // response/timeout 抢先
+    }
+
+    // ---- 第二步：仲裁成功，摘除并清理资源 ----
+    auto pending_call = TakePendingCall(request_id);
+
+    if (!pending_call.has_value())
+    {
+        return;
+    }
+
+    // ---- 第三步：抢到完成权之后才把「取消」标记为已生效（输给 response/timeout 时保持 false）----
+    auto* rpc_controller = dynamic_cast<RpcController*>(pending_call->controller);
+
+    if (rpc_controller != nullptr)
+    {
+        rpc_controller->MarkCanceled();
+    }
+
+    // ---- 第四步：执行回调；取消不算失败，不 SetFailed，业务读 IsCanceled() ----
+    loop_->QueueInLoop([done = pending_call->done]
+        {
+            if (done != nullptr)
+            {
+                done->Run();
+            }
         });
 }
 
@@ -423,7 +586,7 @@ void RpcChannel::FailAllPending(const std::string& reason)
 
     for (const std::uint64_t request_id : request_ids)
     {
-        CompleteCallWithFailure(request_id, reason);
+        CompleteCallWithFailure(request_id, reason, RpcCallState::Failed);
     }
 }
 
@@ -434,9 +597,20 @@ void RpcChannel::FailAllPendingNow(const std::string& reason)
     while (!pending_calls_.empty())
     {
         const std::uint64_t request_id = pending_calls_.begin()->first;
+
+        // ---- 与其他完成路径一致：先 CAS 抢占完成权 ----
+        const bool won = pending_calls_.begin()->second.call.TryComplete(
+            RpcCallState::Failed);
+
+        // 无论是否抢到完成权都要摘除，否则定时器会在析构后触发
         auto pending_call = TakePendingCall(request_id);
 
-        if (pending_call.has_value())
+        if (!pending_call.has_value())
+        {
+            continue;
+        }
+
+        if (won)
         {
             CompleteFailure(pending_call->controller,
                             pending_call->done,

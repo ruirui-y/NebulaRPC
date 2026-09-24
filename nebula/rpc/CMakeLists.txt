@@ -22,6 +22,7 @@ target_link_libraries(nebula_rpc_proto
 )
 
 add_library(nebula_rpc STATIC
+    rpc_call.cpp
     rpc_controller.cpp
     rpc_codec.cpp
     rpc_server.cpp
