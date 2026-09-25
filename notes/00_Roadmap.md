@@ -641,7 +641,7 @@ cancel_token = controller->RegisterOnCancel(new RpcClosure([weak_guard, request_
 -   coroutine 生命周期
 -   resume 调度线程
 
-状态：未开始
+状态：已落地（2026-09-24；实现方式与本节原计划有三处差异，见末尾「实际落地」）
 
 ### 实现细节
 
@@ -709,6 +709,48 @@ else
 - 协程版 echo 示例：`co_await` 拿到正确响应；
 - 超时场景：`co_await` 抛出/返回超时错误，协程正常结束无泄漏；
 - ASan 下协程帧无泄漏。
+
+### 实际落地（2026-09-24）
+
+新增文件：
+
+    nebula/rpc/rpc_task.h          Task<T> + promise_type（惰性 initial_suspend、final_suspend 对称转移）
+    nebula/rpc/rpc_error.h         RpcError : std::runtime_error，携带 RpcCallState
+    nebula/rpc/rpc_awaiter.h       RpcAwaiter<Req,Resp> + ResumeGuard + FindMethod（header-only）
+    examples/rpc_echo/rpc_echo_coroutine_client.cpp
+    tests/rpc_coroutine_test.cpp
+
+改动文件：
+
+    nebula/rpc/rpc_controller.h/.cpp   新增 CallState() / MarkCallState()，Reset 复位，MarkCanceled 顺带写 Cancelled
+    nebula/rpc/rpc_channel.h           新增 Loop() 访问器
+    nebula/rpc/rpc_channel.cpp         新增 SetCallState 助手，三条完成路径回填终态
+    examples/rpc_echo/CMakeLists.txt、tests/CMakeLists.txt   各加一个 target
+
+与本节原计划的**三处差异**：
+
+1. **不改 `PendingCall`、不改完成路径**（原计划步骤 3 作废）。`done` 本来就是四条完成路径
+   唯一的共同出口（`CompleteFailure` / `CompleteFrame` 都是「有 done 就 Run」），所以协程只要
+   提供一个「跑起来就恢复协程」的 `RpcClosure`，channel 一行都不用改。代价是要处理
+   「done 可能在 `await_suspend` 返回前就被内联调用」——因此恢复走 `QueueInLoop` 推迟。
+   （收益：超时/取消/断连/析构四条出口自动覆盖，不会漏 resume 导致帧泄漏。）
+2. **不采用 `RpcCallContext`**（原计划步骤 1、5 提到的 `RpcCallContext context_`）。
+   第 7 节最终把状态机内嵌进了 `PendingCall`，该文件至今零引用；协程层改用
+   `ResumeGuard`（持 `coroutine_handle` 的可失效盒）+ 复用 `RpcController` 的终态。
+3. **终态可读**（原计划步骤 5「检查 TryComplete 的最终状态」原本拿不到）。补了
+   `RpcController::MarkCallState()`，由抢到完成权的路径写入，`RpcError::State()` 因此能区分
+   Timeout / Cancelled / Failed，不需要嗅探错误字符串。
+
+验收方式（本项目 Linux-only，本机无法构建时用 MSVC 做语法级验证）：
+
+- 协程机制可运行自检：`Task<T>` 的惰性启动 / 挂起 / 恢复 / 嵌套对称转移 / 返回值 / 异常 / move
+  七组断言全部通过；
+- `RpcAwaiter` 模板实例化与 `co_await` 语法检查通过（MSVC `/std:c++20 /W4`，0 warning）；
+- 真实运行验收 = `ctest --preset test-linux-debug`（含 `nebula_rpc_coroutine_test`），
+  **ASan 未跑**（`test-linux-asan`）。
+
+设计细节与陷阱见 `07_Coroutine_RPC.md`；配套学习试卷见
+`H:\YJJ\LearningCI\papers\NRPC-协程-V1.json`。
 
 ------------------------------------------------------------------------
 

@@ -15,8 +15,25 @@
 | `04_Timeout_Exactly_Once.md` | RPC Timeout 与 Exactly-Once Completion 初版 | 已实现 |
 | `05_工程路线_代码对齐版.md` | 工程路线逐项核对（以真实代码为准，标出半成品与假测试） | 持续维护 |
 | `06_Timeout_Cancel_ExactlyOnce_实现细节.md` | Phase 7：RpcCall 状态机接线 / Cancel / 竞争测试 / 四处生命周期加固 | 已实现（待 ASan 验收） |
+| `07_Coroutine_RPC.md` | Phase 8：C++20 协程 RPC 层（Task/RpcAwaiter/ResumeGuard/析构即取消） | 已实现（待 Linux 构建验收） |
+
+## 子目录
+
+| 目录 | 内容 |
+|---|---|
+| `dev_env/` | 开发环境搭建（虚拟机网络、Git 代理等） |
+| `knowledge/` | **通用知识点库**（跟项目进度无关，目标是「面试能讲清楚」） |
+
+`knowledge/` 当前内容：
+
+| 文档 | 内容 |
+|---|---|
+| `knowledge/01_C++20_Coroutines.md` | C++20 协程完整知识点 + 去糟粕清单 + 概念到本仓库代码的映射表 + 自检题 |
 
 ## 阅读顺序
 
 先看 `00_Roadmap.md` 的能力地图，再看 `05` 的校准总表确认「哪些真的做完了」，
 其余按 Phase 编号顺序读。
+
+学语言机制（比如协程）时，走 `knowledge/` 那一路；想对着真实代码逐个坐实，
+再回 `07_Coroutine_RPC.md`。
