@@ -175,4 +175,4 @@ tests/rpc_coroutine_test.cpp
 - `Task<void>` 未做（需要 promise 特化）。
 - 恢复线程只支持属主 loop 线程；executor 化未做。
 - 服务端侧协程（handler 里 `co_await`）未做——需要 `RpcServer` 也接一套完成语义。
-- `nebula/rpc/rpc_call_context.h` 仍是零引用死文件（未跟踪）。
+- `nebula/rpc/rpc_call_context.h` 零引用死文件，2026-09-25 已删除。

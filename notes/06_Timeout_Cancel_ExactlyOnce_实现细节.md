@@ -123,7 +123,7 @@ TryComplete(对应状态)
 | Timeout 链路（SetTimeout -> RunAt -> OnTimeout） | 完成 | `rpc_channel.cpp` |
 | response 先到取消定时器 / 迟到响应丢弃 | 完成 | `TakePendingCall` / `CompleteCallWithFrame` |
 | `RpcCall` + `TryComplete` | **完成** | `rpc_call.h/.cpp`，已进 CMake 并接入四条完成路径 |
-| `RpcCallContext` | **零引用，待删** | `rpc_call_context.h`，与 `PendingCall` 字段重复 |
+| `RpcCallContext` | **已删除（2026-09-25）** | 原 `rpc_call_context.h`，与 `PendingCall` 字段重复，始终零引用 |
 | `RpcController` cancel 四件套 | **完成** | `StartCancel / RegisterOnCancel / RemoveOnCancel / IsCanceled` |
 | Channel 侧 Cancel 接线 | **完成** | `RegisterAndSend` 已注册 cancel 回调 |
 | cancel 回调反注册 | **完成** | `TakePendingCall` 内 `RemoveOnCancel`，四条完成路径唯一收口 |
@@ -600,8 +600,8 @@ done 的 cv 建立 happens-before。
 （chore 提交：.gitignore 忽略 .workbuddy/ 与 *.zip）
 ```
 
-⚠️ `nebula/rpc/rpc_call_context.h` 是**死文件**（全仓零引用，仅自身定义），
-计划里写着删除 —— 目前保留在工作区未入库，删或留待定。
+⚠️ `nebula/rpc/rpc_call_context.h` 曾是**死文件**（全仓零引用，仅自身定义），
+已于 2026-09-25 删除（从未入库，不产生 git 变更）。
 
 完成后更新 `notes/README.md` 索引，并把本文标记为已实现。
 

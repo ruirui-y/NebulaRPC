@@ -492,7 +492,7 @@ Linux Debug 构建通过（13/13，0 error / 0 warning）。
 
     nebula/rpc/rpc_controller.h / rpc_controller.cpp
     nebula/rpc/rpc_call.h / rpc_call.cpp
-    nebula/rpc/rpc_call_context.h                 （零引用，待删；原计划即删除）
+    nebula/rpc/rpc_call_context.h                 （零引用死文件，2026-09-25 已删除）
     nebula/rpc/rpc_channel.h / rpc_channel.cpp
     nebula/net/timer_queue.h / timer_queue.cpp
     tests/rpc_timeout_test.cpp
@@ -557,7 +557,7 @@ bool RpcCall::TryComplete(RpcCallState state) noexcept
 接线步骤（已按此落地）：
 
 1. `nebula/rpc/CMakeLists.txt` 的 `nebula_rpc` 源列表加入 `rpc_call.cpp`；
-2. `PendingCall` 内嵌 `RpcCall`（**未采用**整体改用 `RpcCallContext`，该文件成死文件）；
+2. `PendingCall` 内嵌 `RpcCall`（**未采用**整体改用 `RpcCallContext`，该文件成死文件，已于 2026-09-25 删除）；
 3. 四条完成路径（response / timeout / disconnect / cancel）统一改为：
    先 `call.TryComplete(对应状态)`，返回 true 才允许 `TakePendingCall` + 执行回调；
 4. `rpc_call.h/.cpp`、`tests/rpc_call_test.cpp` 提交进版本库（提交规划见 `05_工程路线_代码对齐版.md` 第 9 节）；
@@ -735,8 +735,8 @@ else
    「done 可能在 `await_suspend` 返回前就被内联调用」——因此恢复走 `QueueInLoop` 推迟。
    （收益：超时/取消/断连/析构四条出口自动覆盖，不会漏 resume 导致帧泄漏。）
 2. **不采用 `RpcCallContext`**（原计划步骤 1、5 提到的 `RpcCallContext context_`）。
-   第 7 节最终把状态机内嵌进了 `PendingCall`，该文件至今零引用；协程层改用
-   `ResumeGuard`（持 `coroutine_handle` 的可失效盒）+ 复用 `RpcController` 的终态。
+   第 7 节最终把状态机内嵌进了 `PendingCall`，该文件始终零引用、已于 2026-09-25 删除；
+   协程层改用 `ResumeGuard`（持 `coroutine_handle` 的可失效盒）+ 复用 `RpcController` 的终态。
 3. **终态可读**（原计划步骤 5「检查 TryComplete 的最终状态」原本拿不到）。补了
    `RpcController::MarkCallState()`，由抢到完成权的路径写入，`RpcError::State()` 因此能区分
    Timeout / Cancelled / Failed，不需要嗅探错误字符串。
