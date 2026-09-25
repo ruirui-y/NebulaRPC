@@ -11,5 +11,8 @@ compile_commands.json
 *.so
 *.log
 
+# MSVC 语法级验证产物（cl.exe 在本机跑 /Zs 时生成）
+*.pdb
+
 # 本地打包/交付压缩包不入库（历史提交 77f05e4 曾专门删除过一个）
 *.zip
