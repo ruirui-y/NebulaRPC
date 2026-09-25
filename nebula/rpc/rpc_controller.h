@@ -1,6 +1,7 @@
 #pragma once
 
 #include "nebula/base/noncopyable.h"
+#include "nebula/rpc/rpc_call.h"
 
 #include <google/protobuf/service.h>
 #include <chrono>
@@ -43,6 +44,9 @@ public:
     // 仅由取消完成路径抢到完成权后调用：IsCanceled() 是「取消已生效」终态，输给 response/timeout 保持 false
     void MarkCanceled();
 
+    [[nodiscard]] RpcCallState CallState() const;   // 完成终态；未完成时是 Pending
+    void MarkCallState(RpcCallState state);         // 仅由完成路径抢到完成权后调用
+
 private:
     // 摘除并释放所有尚未触发的取消回调（所有权在 controller，必须显式 delete）
     void ReleaseCancelCallbacks();
@@ -56,6 +60,7 @@ private:
     int next_cancel_token_{0};                                            // 递增分配，不复用
     std::optional<std::chrono::milliseconds> timeout_;
     std::optional<TimePoint> deadline_;
+    RpcCallState call_state_{RpcCallState::Pending};   // 完成路径写入的终态
 };
 
 }  // namespace nebula::rpc

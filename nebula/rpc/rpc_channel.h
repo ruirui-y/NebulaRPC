@@ -33,6 +33,12 @@ public:
     RpcChannel(net::EventLoop* loop, std::string ip, std::uint16_t port);
     ~RpcChannel() override;
 
+    // 属主 loop：完成回调与协程恢复都跑在它的线程上
+    [[nodiscard]] net::EventLoop* Loop() const noexcept
+    {
+        return loop_;
+    }
+
     void CallMethod(const google::protobuf::MethodDescriptor* method,
                     google::protobuf::RpcController* controller,
                     const google::protobuf::Message* request,

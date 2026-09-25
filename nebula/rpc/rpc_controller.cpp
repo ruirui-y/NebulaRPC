@@ -20,6 +20,7 @@ void RpcController::Reset()
         error_text_.clear();
         timeout_.reset();
         deadline_.reset();
+        call_state_ = RpcCallState::Pending;
     }
 
     // 复用前清掉尚未触发的取消回调，所有权在 controller，需释放
@@ -104,6 +105,20 @@ void RpcController::MarkCanceled()
     // 迟到的取消会被 TryComplete 挡掉、IsCanceled() 保持 false，不会与「response 已被填充」同时成立
     std::lock_guard<std::mutex> lock(mutex_);
     canceled_ = true;
+    call_state_ = RpcCallState::Cancelled;
+}
+
+RpcCallState RpcController::CallState() const
+{
+    std::lock_guard<std::mutex> lock(mutex_);
+    return call_state_;
+}
+
+void RpcController::MarkCallState(RpcCallState state)
+{
+    // 与 TryComplete 同序调用：只有抢到完成权的那条路径才会写进来
+    std::lock_guard<std::mutex> lock(mutex_);
+    call_state_ = state;
 }
 
 void RpcController::NotifyOnCancel(google::protobuf::Closure* callback)

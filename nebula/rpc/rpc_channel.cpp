@@ -28,6 +28,16 @@ void SetControllerFailure(google::protobuf::RpcController* controller,
     }
 }
 
+void SetCallState(google::protobuf::RpcController* controller, RpcCallState state)
+{
+    auto* rpc_controller = dynamic_cast<RpcController*>(controller);
+
+    if (rpc_controller != nullptr)
+    {
+        rpc_controller->MarkCallState(state);
+    }
+}
+
 void CompleteFailure(google::protobuf::RpcController* controller,
                      google::protobuf::Closure* done,
                      const std::string& reason)
@@ -476,6 +486,7 @@ void RpcChannel::CompleteCallWithFrame(std::uint64_t request_id,
                         done = pending_call->done,
                         frame = std::move(frame)]() mutable
         {
+            SetCallState(controller, RpcCallState::Completed);
             CompleteFrame(response, controller, done, std::move(frame));
         });
 }
@@ -508,8 +519,10 @@ void RpcChannel::CompleteCallWithFailure(std::uint64_t request_id,
     // ---- 第三步：写错误并执行回调 ----
     loop_->QueueInLoop([controller = pending_call->controller,
                         done = pending_call->done,
-                        reason]
+                        reason,
+                        state]
         {
+            SetCallState(controller, state);
             CompleteFailure(controller, done, reason);
         });
 }
@@ -612,6 +625,7 @@ void RpcChannel::FailAllPendingNow(const std::string& reason)
 
         if (won)
         {
+            SetCallState(pending_call->controller, RpcCallState::Failed);
             CompleteFailure(pending_call->controller,
                             pending_call->done,
                             reason);
