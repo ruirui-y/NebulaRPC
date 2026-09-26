@@ -1,6 +1,6 @@
 # 08 · Backpressure / 资源上限 / 过载控制
 
-状态：**已封版（2026-09-26）**。Case 1~4 全部通过（Linux / Debug / `ctest -R backpressure`，同时 `nebula_rpc_backpressure_test` 直跑返回 0）。配套验收试卷：`NRPC-BP-V1`（已归档）、**`NRPC-BP-V2`（现行）**。
+状态：**已封版（2026-09-26）**。Case 1~4 全部通过（Linux / Debug / `ctest -R backpressure`；直跑末行为 `RPC backpressure test passed`）。配套验收试卷：`NRPC-BP-V1`（已归档）、**`NRPC-BP-V2`（现行）**。
 
 一句话：给四个「无上限资源」各装一道闸门 —— 两个水位（输出/输入）走 `TcpConnection`，两个计数上限（在途/排队）走 `RpcChannel`；闸门一律默认关闭（0 = 不限制），所以存量行为零变化。
 
@@ -153,28 +153,34 @@ HandleRead:  readv → message_callback_（消费合法帧）→ 检查残留
 | 高水位回调次数可观测 | `HighWatermarkCount()` / `OverloadCloseCount()` / `OverloadRejectCount()` 三个计数均在实测中生效 |
 | 慢客户端内存曲线平稳 | **未做** —— 需要 heaptrack 验证，属遗留项 |
 
-实测输出（2026-09-26，用户本机）：
+实测输出（2026-09-26，用户本机，四个 case 全文照抄）：
 
 ```
+---------- backpressure pending limit detail ----------
 [gate] server_call_count=3, pending_calls=3, pending_writes=0, overload_reject=3
 [calls] total=6, rejected_failed=3, error_text_ok=3, rejected_done=3, hanging_done=0
-
-[gate] established=1, high_watermark_hits=1, conn_watermark_count=1,
-       overload_closes=1, peak_pending_bytes=4137600
-
+-------------------------------------------------------
+---------- backpressure output watermark detail ----------
+[gate] established=1, high_watermark_hits=1, conn_watermark_count=1, overload_closes=1, peak_pending_bytes=4137600
+----------------------------------------------------------
+---------- backpressure input watermark detail ----------
 [gate] connection_closed=1, overload_closes=1
-```
-
-三点值得记：`high_watermark_hits=1` 说明软水位**只报了一次**（事件语义成立，没有每 append 一次刷一次）；`peak_pending_bytes=4137600 < 4MB` 说明硬上限是**入队前判的**（`SendInLoop:287` 用预计值 `ReadableBytes()+remaining` 比较），最后一个成功入队的值就是峰值，永远越不过上限；`overload_closes=1` 在 Case 2/3 各出现一次，两条不同的路径（输出超限 / 输入超限）汇到同一处 `ForceCloseInLoop`。
-
-Case 4 验收输出（2026-09-26，四条断言全部成立）：
-
-```
-[gate] server_requests>=1, overload_closes>=1
+---------------------------------------------------------
+---------- backpressure forced close detail ----------
+[gate] server_requests=1, overload_closes=1
 [calls] done_count=1, failed=1, error_text="RPC connection closed"
+-----------------------------------------------------
+RPC backpressure test passed
 ```
 
-（`server_requests` / `overload_closes` 记的是断言口径 `>=1`：前者是服务端 `message_callback` 被调用次数，后者是这条连接上 `OverloadCloseCount()` 的累计值。）
+四点值得记：
+
+- `high_watermark_hits=1` —— 软水位**只报了一次**，「事件」语义成立：判据 `before < 水位 <= after` 在 buffer 持续高于水位时不会反复触发，没有退化成每 append 一次刷一次。
+- `peak_pending_bytes=4137600 < 4MB`（=4194304）—— 硬上限是**入队前判的**（`SendInLoop:287` 用预计值 `ReadableBytes()+remaining` 比较），最后一个成功入队的值就是峰值，永远越不过上限。
+- `overload_closes=1` 在 Case 2 / Case 3 各出现一次 —— 两条**不同的路径**（输出超限 / 输入超限）汇到同一处 `ForceCloseInLoop`。
+- Case 1 的 `pending_writes=0` —— 排队闸门没参与：`RpcChannel` 构造后到 `CallMethod` 之间连接已就绪，走的全是在途闸门那条路。这与遗留项第 1 条（`max_pending_writes_` 测不到）互为印证。
+
+Case 4 的输出即上面最后一段：`server_requests=1`（服务端 `message_callback` 被调用次数）/ `overload_closes=1`（这条连接上 `OverloadCloseCount()` 累计值）/ `done_count=1`（exactly-once）/ `failed=1` + `error_text="RPC connection closed"`（跨层失败链打通）。
 
 **Case 4 的完整链路**（两端，逐行核实过）：
 
