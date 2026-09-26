@@ -39,6 +39,7 @@ endif()
 
 add_subdirectory(nebula)
 add_subdirectory(examples)
+add_subdirectory(playground)
 
 enable_testing()
 add_subdirectory(tests)
