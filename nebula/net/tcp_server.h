@@ -5,6 +5,7 @@
 #include "nebula/net/callbacks.h"
 #include "nebula/net/event_loop_thread_pool.h"
 
+#include <cstddef>
 #include <cstdint>
 #include <memory>
 #include <string>
@@ -34,6 +35,21 @@ public:
         write_complete_callback_ = std::move(cb);
     }
 
+    // 以下三个配置在 NewConnection 时逐条应用到新建连接
+    void SetHighWatermarkCallback(HighWatermarkCallback cb, std::size_t high_watermark)
+    {
+        high_watermark_callback_ = std::move(cb);
+        high_watermark_ = high_watermark;
+    }
+    void SetMaxOutputBufferBytes(std::size_t limit) noexcept
+    {
+        max_output_buffer_bytes_ = limit;
+    }
+    void SetMaxInputBufferBytes(std::size_t limit) noexcept
+    {
+        max_input_buffer_bytes_ = limit;
+    }
+
     void Start(std::size_t io_thread_count = 0);
 
 private:
@@ -47,6 +63,10 @@ private:
     ConnectionCallback connection_callback_;
     MessageCallback message_callback_;
     WriteCompleteCallback write_complete_callback_;
+    HighWatermarkCallback high_watermark_callback_;
+    std::size_t high_watermark_{0};
+    std::size_t max_output_buffer_bytes_{0};
+    std::size_t max_input_buffer_bytes_{0};
     bool started_{false};
     std::uint64_t next_connection_id_{1};
     std::unordered_map<std::string, TcpConnectionPtr> connections_;

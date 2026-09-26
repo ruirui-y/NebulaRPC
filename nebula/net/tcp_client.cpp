@@ -89,6 +89,9 @@ void TcpClient::NewConnection(int socket_fd)
     connection->SetConnectionCallback(connection_callback_);
     connection->SetMessageCallback(message_callback_);
     connection->SetWriteCompleteCallback(write_complete_callback_);
+    connection->SetHighWatermarkCallback(high_watermark_callback_, high_watermark_);
+    connection->SetMaxOutputBufferBytes(max_output_buffer_bytes_);
+    connection->SetMaxInputBufferBytes(max_input_buffer_bytes_);
     connection->SetCloseCallback([this](const TcpConnectionPtr& conn)
         {
             RemoveConnection(conn);

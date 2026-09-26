@@ -3,6 +3,7 @@
 #include "nebula/base/noncopyable.h"
 #include "nebula/net/callbacks.h"
 
+#include <cstddef>
 #include <cstdint>
 #include <functional>
 #include <memory>
@@ -40,6 +41,21 @@ public:
         connect_error_callback_ = std::move(cb);
     }
 
+    // 以下三个配置在建连成功时逐条应用到新连接
+    void SetHighWatermarkCallback(HighWatermarkCallback cb, std::size_t high_watermark)
+    {
+        high_watermark_callback_ = std::move(cb);
+        high_watermark_ = high_watermark;
+    }
+    void SetMaxOutputBufferBytes(std::size_t limit) noexcept
+    {
+        max_output_buffer_bytes_ = limit;
+    }
+    void SetMaxInputBufferBytes(std::size_t limit) noexcept
+    {
+        max_input_buffer_bytes_ = limit;
+    }
+
     void Connect();
     void Disconnect();
     void Stop();
@@ -61,6 +77,11 @@ private:
     MessageCallback message_callback_;
     WriteCompleteCallback write_complete_callback_;
     ConnectErrorCallback connect_error_callback_;
+
+    HighWatermarkCallback high_watermark_callback_;
+    std::size_t high_watermark_{0};
+    std::size_t max_output_buffer_bytes_{0};
+    std::size_t max_input_buffer_bytes_{0};
 
     TcpConnectionPtr connection_;
     bool connect_{false};

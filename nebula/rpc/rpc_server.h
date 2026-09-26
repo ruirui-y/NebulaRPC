@@ -11,6 +11,7 @@
 #include <memory>
 #include <string>
 #include <unordered_map>
+#include <utility>
 
 namespace nebula::rpc
 {
@@ -22,6 +23,20 @@ public:
 
     void RegisterService(google::protobuf::Service* service);
     void Start(std::size_t io_thread_count = 0);
+
+    // 转发到底层 TcpServer，建连时逐条应用到新连接
+    void SetHighWatermarkCallback(net::HighWatermarkCallback cb, std::size_t high_watermark)
+    {
+        server_.SetHighWatermarkCallback(std::move(cb), high_watermark);
+    }
+    void SetMaxOutputBufferBytes(std::size_t limit) noexcept
+    {
+        server_.SetMaxOutputBufferBytes(limit);
+    }
+    void SetMaxInputBufferBytes(std::size_t limit) noexcept
+    {
+        server_.SetMaxInputBufferBytes(limit);
+    }
 
 private:
     struct ServerCall;
