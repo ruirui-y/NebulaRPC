@@ -1,8 +1,10 @@
 #include "nebula/net/event_loop.h"
+#include "nebula/net/tcp_connection.h"
 #include "nebula/rpc/rpc_server.h"
 #include "echo.pb.h"
 
 #include <atomic>
+#include <cstddef>
 #include <cstdint>
 #include <cstdlib>
 #include <iostream>
@@ -41,6 +43,18 @@ int main(int argc, char** argv)
     nebula::rpc::RpcServer server(&loop, "0.0.0.0", port);
     EchoServiceImpl echo_service;
     server.RegisterService(&echo_service);
+
+    // 软水位只做可观测；越过硬上限才真的踢连接，那是内存的最终闸门
+    server.SetHighWatermarkCallback(
+        [](const nebula::net::TcpConnectionPtr& conn, std::size_t pending_bytes)
+        {
+            std::cout << "[backpressure] slow consumer on " << conn->Name()
+                      << ", pending=" << pending_bytes << " bytes\n";
+        },
+        4U * 1024U * 1024U);
+
+    server.SetMaxOutputBufferBytes(16U * 1024U * 1024U);
+
     server.Start(0);
 
     std::cout << "NebulaRPC RPC echo server listening on 0.0.0.0:" << port << '\n';
