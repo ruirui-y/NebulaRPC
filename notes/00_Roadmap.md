@@ -767,7 +767,7 @@ else
 -   过载保护
 -   服务降级
 
-状态：未开始
+状态：**已封版**（2026-09-26；Case 1~4 全部通过；实现方式与本节原计划有四处差异，见末尾「实际落地」）
 
 ### 实现细节
 
@@ -799,6 +799,41 @@ else
 - 慢客户端压测（服务端故意不回包），进程内存曲线平稳不暴涨（heaptrack 验证）；
 - pending 超限后新请求立即失败且 error 文本正确；
 - 高水位回调触发次数可观测。
+
+### 实际落地（2026-09-26）
+
+四个无上限点全部上锁，详见 `notes/08_Backpressure_资源上限.md`。
+
+1. **输出水位**（`TcpConnection::SetHighWatermarkCallback`）：判据 `before < 水位 <= after`，
+   只在跨线瞬间通知一次 —— 天然防抖，不需要低水位/迟滞状态。
+2. **输出硬上限**（`SetMaxOutputBufferBytes`）：越线走 `ForceCloseInLoop()` 丢弃待发数据并立即
+   关闭。**不能用 `Shutdown()`** —— 它是 graceful、要等 buffer 排空，而慢消费者永远不读，
+   等于永远不关、内存永远不释放。
+3. **输入水位**（`SetMaxInputBufferBytes`）：检查点在 `message_callback_` 之后，合法帧已被
+   消费，残留才说明对端在灌无效流量。
+4. **在途请求上限**（`RpcChannel::SetMaxPendingCalls`）：越线
+   `SetFailed("too many pending rpcs")` 且不进队；检查排在 deadline 之前，系统级资源保护
+   优先于单次调用的自身超时。
+5. **未建连排队上限**（`SetMaxPendingWrites`，**草案漏掉的第四个资源点**）：越线
+   `SetFailed("too many queued rpcs")`。
+6. `TcpServer` / `TcpClient` / `RpcServer` 逐层透传水位配置，建连时应用到每条新建连接。
+7. 过载动作：`SetDegradeHandler` 设了钩子即启用降级，钩子返回 `false` 回落为直接失败。
+   **不做 `OverloadPolicy` 枚举** —— 草案的 reject/queue/degrade 不在同一个决策点上
+   （queue 实际就是 `pending_writes_` 的存在本身），硬凑枚举是假的统一，还会引入
+   「policy=kDegrade 但 handler 为空」这种非法状态。
+8. 观测：`PendingOutputBytes()` / `HighWatermarkCount()` / `OverloadCloseCount()` /
+   `PendingCallCount()` / `PendingWriteCount()` / `OverloadRejectCount()`。
+
+新增 `tests/rpc_backpressure_test.cpp`（四个 case，**全部通过**）：在途闸门 / 输出水位+硬上限 /
+输入水位 / 跨层闭环（连接被硬闸门踢掉后，该连接上的在途调用必须失败）。
+
+未覆盖（诚实记账，按性质分类）：`max_pending_writes_` 闸门没有测试（「未建连」的窗口何时关闭由
+Connector 内部行为决定，测试无法控制，稳定覆盖需要一个可注入延迟的 Connector 替身，否则测试会
+flaky）；输入水位与单帧上限的**边界**未测（属参数纪律，机制已由 Case 3 验证）；heaptrack 内存
+曲线未跑（唯一一条「机制在、数据没测」的）；P99 / 错误率属第 12 节。详见
+`notes/08_Backpressure_资源上限.md` §5。
+
+验收试卷：`NRPC-BP-V2`（V1 已归档 `papers/历史版本/`）。
 
 ------------------------------------------------------------------------
 
