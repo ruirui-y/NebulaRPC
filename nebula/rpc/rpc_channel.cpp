@@ -233,6 +233,16 @@ void RpcChannel::RegisterAndSend(std::uint64_t request_id,
         return;
     }
 
+    // 过载闸门放在 deadline 之前：系统级资源保护优先于单次调用的自身超时
+    if (max_pending_calls_ > 0U && pending_calls_.size() >= max_pending_calls_)
+    {
+        RejectOverloaded(pending_call.controller,
+                         pending_call.response,
+                         pending_call.done,
+                         "too many pending rpcs");
+        return;
+    }
+
     if (pending_call.deadline.has_value() &&
         *pending_call.deadline <= std::chrono::steady_clock::now())
     {
@@ -326,6 +336,13 @@ void RpcChannel::RegisterAndSend(std::uint64_t request_id,
         connection_->Connected())
     {
         connection_->Send(bytes);
+        return;
+    }
+
+    if (max_pending_writes_ > 0U && pending_writes_.size() >= max_pending_writes_)
+    {
+        // 此时已进 pending_calls_ 且挂好了定时器与取消回调，走标准完成路径统一收口
+        CompleteCallWithFailure(request_id, "too many queued rpcs", RpcCallState::Failed);
         return;
     }
 
@@ -631,6 +648,57 @@ void RpcChannel::FailAllPendingNow(const std::string& reason)
                             reason);
         }
     }
+}
+
+void RpcChannel::SetMaxPendingCalls(std::size_t max_pending_calls) noexcept
+{
+    max_pending_calls_ = max_pending_calls;
+}
+
+void RpcChannel::SetMaxPendingWrites(std::size_t max_pending_writes) noexcept
+{
+    max_pending_writes_ = max_pending_writes;
+}
+
+void RpcChannel::SetDegradeHandler(DegradeHandler handler)
+{
+    degrade_handler_ = std::move(handler);
+}
+
+// 以下三个读的是 loop 线程独占的容器与计数器，只能在 owner loop 线程调用
+std::size_t RpcChannel::PendingCallCount() const noexcept
+{
+    return pending_calls_.size();
+}
+
+std::size_t RpcChannel::PendingWriteCount() const noexcept
+{
+    return pending_writes_.size();
+}
+
+std::uint64_t RpcChannel::OverloadRejectCount() const noexcept
+{
+    return overload_reject_count_.load();
+}
+
+void RpcChannel::RejectOverloaded(google::protobuf::RpcController* controller,
+                                  google::protobuf::Message* response,
+                                  google::protobuf::Closure* done,
+                                  const std::string& reason)
+{
+    overload_reject_count_.fetch_add(1);
+
+    // 钩子返回 true 即由业务给出兜底结果；返回 false 说明它不接管，回落为直接失败
+    if (degrade_handler_ != nullptr && degrade_handler_(controller, response, reason))
+    {
+        if (done != nullptr)
+        {
+            done->Run();
+        }
+        return;
+    }
+
+    CompleteFailure(controller, done, reason);
 }
 
 }  // namespace nebula::rpc

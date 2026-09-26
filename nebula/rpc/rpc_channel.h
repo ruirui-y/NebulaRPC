@@ -9,8 +9,10 @@
 #include <google/protobuf/service.h>
 #include <atomic>
 #include <chrono>
+#include <cstddef>
 #include <cstdint>
 #include <deque>
+#include <functional>
 #include <memory>
 #include <optional>
 #include <string>
@@ -45,6 +47,21 @@ public:
                     google::protobuf::Message* response,
                     google::protobuf::Closure* done) override;
 
+    // 过载闸门，0 表示不限制：在途调用数 / 未建连时的排队写数
+    void SetMaxPendingCalls(std::size_t max_pending_calls) noexcept;
+    void SetMaxPendingWrites(std::size_t max_pending_writes) noexcept;
+
+    // 设了钩子即启用降级：过载时先问钩子，返回 false 回落为直接失败
+    // 返回 true 表示钩子已自行完成该次调用（填了 response 或调了 SetFailed）
+    using DegradeHandler = std::function<bool(google::protobuf::RpcController*,
+                                              google::protobuf::Message*,
+                                              const std::string&)>;
+    void SetDegradeHandler(DegradeHandler handler);
+
+    [[nodiscard]] std::size_t PendingCallCount() const noexcept;
+    [[nodiscard]] std::size_t PendingWriteCount() const noexcept;
+    [[nodiscard]] std::uint64_t OverloadRejectCount() const noexcept;
+
 private:
     using TimePoint = std::chrono::steady_clock::time_point;
 
@@ -73,6 +90,10 @@ private:
     };
 
     void RegisterAndSend(std::uint64_t request_id, std::string bytes, PendingCall pending_call);
+    void RejectOverloaded(google::protobuf::RpcController* controller,
+                          google::protobuf::Message* response,
+                          google::protobuf::Closure* done,
+                          const std::string& reason);
     void OnConnection(const net::TcpConnectionPtr& conn);
     void OnMessage(const net::TcpConnectionPtr& conn, net::Buffer* buffer);
     void OnConnectError(const std::string& reason);
@@ -113,6 +134,11 @@ private:
 
     ConnectionState connection_state_{ConnectionState::kConnecting};
     std::string connection_error_;
+
+    std::size_t max_pending_calls_{0};
+    std::size_t max_pending_writes_{0};
+    DegradeHandler degrade_handler_;
+    std::atomic_uint64_t overload_reject_count_{0};
 
     inline static std::atomic_uint64_t next_request_id_{1};
 };
