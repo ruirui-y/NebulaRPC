@@ -30,6 +30,11 @@ co_await X 的三问：
   走 ③ 时三个方法【必须齐全】，少一个就编译不过；三条都不满足 = X 不可 co_await
   （反用：刻意不提供三件套，就能在编译期关掉 co_await 入口，见第 8 节末尾）
 
+  await_ready() 返 false 的那一刻，协程【就已视为挂起】——不是等 await_suspend 返回
+  → 所以「await_suspend 没返回就 resume」不是 UB。resume 的 UB 只有两条：
+     ① resume 一个【没在挂起】的协程（例如正在运行）  ② resume 一个停在 final suspend point 的协程
+    它的真问题是【重入】（await_resume 抢在 await_suspend 返回前跑、awaiter 可能已被析构），见第 8 节
+
 promise_type 的钩子（名字编译器写死，不能改）：
   get_return_object / initial_suspend / final_suspend / unhandled_exception   ← 必需
   return_void 或 return_value（二选一）                                       ← 必需
@@ -386,6 +391,59 @@ struct promise_type
 · await_suspend() 返回 false → 协程不挂起（这个返回值不表示"挂起成功"！）
 · await_suspend(handle) 的参数 handle 是【我自己】，不是"等我的人"
 ```
+
+### 挂起发生在哪一刻？以及 `resume` 的合法边界（高频误解）
+
+**结论先行：协程在进入 `await_suspend` 之前就已经是「挂起态」，不是等它返回之后才算挂起。**
+
+标准原文（`[expr.await]/5.1`）：当 `await_ready()` 的结果为 `false` 时 ——
+
+> the coroutine is **considered suspended**.
+
+所以 `co_await X;` 的展开是：
+
+```
+await_ready() == false
+  │
+  ├──【协程此刻已被视为挂起】          ← 分界点在这一刻
+  │
+  ├── 求值 await_suspend(handle)       ← 句柄此刻已可合法交给别人 resume
+  │
+  └── 按返回值分三路：
+        void             → 控制权交回 caller/resumer（协程保持挂起）
+        bool == false    → 协程被 resume（不挂）
+        coroutine_handle → 立刻 resume 那个 handle（对称转移，见 13.2）
+        抛异常            → 协程被 resume，异常立刻重抛
+  （被 resume 时）马上调 await_resume()，它的值 = 整个 co_await 表达式的值
+```
+
+**推论：「`await_suspend` 还没返回就 resume」不是未定义行为。** cppreference 明写：
+
+> Note that the coroutine is **fully suspended before entering** `awaiter.await_suspend()`.
+> Its handle **can be shared with another thread and resumed before the `await_suspend()` function returns**.
+
+`resume()` 的硬前置条件只有两条（`[coroutine.handle.resume]`）：
+
+```
+UB ①  *this 指向的协程【不在挂起状态】（比如正在运行）
+UB ②  协程挂在 final suspend point 上
+```
+
+「`await_suspend` 正在跑」既不满足 ①（此刻协程已被视为挂起），也不满足 ② —— **它不在 UB 名单里**。
+
+**真正的危险是另外三条，都不是「resume 本身」：**
+
+| # | 危险 | 机制 | 对策 |
+|---|---|---|---|
+| 1 | **重入** | 同线程同步 resume：协程在 `await_suspend` 的栈上接着跑 → `await_resume()` 会在它**还没返回**时执行；若协程走完这个 full-expression，**awaiter 临时对象（住在帧里）会被析构** → 此后 `await_suspend` 再碰 `*this` 就是在已析构对象上操作 | 句柄一发布出去，就**把 `*this` 当成已销毁**，发布之后不再访问成员 |
+| 2 | **数据竞争** | 跨线程并发 resume。标准原文：*A concurrent resumption of the coroutine may result in a data race* | 发布侧至少 release、恢复侧至少 acquire |
+| 3 | **栈增长** | 直接 `handle.resume()` 每挂起/恢复一轮就叠一层栈 | 返回 `coroutine_handle` 让运行库做尾调用（对称转移）。**这才是「别在 `await_suspend` 里直接 resume」的主要动机** |
+
+cppreference 示例里那行注释原文是 `// Potential undefined behavior: accessing potentially destroyed *this` —— 它指的是**访问 `*this`**，不是 resume 本身。
+
+**本仓库落地**：`RpcAwaiter::await_suspend`（`nebula/rpc/rpc_awaiter.h:74-103`）用 `QueueInLoop` 把恢复推迟到当前栈完全展开之后，躲开的正是第 1 条；`channel_->CallMethod(...)` 被放在**最后一句**，正好是「发布句柄后不再碰 `*this`」这条纪律的落地。
+
+---
 
 ### `std::suspend_always` / `std::suspend_never` 的全部源码
 
@@ -871,7 +929,7 @@ Inner 跑完 → suspend_always 挂住（帧保住了，这部分没问题）
 - **票据还在不在我这** → 返回非空 = 协程还挂着
 - **该不该取消** → 非空才取消；空说明已经正常完成，不能去取消一个已完成调用
 
-（用 `exchange` 而不是 `load`，是因为 `load` 之后到用之前有窗口，两方可能都看到非空 → 双重 `resume`，未定义行为。）
+（用 `exchange` 而不是 `load`，是因为 `load` 之后到用之前有窗口，两方可能都看到非空 → 双重 `resume`：同一协程被两条执行流同时推进 = 数据竞争；若它此刻不在挂起态、或已停在 final suspend point，则是 UB。）
 
 对应本仓库 `rpc_awaiter.h:61-67`。这也是「`Task` 和 `RpcAwaiter` 互相不认识，为什么 `Task` 能销毁 `RpcAwaiter`」的答案——**它们之间没有引用，唯一的联系是「住在同一个帧里」。**
 
@@ -1080,6 +1138,8 @@ Task<T> = ① 编译器要求的壳（返回类型里必须有 promise_type）
 11. 两个协程同时 `co_await` 同一个 `Task`，会怎样？（提示：看 `promise_type` 里 `continuation` 是几个槽）
 12. 想让一个类型**没法**被 `co_await`，最干净的做法是什么？它比运行期 `assert` 好在哪？
 13. `co_await X` 时，编译器按什么顺序找 awaiter？走「X 自己就是 awaiter」这条时，少写一个方法会怎样？
+14. `await_suspend` 还没返回，另一个线程就 `resume()` 了这个协程 —— 是未定义行为吗？「协程何时算挂起」这个分界点落在哪一刻？
+15. 那「在 `await_suspend` 里**同步** resume 自己」的风险是什么？为什么一旦把句柄发布出去，`await_suspend` 就不能再访问 `*this`？
 
 <details>
 <summary>参考答案</summary>
@@ -1097,5 +1157,7 @@ Task<T> = ① 编译器要求的壳（返回类型里必须有 promise_type）
 11. 后到者覆盖先到者：`continuation` 只有一个槽（原 `rpc_task.h:45`），第一个等待者的 handle 被冲掉，协程跑完时只叫醒最后一个 → **先到者永久挂起**。要支持多等待者得把它换成 handle 列表。**（该路径已按 13.6 删除。）**
 12. 不提供 `await_ready` / `await_suspend` / `await_resume` 三件套，也不提供 `operator co_await` —— `co_await X` 直接编译失败。好处是**编译期挡住 + 零运行时成本 + 零状态**；`assert` 在 `NDEBUG`（Release）下是空操作，违约会静默走进错误语义。见第 8 节末尾。
 13. 顺序是 ① 成员 `operator co_await()` → ② 自由 `operator co_await(X)` → ③ X 自己就是 awaiter。走 ③ 时**三个方法必须齐全**（它们没有默认实现），少一个就报"缺成员"、编译不过。
+14. **不是 UB。** 分界点在 `await_ready()` 返回 `false` 的那一刻 —— 标准原文是「the coroutine is considered suspended」，早于 `await_suspend` 被求值。`resume()` 的 UB 只有两条：目标协程**没在挂起**、或它**停在 final suspend point**；「await_suspend 正在跑」两条都不满足。跨线程这么做的代价是**数据竞争**（发布侧 release / 恢复侧 acquire），不是 UB。
+15. 风险是**重入**：协程在 `await_suspend` 的栈上接着跑，`await_resume()` 会在它返回前执行；若协程走完这个 full-expression，awaiter 临时对象（住在帧里）会被析构，此后 `await_suspend` 再碰 `*this` 就是访问已析构对象（cppreference 示例注释原话：accessing potentially destroyed *this）。所以纪律是：**句柄发布之后不再访问成员**。本仓库用 `QueueInLoop` 从根上避开这条。
 
 </details>

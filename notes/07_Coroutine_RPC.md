@@ -23,7 +23,7 @@ callback 版：stub.Echo(&controller, &request, &response, done);
 把完成路径改成「`done->Run()` 或 `handle.resume()` 二选一」。实际没有这么做，原因：
 
 ```
-完成路径现状（rpc_channel.cpp:31-65）
+完成路径现状（rpc_channel.cpp:41-75）
     CompleteFailure(controller, done, reason)  { ... if (done != nullptr) done->Run(); }
     CompleteFrame(response, controller, done, f){ ... if (done != nullptr) done->Run(); }
     CompleteCallWithCancel                        loop_->QueueInLoop([done]{ done->Run(); });
@@ -78,7 +78,7 @@ awaiter 析构   exchange(nullptr) 拿到非空 → 说明还在飞 → StartCan
 ```
 
 `exchange`（认领）而不是 `load`（观察）是关键：只有 RMW 能保证两个持有者**不会都认为自己该 resume**。
-`load` 会导致双重恢复（协程可能已跑完或挂在下一个 await 上，再推一把 = UB）。
+`load` 会导致双重恢复（协程可能已跑完 —— 此时它停在 final suspend point，再 resume 就是 UB；或挂在下一个 await 上 —— 此时再 resume 是「假唤醒」，语义错）。
 
 `ResumeGuard` 是 `shared_ptr`，**比协程帧长寿**，专门用来表达「帧已经不在」——
 和 channel 侧 `AliveGuard` 是同一个思路：小对象比被保护对象活得久。

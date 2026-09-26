@@ -87,7 +87,7 @@ public:
         // done 是完成路径唯一出口：只要是个 Closure，response/超时/取消/断连都自动覆盖
         auto* done = new RpcClosure([guard = guard_, loop = channel_->Loop()]
             {
-                // 推迟到队列再恢复：CallMethod 可能同步失败并内联跑完 done，此刻协程还没挂起
+                // 推迟到队列再恢复：CallMethod 可能同步失败并内联跑完 done，直接 resume 会重入
                 loop->QueueInLoop([guard]
                     {
                         if (const std::coroutine_handle<> resumed =
