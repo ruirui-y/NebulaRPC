@@ -29,6 +29,8 @@ public:
     void SetReuseAddr(bool on) const;
     void SetReusePort(bool on) const;
     void SetTcpNoDelay(bool on) const;
+    // 探测参数必须显式给：内核默认空闲 7200s 才起探，等价于没有
+    void SetKeepAlive(bool on, int idle_seconds, int interval_seconds, int probe_count) const;
 
 private:
     int fd_;

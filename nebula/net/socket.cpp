@@ -89,4 +89,18 @@ void Socket::SetTcpNoDelay(bool on) const
     ::setsockopt(fd_, IPPROTO_TCP, TCP_NODELAY, &value, sizeof(value));
 }
 
+void Socket::SetKeepAlive(bool on, int idle_seconds, int interval_seconds, int probe_count) const
+{
+    const int value = on ? 1 : 0;
+
+    if (::setsockopt(fd_, SOL_SOCKET, SO_KEEPALIVE, &value, sizeof(value)) < 0)
+    {
+        return;
+    }
+
+    ::setsockopt(fd_, IPPROTO_TCP, TCP_KEEPIDLE, &idle_seconds, sizeof(idle_seconds));
+    ::setsockopt(fd_, IPPROTO_TCP, TCP_KEEPINTVL, &interval_seconds, sizeof(interval_seconds));
+    ::setsockopt(fd_, IPPROTO_TCP, TCP_KEEPCNT, &probe_count, sizeof(probe_count));
+}
+
 }  // namespace nebula::net

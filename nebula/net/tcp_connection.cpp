@@ -11,6 +11,15 @@
 
 namespace nebula::net
 {
+namespace
+{
+
+// 对端断电/断网时既无 FIN 也无 RST，只能靠探测耗尽把错误暴露给 read/write
+constexpr int kKeepAliveIdleSeconds = 10;
+constexpr int kKeepAliveIntervalSeconds = 3;
+constexpr int kKeepAliveProbeCount = 3;
+
+}  // namespace
 
 TcpConnection::TcpConnection(EventLoop* loop, int socket_fd, std::string name)
     : loop_(loop),
@@ -35,6 +44,12 @@ TcpConnection::TcpConnection(EventLoop* loop, int socket_fd, std::string name)
             HandleError();
         });
     socket_.SetTcpNoDelay(true);
+
+    // 最坏 10 + 3 * 3 = 19s 发现对端不可达，随后 HandleError 关连接、TcpClient 重启连接
+    socket_.SetKeepAlive(true,
+                         kKeepAliveIdleSeconds,
+                         kKeepAliveIntervalSeconds,
+                         kKeepAliveProbeCount);
 }
 
 TcpConnection::~TcpConnection() = default;
@@ -183,7 +198,8 @@ void TcpConnection::HandleWrite()
         return;
     }
 
-    const ssize_t n = ::write(socket_.Fd(), output_buffer_.Peek(), output_buffer_.ReadableBytes());
+    // MSG_NOSIGNAL：裸 write 遇对端 RST 会发 SIGPIPE 杀进程，下面的错误分支永远到不了
+    const ssize_t n = ::send(socket_.Fd(), output_buffer_.Peek(), output_buffer_.ReadableBytes(), MSG_NOSIGNAL);
     if (n > 0)
     {
         output_buffer_.Retrieve(static_cast<std::size_t>(n));
@@ -234,12 +250,16 @@ void TcpConnection::HandleClose()
 
 void TcpConnection::HandleError()
 {
-    int error = 0;
+    // 必须读走 SO_ERROR：水平触发下不消费待处理错误，epoll 会反复报同一条连接
+    [[maybe_unused]] int error = 0;
     socklen_t length = sizeof(error);
+
     if (::getsockopt(socket_.Fd(), SOL_SOCKET, SO_ERROR, &error, &length) < 0)
     {
         error = errno;
     }
+
+    ForceCloseInLoop();
 }
 
 void TcpConnection::SendInLoop(std::string data)
@@ -255,7 +275,8 @@ void TcpConnection::SendInLoop(std::string data)
 
     if (!channel_->IsWriting() && output_buffer_.ReadableBytes() == 0U)
     {
-        written = ::write(socket_.Fd(), data.data(), data.size());
+        // MSG_NOSIGNAL：裸 write 遇对端 RST 会发 SIGPIPE 杀进程，下面的错误分支永远到不了
+        written = ::send(socket_.Fd(), data.data(), data.size(), MSG_NOSIGNAL);
         if (written >= 0)
         {
             remaining -= static_cast<std::size_t>(written);
