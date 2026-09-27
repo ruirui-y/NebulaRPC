@@ -163,7 +163,6 @@ bool RunPendingLimitCase()
             std::cout << "---------- backpressure pending limit detail ----------\n";
             std::cout << "[gate] server_call_count=" << service.CallCount()
                 << ", pending_calls=" << channel.PendingCallCount()
-                << ", pending_writes=" << channel.PendingWriteCount()
                 << ", overload_reject=" << channel.OverloadRejectCount()
                 << "\n";
             std::cout << "[calls] total=" << kTotalCalls
