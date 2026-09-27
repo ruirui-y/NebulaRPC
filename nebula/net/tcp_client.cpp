@@ -110,6 +110,13 @@ void TcpClient::RemoveConnection(const TcpConnectionPtr& conn)
     }
 
     conn->SetCloseCallback({});
+
+    // connect_ 仍是用户意图：这次掉线不是主动断开，让 Connector 从头开始连
+    if (connect_)
+    {
+        connector_->Restart();
+    }
+
     loop_->QueueInLoop([conn]
         {
             conn->ConnectDestroyed();
@@ -119,7 +126,8 @@ void TcpClient::RemoveConnection(const TcpConnectionPtr& conn)
 void TcpClient::HandleConnectError(const std::string& reason)
 {
     loop_->AssertInLoopThread();
-    connect_ = false;
+
+    // 不置假：connect_ 是用户意图，置假会让重连成功的新 fd 被 NewConnection 直接关掉
     if (connect_error_callback_)
     {
         connect_error_callback_(reason);

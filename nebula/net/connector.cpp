@@ -4,10 +4,12 @@
 #include "nebula/net/event_loop.h"
 #include "nebula/net/socket.h"
 
+#include <algorithm>
 #include <arpa/inet.h>
 #include <cerrno>
 #include <cstring>
 #include <exception>
+#include <memory>
 #include <netinet/in.h>
 #include <sys/socket.h>
 #include <unistd.h>
@@ -23,6 +25,7 @@ Connector::Connector(EventLoop* loop, std::string ip, std::uint16_t port)
 Connector::~Connector()
 {
     loop_->AssertInLoopThread();
+    CancelReconnect();
 
     if (channel_)
     {
@@ -58,11 +61,21 @@ void Connector::Stop()
         });
 }
 
+void Connector::Restart()
+{
+    auto self = shared_from_this();
+    loop_->RunInLoop([self]
+        {
+            self->RestartInLoop();
+        });
+}
+
 void Connector::StartInLoop()
 {
     loop_->AssertInLoopThread();
     if (connect_.load() && state_ == State::kDisconnected)
     {
+        CancelReconnect();
         ConnectInLoop();
     }
 }
@@ -70,6 +83,10 @@ void Connector::StartInLoop()
 void Connector::StopInLoop()
 {
     loop_->AssertInLoopThread();
+
+    // 等待重连期间 state_ 就是 kDisconnected，取消必须排在守卫之前
+    CancelReconnect();
+
     if (state_ != State::kConnecting)
     {
         return;
@@ -79,6 +96,20 @@ void Connector::StopInLoop()
     socket_fd_ = -1;
     state_ = State::kDisconnected;
     ::close(socket_fd);
+}
+
+void Connector::RestartInLoop()
+{
+    loop_->AssertInLoopThread();
+
+    // 只有外部报丧能把 kConnected 带回起点；从没连上过时退避那条路自己在管
+    if (state_ != State::kConnected)
+    {
+        return;
+    }
+
+    state_ = State::kDisconnected;
+    StartInLoop();
 }
 
 void Connector::ConnectInLoop()
@@ -115,6 +146,7 @@ void Connector::ConnectInLoop()
     if (result == 0 || saved_errno == EISCONN)
     {
         state_ = State::kConnected;
+        next_backoff_ = {};                          // 连上了，退避清零
         if (!connect_.load())
         {
             ::close(socket_fd);
@@ -204,6 +236,7 @@ void Connector::HandleWrite()
     }
 
     state_ = State::kConnected;
+    next_backoff_ = {};                              // 连上了，退避清零
     if (new_connection_callback_)
     {
         new_connection_callback_(socket_fd);
@@ -263,6 +296,45 @@ void Connector::ReportError(const std::string& reason)
     {
         error_callback_(reason);
     }
+
+    ScheduleReconnect();
+}
+
+void Connector::ScheduleReconnect()
+{
+    loop_->AssertInLoopThread();
+
+    if (!connect_.load() || state_ != State::kDisconnected)
+    {
+        return;
+    }
+
+    const std::chrono::milliseconds delay =
+        next_backoff_.count() == 0 ? reconnect_policy_.initial : next_backoff_;
+    const std::chrono::milliseconds next = delay * reconnect_policy_.multiplier;
+    next_backoff_ = std::min(next, reconnect_policy_.max);
+    reconnect_attempt_count_.fetch_add(1);
+
+    // weak_ptr：退避期间外部可能已经放弃这个 Connector
+    std::weak_ptr<Connector> weak_self = shared_from_this();
+    retry_timer_ = loop_->RunAfter(delay, [weak_self]
+        {
+            if (auto self = weak_self.lock())
+            {
+                self->StartInLoop();
+            }
+        });
+}
+
+void Connector::CancelReconnect()
+{
+    if (!retry_timer_.Valid())
+    {
+        return;
+    }
+
+    loop_->CancelTimer(retry_timer_);
+    retry_timer_ = {};
 }
 
 int Connector::GetSocketError(int socket_fd)
