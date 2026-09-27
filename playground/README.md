@@ -7,7 +7,7 @@
 | | `playground/` | `tests/` |
 |---|---|---|
 | 目的 | 把一个语言/库机制单独跑通、看清时序 | 验证 NebulaRPC 的功能与契约 |
-| 依赖 | 只用 C++20 标准库，零项目依赖 | 依赖 `nebula` 库、protobuf、EventLoop |
+| 依赖 | 多数纯 C++20 标准库；碰网络机制的链 `nebula_net` | 依赖 `nebula` 库、protobuf、EventLoop |
 | 形态 | 每个文件一个 `main()`，打印时序 | ctest 断言用例 |
 
 它和 `tests/` 一样由**根 `CMakeLists.txt` 统一引入**（`:42` 的 `add_subdirectory(playground)`），所以也是 Linux-only：
@@ -65,15 +65,39 @@ cmake --build build/linux-debug --target pg_coroutine_suspend_order
 
 **盯住「步骤 4」的位置**：它插在 `await_suspend 返回` 之后、`await_resume` 之前。这就是「`await_suspend` 跑完 ≠ co_await 下一行」的全部证据 —— 中间隔着一次 `Start()` 返回和一次全新的 `Resume()`。
 
+## 预期输出（`03_client_reconnect`）
+
+时间轴：`0ms` 连上 → `400ms` 停掉 server → `1200ms` 重启 server → `3000ms` 退出。
+
+```
+t=    0ms  client CONNECTED
+t=  400ms  client DISCONNECTED
+t=  400ms  connect failed: Connection refused      <- 报丧后立刻重试第一次，不排队
+t=  500ms  connect failed: Connection refused
+t=  700ms  connect failed: Connection refused
+t= 1100ms  connect failed: Connection refused
+t= 1900ms  client CONNECTED                        <- 服务端已回来，这次成功
+```
+
+（时间戳有几十毫秒抖动，看**间隔**而不是绝对值：400→500→700→1100 正是 100/200/400 的退避。）
+
+两个判据：
+
+- **第二行 `DISCONNECTED` 之后必须还有一次 `CONNECTED`** —— 这是本轮改动（`TcpClient::RemoveConnection` 报丧 + `Connector::Restart`）唯一的证据。只删掉报丧那三行，输出会停在 `DISCONNECTED`。
+- **`DISCONNECTED` 打印在第一次失败之前** —— `TcpConnection::HandleClose` 先回调 `connection_callback_` 再回调 `close_callback_`（`tcp_connection.cpp:225-232`），重连是在后者里发起的。
+
 ## 清单
 
 | 文件 | 验证什么 |
 |---|---|
 | `01_coroutine_suspend_order.cpp` | `await_ready/await_suspend/await_resume` 的调用时刻；证伪「await_suspend 跑完就执行 co_await 下一行」 |
+| `02_connector_backoff.cpp` | 连不上时 `Connector` 的退避节奏（100→200→400→800→1600→5000 封顶） |
+| `03_client_reconnect.cpp` | 已建连接掉线后 `TcpClient` 能否报丧给 `Connector` 并重新连上 |
 
 ## 待办（按需添加，不预建空文件）
 
-- `02_coroutine_reentrant_resume.cpp`：在 `await_suspend` 内部同步 `resume()` → 重入，观察 awaiter 临时对象的生命周期
-- `03_atomic_memory_order.cpp`：两个线程 + 两块数据，`relaxed` vs `release/acquire` 的实际差别
-- `04_coroutine_exception_from_await.cpp`：`await_suspend` 抛异常 / `await_resume` 抛异常的落点
-- `05_symmetric_transfer.cpp`：`await_suspend` 返回 `coroutine_handle` 与返回 `void` 的栈深差异
+- `04_coroutine_reentrant_resume.cpp`：在 `await_suspend` 内部同步 `resume()` → 重入，观察 awaiter 临时对象的生命周期
+- `05_atomic_memory_order.cpp`：两个线程 + 两块数据，`relaxed` vs `release/acquire` 的实际差别
+- `06_coroutine_exception_from_await.cpp`：`await_suspend` 抛异常 / `await_resume` 抛异常的落点
+- `07_symmetric_transfer.cpp`：`await_suspend` 返回 `coroutine_handle` 与返回 `void` 的栈深差异
+
