@@ -7,7 +7,6 @@
 #include "nebula/rpc/rpc_closure.h"
 #include "nebula/rpc/rpc_controller.h"
 
-#include <algorithm>
 #include <cassert>
 #include <chrono>
 #include <optional>
@@ -18,6 +17,31 @@ namespace nebula::rpc
 {
 namespace
 {
+
+// Timeout / Deadline 二选一，同时设以 Deadline 为准
+std::optional<RpcController::TimePoint> ResolveDeadline(
+    google::protobuf::RpcController* controller)
+{
+    auto* rpc_controller = dynamic_cast<RpcController*>(controller);
+
+    // 别的实现没有我们的 Timeout/Deadline 语义，只能当作无 deadline
+    if (rpc_controller == nullptr)
+    {
+        return std::nullopt;
+    }
+
+    if (auto deadline = rpc_controller->Deadline(); deadline.has_value())
+    {
+        return deadline;
+    }
+
+    if (auto timeout = rpc_controller->Timeout(); timeout.has_value())
+    {
+        return RpcController::Clock::now() + *timeout;
+    }
+
+    return std::nullopt;
+}
 
 void SetControllerFailure(google::protobuf::RpcController* controller,
                           const std::string& reason)
@@ -38,11 +62,14 @@ void SetCallState(google::protobuf::RpcController* controller, RpcCallState stat
     }
 }
 
+// state 不给默认值：强制每个调用点表态，终态漏写编译期就拦下
 void CompleteFailure(google::protobuf::RpcController* controller,
                      google::protobuf::Closure* done,
-                     const std::string& reason)
+                     const std::string& reason,
+                     RpcCallState state)
 {
     SetControllerFailure(controller, reason);
+    SetCallState(controller, state);
 
     if (done != nullptr)
     {
@@ -74,29 +101,6 @@ void CompleteFrame(google::protobuf::Message* response,
     }
 }
 
-std::optional<RpcController::TimePoint> ResolveDeadline(
-    google::protobuf::RpcController* controller)
-{
-    auto* rpc_controller = dynamic_cast<RpcController*>(controller);
-
-    if (rpc_controller == nullptr)
-    {
-        return std::nullopt;
-    }
-
-    if (auto deadline = rpc_controller->Deadline(); deadline.has_value())
-    {
-        return deadline;
-    }
-
-    if (auto timeout = rpc_controller->Timeout(); timeout.has_value())
-    {
-        return RpcController::Clock::now() + *timeout;
-    }
-
-    return std::nullopt;
-}
-
 }  // namespace
 
 RpcChannel::RpcChannel(net::EventLoop* loop, std::string ip, std::uint16_t port)
@@ -116,11 +120,6 @@ RpcChannel::RpcChannel(net::EventLoop* loop, std::string ip, std::uint16_t port)
             OnMessage(conn, buffer);
         });
 
-    client_->SetConnectErrorCallback([this](const std::string& reason)
-        {
-            OnConnectError(reason);
-        });
-
     client_->Connect();
 }
 
@@ -134,7 +133,6 @@ RpcChannel::~RpcChannel()
     client_->SetConnectionCallback({});
     client_->SetMessageCallback({});
     client_->SetWriteCompleteCallback({});
-    client_->SetConnectErrorCallback({});
     client_.reset();
 
     connection_.reset();
@@ -149,7 +147,10 @@ void RpcChannel::CallMethod(const google::protobuf::MethodDescriptor* method,
 {
     if (done == nullptr)
     {
-        SetControllerFailure(controller, "async RpcChannel requires a non-null done callback");
+        CompleteFailure(controller,
+                        nullptr,
+                        "async RpcChannel requires a non-null done callback",
+                        RpcCallState::Invalid);
         return;
     }
 
@@ -157,7 +158,10 @@ void RpcChannel::CallMethod(const google::protobuf::MethodDescriptor* method,
     {
         loop_->RunInLoop([controller, done]
             {
-                CompleteFailure(controller, done, "invalid RPC call arguments");
+                CompleteFailure(controller,
+                                done,
+                                "invalid RPC call arguments",
+                                RpcCallState::Invalid);
             });
         return;
     }
@@ -170,7 +174,10 @@ void RpcChannel::CallMethod(const google::protobuf::MethodDescriptor* method,
     {
         loop_->RunInLoop([controller, done]
             {
-                CompleteFailure(controller, done, "request protobuf serialization failed");
+                CompleteFailure(controller,
+                                done,
+                                "request protobuf serialization failed",
+                                RpcCallState::Invalid);
             });
         return;
     }
@@ -189,7 +196,10 @@ void RpcChannel::CallMethod(const google::protobuf::MethodDescriptor* method,
     {
         loop_->RunInLoop([controller, done]
             {
-                CompleteFailure(controller, done, "request frame encoding failed");
+                CompleteFailure(controller,
+                                done,
+                                "request frame encoding failed",
+                                RpcCallState::Invalid);
             });
         return;
     }
@@ -223,13 +233,13 @@ void RpcChannel::RegisterAndSend(std::uint64_t request_id,
     // 取消回调与超时定时器都可能活到 channel 析构之后，一律经 weak_ptr 校验，禁止捕获 this
     const std::weak_ptr<AliveGuard> weak_guard = alive_guard_;
 
-    if (connection_state_ == ConnectionState::kDisconnected)
+    // 两种不可用状态都当场失败、都不排队：kDisconnected 透传永久原因，kConnecting 只报暂时不可用
+    if (connection_state_ != ConnectionState::kConnected)
     {
-        CompleteFailure(pending_call.controller,
-                        pending_call.done,
-                        connection_error_.empty()
-                            ? "RPC connection is not available"
-                            : connection_error_);
+        const std::string& reason = connection_state_ == ConnectionState::kDisconnected
+                                        ? connection_error_
+                                        : "RPC connection is not available";
+        CompleteFailure(pending_call.controller, pending_call.done, reason, RpcCallState::Failed);
         return;
     }
 
@@ -246,7 +256,10 @@ void RpcChannel::RegisterAndSend(std::uint64_t request_id,
     if (pending_call.deadline.has_value() &&
         *pending_call.deadline <= std::chrono::steady_clock::now())
     {
-        CompleteFailure(pending_call.controller, pending_call.done, "RPC timeout");
+        CompleteFailure(pending_call.controller,
+                        pending_call.done,
+                        "RPC timeout",
+                        RpcCallState::Timeout);
         return;
     }
 
@@ -330,23 +343,16 @@ void RpcChannel::RegisterAndSend(std::uint64_t request_id,
                 });
     }
 
-    // ---- 第四步：已连接直接发，未连接进写排队 ----
-    if (connection_state_ == ConnectionState::kConnected &&
-        connection_ &&
-        connection_->Connected())
+    // ---- 第四步：发送。闸门与发送之间同线程无交错，这里的检查纯粹是防御 ----
+    if (connection_ == nullptr || !connection_->Connected())
     {
-        connection_->Send(bytes);
+        CompleteCallWithFailure(request_id,
+                                "RPC connection is not available",
+                                RpcCallState::Failed);
         return;
     }
 
-    if (max_pending_writes_ > 0U && pending_writes_.size() >= max_pending_writes_)
-    {
-        // 此时已进 pending_calls_ 且挂好了定时器与取消回调，走标准完成路径统一收口
-        CompleteCallWithFailure(request_id, "too many queued rpcs", RpcCallState::Failed);
-        return;
-    }
-
-    pending_writes_.push_back(PendingWrite{request_id, std::move(bytes)});
+    connection_->Send(std::move(bytes));
 }
 
 void RpcChannel::OnConnection(const net::TcpConnectionPtr& conn)
@@ -358,20 +364,6 @@ void RpcChannel::OnConnection(const net::TcpConnectionPtr& conn)
         connection_ = conn;
         connection_state_ = ConnectionState::kConnected;
         connection_error_.clear();
-
-        while (!pending_writes_.empty())
-        {
-            PendingWrite write = std::move(pending_writes_.front());
-            pending_writes_.pop_front();
-
-            if (!pending_calls_.contains(write.request_id))
-            {
-                continue;
-            }
-
-            connection_->Send(write.bytes);
-        }
-
         return;
     }
 
@@ -380,7 +372,14 @@ void RpcChannel::OnConnection(const net::TcpConnectionPtr& conn)
         connection_.reset();
     }
 
-    connection_state_ = ConnectionState::kDisconnected;
+    // 已判永久下线的（协议错误）不再被后续的掉线事件救活
+    if (connection_state_ == ConnectionState::kDisconnected)
+    {
+        return;
+    }
+
+    // 回 kConnecting 而非 kDisconnected：Connector 会重连，这个窗口只代表「暂时不可用」
+    connection_state_ = ConnectionState::kConnecting;
     connection_error_ = "RPC connection closed";
     FailAllPending(connection_error_);
 }
@@ -389,6 +388,7 @@ void RpcChannel::OnMessage(const net::TcpConnectionPtr& conn,
                            net::Buffer* buffer)
 {
     loop_->AssertInLoopThread();
+    (void)conn;                                         // 一个 channel 只挂一条连接，帧不必区分来源
 
     while (true)
     {
@@ -406,22 +406,14 @@ void RpcChannel::OnMessage(const net::TcpConnectionPtr& conn,
             connection_state_ = ConnectionState::kDisconnected;
             connection_error_ = "RPC protocol error: " + error;
             FailAllPending(connection_error_);
-            conn->Shutdown();
+
+            // 协议不兼容重连治不好，且不停自愈会陷入「连上 -> 报错 -> 重连」死循环
+            client_->Disconnect();
             return;
         }
 
         HandleFrame(std::move(frame));
     }
-}
-
-void RpcChannel::OnConnectError(const std::string& reason)
-{
-    loop_->AssertInLoopThread();
-
-    connection_state_ = ConnectionState::kDisconnected;
-    connection_error_ = reason;
-    connection_.reset();
-    FailAllPending(reason);
 }
 
 void RpcChannel::OnTimeout(std::uint64_t request_id)
@@ -468,7 +460,6 @@ std::optional<RpcChannel::PendingCall> RpcChannel::TakePendingCall(
         }
     }
 
-    RemovePendingWrite(request_id);
     return pending_call;
 }
 
@@ -539,8 +530,7 @@ void RpcChannel::CompleteCallWithFailure(std::uint64_t request_id,
                         reason,
                         state]
         {
-            SetCallState(controller, state);
-            CompleteFailure(controller, done, reason);
+            CompleteFailure(controller, done, reason, state);
         });
 }
 
@@ -587,23 +577,9 @@ void RpcChannel::CompleteCallWithCancel(std::uint64_t request_id)
         });
 }
 
-void RpcChannel::RemovePendingWrite(std::uint64_t request_id)
-{
-    pending_writes_.erase(
-        std::remove_if(pending_writes_.begin(),
-                       pending_writes_.end(),
-                       [request_id](const PendingWrite& write)
-                           {
-                               return write.request_id == request_id;
-                           }),
-        pending_writes_.end());
-}
-
 void RpcChannel::FailAllPending(const std::string& reason)
 {
     loop_->AssertInLoopThread();
-
-    pending_writes_.clear();
 
     std::vector<std::uint64_t> request_ids;
     request_ids.reserve(pending_calls_.size());
@@ -622,8 +598,6 @@ void RpcChannel::FailAllPending(const std::string& reason)
 
 void RpcChannel::FailAllPendingNow(const std::string& reason)
 {
-    pending_writes_.clear();
-
     while (!pending_calls_.empty())
     {
         const std::uint64_t request_id = pending_calls_.begin()->first;
@@ -642,10 +616,10 @@ void RpcChannel::FailAllPendingNow(const std::string& reason)
 
         if (won)
         {
-            SetCallState(pending_call->controller, RpcCallState::Failed);
             CompleteFailure(pending_call->controller,
                             pending_call->done,
-                            reason);
+                            reason,
+                            RpcCallState::Failed);
         }
     }
 }
@@ -655,25 +629,15 @@ void RpcChannel::SetMaxPendingCalls(std::size_t max_pending_calls) noexcept
     max_pending_calls_ = max_pending_calls;
 }
 
-void RpcChannel::SetMaxPendingWrites(std::size_t max_pending_writes) noexcept
-{
-    max_pending_writes_ = max_pending_writes;
-}
-
 void RpcChannel::SetDegradeHandler(DegradeHandler handler)
 {
     degrade_handler_ = std::move(handler);
 }
 
-// 以下三个读的是 loop 线程独占的容器与计数器，只能在 owner loop 线程调用
+// 以下两个读的是 loop 线程独占的容器与计数器，只能在 owner loop 线程调用
 std::size_t RpcChannel::PendingCallCount() const noexcept
 {
     return pending_calls_.size();
-}
-
-std::size_t RpcChannel::PendingWriteCount() const noexcept
-{
-    return pending_writes_.size();
 }
 
 std::uint64_t RpcChannel::OverloadRejectCount() const noexcept
@@ -691,6 +655,9 @@ void RpcChannel::RejectOverloaded(google::protobuf::RpcController* controller,
     // 钩子返回 true 即由业务给出兜底结果；返回 false 说明它不接管，回落为直接失败
     if (degrade_handler_ != nullptr && degrade_handler_(controller, response, reason))
     {
+        // 钩子已自行完成该次调用：往返被收口，业务是否失败由 Failed() 表达
+        SetCallState(controller, RpcCallState::Completed);
+
         if (done != nullptr)
         {
             done->Run();
@@ -698,7 +665,7 @@ void RpcChannel::RejectOverloaded(google::protobuf::RpcController* controller,
         return;
     }
 
-    CompleteFailure(controller, done, reason);
+    CompleteFailure(controller, done, reason, RpcCallState::Failed);
 }
 
 }  // namespace nebula::rpc

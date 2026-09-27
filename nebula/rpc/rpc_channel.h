@@ -11,7 +11,6 @@
 #include <chrono>
 #include <cstddef>
 #include <cstdint>
-#include <deque>
 #include <functional>
 #include <memory>
 #include <optional>
@@ -28,6 +27,7 @@ class TcpClient;
 namespace nebula::rpc
 {
 
+// 单连接 RPC 通道：连接不可用时当场失败并给出原因，不排队、不重发
 class RpcChannel final : public google::protobuf::RpcChannel,
                          private base::Noncopyable
 {
@@ -47,9 +47,8 @@ public:
                     google::protobuf::Message* response,
                     google::protobuf::Closure* done) override;
 
-    // 过载闸门，0 表示不限制：在途调用数 / 未建连时的排队写数
+    // 过载闸门，0 表示不限制
     void SetMaxPendingCalls(std::size_t max_pending_calls) noexcept;
-    void SetMaxPendingWrites(std::size_t max_pending_writes) noexcept;
 
     // 设了钩子即启用降级：过载时先问钩子，返回 false 回落为直接失败
     // 返回 true 表示钩子已自行完成该次调用（填了 response 或调了 SetFailed）
@@ -59,7 +58,6 @@ public:
     void SetDegradeHandler(DegradeHandler handler);
 
     [[nodiscard]] std::size_t PendingCallCount() const noexcept;
-    [[nodiscard]] std::size_t PendingWriteCount() const noexcept;
     [[nodiscard]] std::uint64_t OverloadRejectCount() const noexcept;
 
 private:
@@ -76,12 +74,7 @@ private:
         RpcCall call;           // 完成权仲裁：response/timeout/cancel/disconnect 只能赢一个
     };
 
-    struct PendingWrite
-    {
-        std::uint64_t request_id{};
-        std::string bytes;
-    };
-
+    // 前两种都拒发，区别只在原因能不能自愈：kConnecting 由 Connector 重连，kDisconnected 永久废
     enum class ConnectionState
     {
         kConnecting,
@@ -96,7 +89,6 @@ private:
                           const std::string& reason);
     void OnConnection(const net::TcpConnectionPtr& conn);
     void OnMessage(const net::TcpConnectionPtr& conn, net::Buffer* buffer);
-    void OnConnectError(const std::string& reason);
     void OnTimeout(std::uint64_t request_id);
     void HandleFrame(RpcFrame frame);
 
@@ -118,7 +110,6 @@ private:
                                  const std::string& reason,
                                  RpcCallState state);
     void CompleteCallWithCancel(std::uint64_t request_id);
-    void RemovePendingWrite(std::uint64_t request_id);
 
     void FailAllPending(const std::string& reason);
     void FailAllPendingNow(const std::string& reason);
@@ -130,13 +121,11 @@ private:
 
     // 只允许 EventLoop owner thread 访问，因此 response/timeout 天然串行竞争。
     std::unordered_map<std::uint64_t, PendingCall> pending_calls_;
-    std::deque<PendingWrite> pending_writes_;
 
     ConnectionState connection_state_{ConnectionState::kConnecting};
-    std::string connection_error_;
+    std::string connection_error_;   // 只有 kDisconnected 读它：这条路永久废掉的原因
 
     std::size_t max_pending_calls_{0};
-    std::size_t max_pending_writes_{0};
     DegradeHandler degrade_handler_;
     std::atomic_uint64_t overload_reject_count_{0};
 

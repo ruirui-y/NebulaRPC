@@ -45,7 +45,7 @@ public:
     void MarkCanceled();
 
     [[nodiscard]] RpcCallState CallState() const;   // 完成终态；未完成时是 Pending
-    void MarkCallState(RpcCallState state);         // 仅由完成路径抢到完成权后调用
+    void MarkCallState(RpcCallState state);         // 终态写入：抢到完成权后，或入队前被拒时
 
 private:
     // 摘除并释放所有尚未触发的取消回调（所有权在 controller，必须显式 delete）
@@ -60,7 +60,7 @@ private:
     int next_cancel_token_{0};                                            // 递增分配，不复用
     std::optional<std::chrono::milliseconds> timeout_;
     std::optional<TimePoint> deadline_;
-    RpcCallState call_state_{RpcCallState::Pending};   // 完成路径写入的终态
+    RpcCallState call_state_{RpcCallState::Pending};   // 终态：完成路径与失败出口写入
 };
 
 }  // namespace nebula::rpc

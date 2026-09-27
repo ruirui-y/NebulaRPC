@@ -11,7 +11,8 @@ enum class RpcCallState
     Completed,
     Cancelled,
     Timeout,
-    Failed
+    Failed,
+    Invalid        // 本端判定不可行：参数 / 序列化 / 编码，重发必然重现
 };
 
 class RpcCall final
