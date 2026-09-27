@@ -23,11 +23,11 @@ callback 版：stub.Echo(&controller, &request, &response, done);
 把完成路径改成「`done->Run()` 或 `handle.resume()` 二选一」。实际没有这么做，原因：
 
 ```
-完成路径现状（rpc_channel.cpp:41-75）
-    CompleteFailure(controller, done, reason)  { ... if (done != nullptr) done->Run(); }
-    CompleteFrame(response, controller, done, f){ ... if (done != nullptr) done->Run(); }
-    CompleteCallWithCancel                        loop_->QueueInLoop([done]{ done->Run(); });
-    FailAllPendingNow（析构路径）                  CompleteFailure(...) 同上
+完成路径现状（rpc_channel.cpp:66-102）
+    CompleteFailure(controller, done, reason, state)  { SetFailed + 写终态 + if (done) done->Run(); }
+    CompleteFrame(response, controller, done, f)      { ... if (done != nullptr) done->Run(); }
+    CompleteCallWithCancel                            loop_->QueueInLoop([done]{ done->Run(); });
+    FailAllPendingNow（析构路径）                      CompleteFailure(...) 同上
 
 → done 已经覆盖：response / timeout / cancel / 断连 / 析构 五条出口
 ```
@@ -129,17 +129,27 @@ loop->QueueInLoop([guard]
 
 ```
 rpc_channel.cpp
+    CompleteFailure(controller, done, reason, state)   ← 唯一的失败出口，先写终态再跑 done
     CompleteCallWithFrame   → SetCallState(controller, Completed)
-    CompleteCallWithFailure → SetCallState(controller, state)      // Timeout / Failed
-    FailAllPendingNow       → SetCallState(controller, Failed)
+    CompleteCallWithFailure → CompleteFailure(...) 直传 state      // Timeout / Failed
+    FailAllPendingNow       → CompleteFailure(...) 直传 Failed
     CompleteCallWithCancel  → MarkCanceled() 里顺带写 Cancelled
+    入队前被拒的（参数 / 序列化 / 编码 / 连接不可用 / deadline 已过 / 过载）也走 CompleteFailure
+
+终态枚举：Pending / Completed / Cancelled / Timeout / Failed / Invalid
+    Failed   = 连接级故障（换一条连接有意义）：已发出后掉线 / 协议错误 / 在途闸门满 / 写队列满
+    Invalid  = 本端判定不可行（重发必然重现）：参数错 / 序列化失败 / 编码失败
 
 rpc_awaiter.h　await_resume 判断顺序（顺序有意义）
     CallState()==Cancelled      → RpcError(Cancelled)      取消故意不 SetFailed，必须最先判
     CallState()==Timeout/Failed → RpcError(state, ErrorText())
     controller_.Failed()        → RpcError(Failed, ...)    仲裁赢 Completed 但业务失败（ERROR 帧等）
     else                        → 返回 response
+    （Invalid 落到最后一行兜底：Failed() 为 true → 抛 RpcError(Failed, ...)）
 ```
+
+> `state` 参数不给默认值是有意的：`CompleteFailure` 共 9 个调用点，靠编译器强制每个点表态，
+> 才不会重演「有的写 `call_state_`、有的只 `SetFailed`」那半年的口径分裂。
 
 不这么做就只能靠 `ErrorText() == "RPC timeout"` 字符串嗅探，脆。
 

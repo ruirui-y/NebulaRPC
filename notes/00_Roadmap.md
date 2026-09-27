@@ -437,9 +437,9 @@ CallMethod
    - deadline 已过 -> 立即 "RPC timeout" 完成；
    - `pending_calls_.emplace(request_id, ...)`；
    - 已连接 -> `connection_->Send(bytes)`；
-   - 未连接 -> 进 `pending_writes_` 排队。
-4. 连接建立后冲刷：`OnConnection(connected)` 里遍历 `pending_writes_`，
-   跳过已被超时/断连完成的 request_id，其余 `Send`。
+   - ~~未连接 -> 进 `pending_writes_` 排队~~（**09-27 已改**：未连上直接失败，见第 10 节）。
+4. ~~连接建立后冲刷：`OnConnection(connected)` 里遍历 `pending_writes_`，
+   跳过已被超时/断连完成的 request_id，其余 `Send`。~~（**该机制 09-27 已删**，见第 10 节。）
 5. 响应完成：`OnMessage -> Decode -> HandleFrame -> CompleteCallWithFrame`：
    - `TakePendingCall` 摘除（摘不到说明已超时/断连完成，迟到响应直接丢弃）；
    - 解析 response / 写错误到 controller；
@@ -835,6 +835,13 @@ flaky）；输入水位与单帧上限的**边界**未测（属参数纪律，�
 
 验收试卷：`NRPC-BP-V2`（V1 已归档 `papers/历史版本/`）。
 
+**后续变更（2026-09-27）**：第 5 点与第 8 点的 `pending_writes_` 相关机制
+（`SetMaxPendingWrites` / `PendingWriteCount` / `"too many queued rpcs"`）已在第 10 节随
+「连接不可用即拒发」的设计一并删除 —— 未建连的请求不再排队，也就没有队列上限。
+第 7 点的 `queue` 一半随之消失，`reject` 与 `degrade` 两半不受影响。
+上面「未覆盖」那段里 `max_pending_writes_` 闸门那条欠账**因此作废**（机制不存在了，不是没测）；
+`tests/rpc_pending_writes_test.cpp` 一并删除。`notes/08` 已同步。
+
 ------------------------------------------------------------------------
 
 ## 10. Client Runtime / Connection Pool / LB / Retry / Reconnect
@@ -851,56 +858,338 @@ flaky）；输入水位与单帧上限的**边界**未测（属参数纪律，�
 -   重试策略
 -   故障恢复
 
-状态：未开始（当前是单连接单 loop 的 RpcChannel）
+状态：**已收口（2026-09-27）**。落地的内容与草案差距很大 —— 草案按「连接池 + LB + Retry + 重连」
+四件套设计，实现时逐条核对代码后**砍掉三件**，只留下**连接自愈**与**失效拦截**。
+判据见「职责边界」：库只负责把「连接能不能用」这件事说清楚；选路与重发在单 endpoint
+架构下是空转，归业务。
 
-### 实现细节
+### 为什么砍掉连接池 / LB / Retry
 
-目标架构：
+单 endpoint 部署（当前唯一形态）下，N 条连接指向**同一个 ip:port**，服务端死了就是全死：
 
 ```text
-Application
-    |
-RpcClient（新增）
-    |
-    +-- ConnectionPool：N 条连接（每条 = 一个 RpcChannel）
-    |
-    +-- LoadBalancer：从池中选连接
-    |
-    +-- Retry / Reconnect 策略
+            +-- conn1 --+
+业务 -- RR --+-- conn2 --+-- 同一个 127.0.0.1:9000
+            +-- conn3 --+
+                 ^ 服务端进程一死，三条一起掉，旋转换不到任何健康目标
 ```
 
-实现步骤：
+于是三件事同时失效：
 
-1. `RpcClient`：持有 endpoint 列表（ip:port），管理一组 `RpcChannel`，
-   对外暴露与 `protobuf::RpcChannel` 相同的 `CallMethod` 接口，
-   内部选连接后转发。
-2. Connection Pool：
-   - 每个 endpoint 维护 N 条连接（N 可配，默认 1）；
-   - 连接空闲复用：RPC 多路复用天然支持（request_id），
-     不必"借出/归还"，池只负责容量与健康；
-   - 健康检查：心跳帧（新增 `RpcMeta::HEARTBEAT` 类型）或
-     空闲超时探测，失败连接标记不可用。
-3. Reconnect（先修 Connector）：
-   - 当前 `Connector` 连接失败即永久停止（`connect_ = false`）；
-   - 增加退避重连：失败后 `loop_->RunAfter(backoff, RetryConnect)`，
-     backoff 指数增长封顶（如 100ms -> 200ms -> ... -> 5s）；
-   - 重连成功后 `RpcChannel` 现有的 `pending_writes_` 冲刷机制直接复用。
-4. Retry：
-   - 只对幂等接口重试（`RpcMeta` 或方法选项标记）；
-   - 次数上限 + 指数退避；
-   - 硬约束：重试总耗时不得突破该次调用的 deadline（复用第 7 节）。
-5. Load Balance 实现顺序：
-   - 第一版 Round Robin（`next_++` 取模，`EventLoopThreadPool` 已有同款）；
-   - 第二版 Least Connection（每连接维护 in-flight 计数，选最小）；
-   - 第三版 Consistent Hash（按请求键路由，虚拟节点环）。
-6. 多 loop 分布：连接分属不同 EventLoop（复用 `EventLoopThreadPool`），
-   避免单 loop 成为瓶颈。
+| 砍掉的 | 为什么 |
+|---|---|
+| 连接池 + Round Robin | 池里的成员全活全死，轮询是空转。多 loop 分布（池唯一站得住的理由）本阶段不做，见「本阶段不做」 |
+| 幂等白名单 + Retry | 换连接重发 = 换到另一条同样断的 socket 上，拿不到不同结果 |
+| `pending_writes_` 排队 + 建连冲刷 | 它存在的意义是「库自己扛过断线窗口」。这个职责归业务（落盘 + 连上后补发），库不该替业务扣住请求 |
 
-验收标准：
+顺带删掉 `RpcClient` 外壳（09-27 落地、同日删除）：剥掉 RR 与 Retry 后它只剩「继承
+`protobuf::RpcChannel` 让 Stub 认得一个指针」，而 Stub 本来就能直接拿 `RpcChannel*`
+（`examples/rpc_echo/rpc_echo_client.cpp:34-35`），一层转手没有内容。
 
-- 杀掉服务端进程 -> 客户端自动重连 -> 恢复后 RPC 成功；
-- 断连期间在途请求全部以失败完成、无泄漏；
-- RR 分布下各连接请求数均匀。
+### 职责边界（本节的落脚点）
+
+```text
+库（RpcChannel）   连接能不能用？不能用就当场失败 + 说清原因；连接自己回来（Connector 退避重连）
+业务                收不收请求（拦截）、要不要落盘、连上后补发、给请求设 deadline
+```
+
+于是 `CallMethod` 的路由变成一条直线，不再有中途态：
+
+```text
+CallMethod
+  +- 参数 / 序列化 / 编码 不合法  -> Invalid            （per-call，重发必然重现）
+  +- 在途闸门越线                -> Failed + 降级钩子    （rpc_channel.cpp:247）
+  +- 连接不可用                   -> Failed + connection_error_   （:243）
+  +- 可用                         -> Send，进 pending_calls_ 等响应 / 超时 / 取消
+```
+
+`kConnecting` 与 `kDisconnected` 现在**都拒发**，区别只在原因能不能自愈：
+
+| 状态 | 谁写入 | 语义 | 业务该怎么读 |
+|---|---|---|---|
+| `kConnected` | `OnConnection(conn)` 成功（`:365`） | 可用 | 正常发 |
+| `kConnecting` | 初值；掉线 `OnConnection(∅)`（`:382`） | 暂时不可用，`Connector` 在退避重连 | 这次失败，稍后重发 |
+| `kDisconnected` | 协议错误（唯一写点，`:406`） | 永久下线，重连治不好 | 别再试，先查协议 / 版本 |
+
+业务唯一能拿到的线索是 `RpcController::ErrorText()`，它是**四个稳定串**（09-27 归位，见第六批）：
+
+| `ErrorText()` | 谁写的 | 对应哪一批请求 | 业务动作 |
+|---|---|---|---|
+| `"RPC connection closed"` | 掉线分支（`:383`） | **掉线那一刻在途**的（发出去过，可能已被服务端执行） | 落盘，带幂等键补发 |
+| `"RPC connection is not available"` | 闸门（`:239-241`，`kConnecting` 固定用它） | 空窗期 / 冷启动**新发**的（一次都没发出） | 直接补发即可 |
+| `"RPC protocol error: ..."` | 协议错误（`:407`，落 `kDisconnected`） | 该连接上全部在途 | 永久下线，重试无用，先查协议 / 版本 |
+| `"too many pending rpcs"` | 过载闸门（`:252`） | 被本端在途上限拒的 | 立刻重试只是加压，应退避 |
+
+前两行刚好对应「**可能已执行**」与「**肯定没发出**」（闸门在 `Send` 之前就 return 了）——
+但**不要拿字符串做幂等决策**，幂等键两边都要带。
+
+**闸门按状态取原因，不按字符串取**（09-27 修正，此前是「`connection_error_` 非空就透传」）：
+
+```cpp
+const std::string& reason = connection_state_ == ConnectionState::kDisconnected
+                                ? connection_error_                  // 永久态：协议错误原文必须给业务
+                                : "RPC connection is not available"; // 暂时不可用：固定串
+```
+
+修正的动机是一条**测试跑出来的真缺陷**（详见第六批）：`Connector` 每次重连尝试失败都会把 net 层的
+per-attempt 原文（`"connect failed: " + strerror(errno)`，`connector.cpp:177/227/266`）写进
+`connection_error_`，**覆盖**掉线分支刚写的 `"RPC connection closed"`。后果是**同一个故障、同一段
+代码，业务拿到什么字符串取决于它什么时候问、以及对端在哪儿**（本机 refused 瞬时覆盖；远程主机不通
+时 connect 挂几秒，那几秒里又是另一个答案）。**业务没法写 `==`** —— 所以「透传」这个动作本身没错，
+错的是槽里的字不是我们的。
+
+### 连接失效的发现手段（本阶段补的最后一块）
+
+前面几种断开（客户端主动 / 服务端优雅关 / 进程崩溃 / 慢消费者被踢 / 协议不兼容 / 中间设备丢表）
+都能落到 `FIN` 或 `RST`，`read()` 立刻有结果。**唯独「服务端断电、拔网线、进程 hang」什么都不发** ——
+客户端不发数据就永远发现不了，那条连接会一直占着 `kConnected`。
+
+补法是两层：
+
+```text
+net 层    SO_KEEPALIVE + TCP_KEEPIDLE=10s / KEEPINTVL=3s / KEEPCNT=3      socket.cpp:92-104
+          最快 10s、最坏 19s 内核判定对端不可达 -> read/write 报 ETIMEDOUT
+
+错误出口   TcpConnection::HandleError() 原来只 getsockopt 读走 SO_ERROR 就丢掉、什么都不做，
+          于是探测失败也不会关连接、更不会重连（删掉队列后才暴露出来的真缺口）。
+          现在读走错误后 ForceCloseInLoop()                                  tcp_connection.cpp:251-263
+```
+
+链路因此闭合：
+
+```text
+keepalive 探测耗尽
+  -> 内核把连接置错 -> epoll 报事件 -> read/write 返回 ETIMEDOUT
+     -> HandleError -> ForceCloseInLoop -> HandleClose
+        -> close_callback_ -> TcpClient::RemoveConnection
+           -> connect_ 仍为真 -> Connector::Restart() -> 退避重连
+```
+
+**覆盖边界（诚实记账）**：keepalive 由对端**内核**应答，所以它证明的是「对端机器和网络还活着」，
+不是「服务端进程还在干活」。进程 hang 但内核正常时探测会成功 —— 那种情况只能靠应用层心跳，
+归第 11 节。
+
+### 实施步骤（按实际落地顺序）
+
+1. `Connector` 退避重连（自包含，可单独验收）—— **已落地**
+   - 新增 `ReconnectPolicy{initial=100ms, multiplier=2, max=5s}` 与 `SetReconnectPolicy`；
+   - `ReportError`（`connector.cpp:292-301`）末尾挂 `ScheduleReconnect()`（`:303-327`）：
+     退避翻倍封顶、连上后复位（`:149` / `:239`）；
+   - 新增 `Restart()`（`connector.cpp:64-71`）：把 `state_` 从 `kConnected` 带回起点再
+     `StartInLoop()` ——「已建连接掉线后重启」的唯一入口。注意它的语义是**外部报丧 +
+     内部重置起点**：`Connector` 建连成功即退役、状态天然冻结，它自己发现不了掉线，
+     必须由第 2 步的 `TcpClient::RemoveConnection` 叫醒；
+   - `Stop()`（`:83-99`）与析构（`:28`）里 `CancelReconnect()`，否则定时器会拖住
+     `Connector` 不放。**取消必须排在 `StopInLoop` 的守卫之前** —— 等待重连期间
+     `state_` 恰好是 `kDisconnected`，排在后面就取消不掉；
+   - 新增 `ReconnectAttemptCount()` 供验收观测。
+2. `TcpClient` 接上自愈 —— **已落地**
+   - `HandleConnectError` 不再无条件 `connect_ = false`（`tcp_client.cpp:126-135`），
+     否则连接器刚开始重试就被自己关掉，而且重连成功的新 fd 会被 `NewConnection` 的
+     `if (!connect_)` 直接 `::close` —— 退避看着在跑，永远接不上；
+   - `RemoveConnection` 补 `connector_->Restart()`（`tcp_client.cpp:115-119`）——
+     **杀掉服务端进程后客户端能自己爬起来，缺的就是这条报丧线**；
+   - ~~对外给 `bool Reconnecting() const`~~ **不做**：`TcpClient::Disconnect()/Stop()` 全项目
+     零调用者，所以 `RpcChannel` 存活期 `connect_` 恒为真，`OnConnection(∅)` 无条件回
+     `kConnecting` 就够了 —— 加了是零调用者的预置 API。**边界**：将来若真有第二条连接要
+     走 `Disconnect()` 淘汰，必须补这个判据。
+3. `RpcChannel` 改为「不可用即拒发」—— **已落地**
+   - `RegisterAndSend` 的闸门判据从 `== kDisconnected` 改成 `!= kConnected`
+     （`rpc_channel.cpp:237`），两种不可用状态一起拒发；
+   - 删掉 `pending_writes_` 队列、建连冲刷循环、`FailSentPending` 差集判定、
+     `max_pending_writes_` 闸门与 `SetMaxPendingWrites` / `PendingWriteCount` 两个 API；
+     掉线分支改用 `FailAllPending`（`:384`）；
+   - 第四步降级为纯防御检查（`:346-353`）：闸门与发送之间同 loop 无交错，走到这里必然可用；
+   - 删掉 `OnConnectError`（函数 + 声明 + 构造里的注册，共 3 处，见第六批）—— 它原本只往
+     `connection_error_` 里记 net 层每轮重连尝试的原文，属越权；闸门改为**按状态**取原因
+     （`:239-241`）：`kDisconnected` 透传协议错误原文，`kConnecting` 固定
+     `"RPC connection is not available"`；
+   - 协议错误改走 `client_->Disconnect()`（`:411`）：既替掉原来的 `conn->Shutdown()`，
+     又把 `connect_` 置假、断掉自愈 —— 否则会陷入「连上 -> 报错 -> 重连」死循环；
+   - **不需要为超时写任何新代码**：deadline 定时器在入队前就挂好了（`:323`），
+     请求生命周期内照常触发。
+4. 连接失效发现（静默死亡）—— **已落地**
+   - `Socket::SetKeepAlive`（`socket.cpp:92-104`）四个 `setsockopt`；
+   - `TcpConnection` 构造里开启，参数 `10s / 3s / 3`（`tcp_connection.cpp:18-20`、`:49-52`）；
+   - `TcpConnection::HandleError()` 补上 `ForceCloseInLoop()`（`tcp_connection.cpp:251-263`）。
+
+### 本阶段不做
+
+| 不做 | 理由 |
+|---|---|
+| 连接池 / LB / Retry | 单 endpoint 下全活全死，见「为什么砍掉」 |
+| 一致性哈希 | 没有多 endpoint 时说不到选路 |
+| 客户端多 loop 分布 | 验收标准都不依赖它；1/2/4/8 扩展性数据属第 12 节，现在做只能写「连接分散到不同 loop」一句，量不出东西 |
+| 应用层心跳帧 / 新 `MessageType` | keepalive 已覆盖机器与网络不可达；心跳只为「进程 hang」服务，代价是动 `rpc_meta.proto` + `rpc_codec` + `rpc_channel::OnMessage` + `rpc_server::OnMessage` 四处。**归第 11 节** |
+| 库层「连接不可用」的主动通知 API | 当前由单请求失败携带原因，业务据此拦截（见「职责边界」的 reason 表）；要不要再加一个连接级回调，等有真实业务再说 |
+
+### 验收标准
+
+- 杀掉服务端进程 -> 客户端自动重连 -> 服务端恢复后 RPC 成功；—— **已覆盖**
+  （`tests/rpc_reconnect_test.cpp`：掐掉 `RpcServer` -> 窗口期请求当场被拒 -> 重启 -> 新请求成功）
+- **连接不可用期间请求一次也不发、当场失败并带原因**；—— **已覆盖**
+  （同上：窗口期 3 发的 `failed_after_issue == 3`，且 `ok` 只该有首尾两发）
+- 断连期间在途请求全部以失败完成、无泄漏；—— **已覆盖**（第 9 节
+  `rpc_backpressure_test.cpp` Case 4，reason `"RPC connection closed"`）
+- **退避可观测**：重连尝试间隔按 100/200/400/800ms… 递增并封顶 5s，服务端恢复后计数停止增长；
+  —— **已覆盖**（`playground/02_connector_backoff.cpp` 打时间戳、`03_client_reconnect.cpp` 打
+  掉线 -> 重连的回调序列）
+- **静默死亡的发现**：keepalive 生效 —— 代码可读（`socket.cpp:92`、`tcp_connection.cpp:49`），
+  但**没有用例**：造「对端断电」得靠 iptables DROP 或拔网线，纯软件的测试里做不出假半开连接。
+  **诚实记账：机制在，无自动化验证。**
+- **对外原因是稳定串**：`ErrorText()` 只会是上面表里的四个常量之一，不含 `strerror` 原文；
+  —— **已覆盖**（`rpc_reconnect_test` 的 `[final] first_error` 应打印
+  `"RPC connection is not available"`；第六批之前它打印的是 `"connect failed: Connection refused"`）。
+- ~~RR 分布 / 重试白名单~~ —— **已随 `RpcClient` 一并删除**（对应目标已从本节移出）。
+
+### 实际落地（2026-09-27）
+
+**第一批 · net 层自愈**，改 5 个文件（一路用探针看回调序列、一路用集成测试看 RPC 成功）：
+
+| 文件 | 改了什么 |
+|---|---|
+| `nebula/net/connector.h` | `ReconnectPolicy` + `SetReconnectPolicy` / `Restart()` / `ReconnectAttemptCount()`；私有 `ScheduleReconnect` / `CancelReconnect` / `RestartInLoop` + `TimerId retry_timer_` + `next_backoff_` |
+| `nebula/net/connector.cpp` | `ReportError` 末尾 `ScheduleReconnect()`；成功路径两处 `next_backoff_ = {}`；`StopInLoop`/析构 `CancelReconnect()`；新增 `Restart` / `RestartInLoop` |
+| `nebula/net/tcp_client.cpp` | `HandleConnectError` 去掉 `connect_ = false`；`RemoveConnection` 补报丧线 |
+| `tests/rpc_reconnect_test.cpp` | 跨层闭环：正常一发 -> 掐服务端 -> 窗口期 3 发被拒 -> 重启 -> 新请求成功 |
+
+第一批的一条判断：**协议错误永久下线**要靠 `client_->Disconnect()`（挡「重新连上」）加掉线分支的
+`kDisconnected` 守卫（挡「状态被改写」），两条缺一不可。
+
+**第二批 · 失败出口统一**（09-27，读代码时发现，2 个文件 10 个点）
+
+`CompleteFailure` 是**全部失败出口**的共同落点，可它只 `SetFailed`、**不写 `CallState`** ——
+于是同一批失败里，走 `CompleteCallWithFailure` 的写了终态、走 `CompleteFailure` 的停在 `Pending`。
+症状：`Failed()` 报 true 而 `CallState()` 报 `Pending`，与「完成终态；未完成时是 Pending」
+自相矛盾（done 明明已经跑过了）。根因不是漏写某一句，是**出口不唯一** —— 所以修法是把终态
+收到一个口，而不是补 6 句。
+
+| 行（当前） | 场景 | 状态 |
+|---|---|---|
+| `:150` | `done == nullptr` | `Invalid` |
+| `:161` / `:177` / `:199` | 参数不合法 / 序列化 / 编码 | `Invalid` |
+| `:242` | 连接不可用快失败 | `Failed` |
+| `:259` | deadline 已过 | `Timeout` |
+| `:533` | `CompleteCallWithFailure` 内 | `state` |
+| `:619` | `FailAllPendingNow` 内 | `Failed` |
+| `:668` | `RejectOverloaded` 内 | `Failed` |
+| `:659` | 降级钩子接管分支 | `Completed` |
+
+改动：`rpc_call.h` 加 `Invalid`；`rpc_channel.cpp:66-78` 的 `CompleteFailure` 加 `RpcCallState state`
+（**不给默认值**）并在内部 `SetCallState`。
+
+1. **必须新增 `Invalid`，不能复用 `Failed`。** 三个 per-call 错误若标 `Failed`，重试逻辑
+   就会对**参数不合法**开火。不取 `NotSent`：协议错误与在途闸门满**同样"未发出"**，
+   却要归 `Failed` —— 判据是**故障归属**（per-connection 换连接有意义 / per-call 换也没用），
+   不是「字节出没出去」。
+2. **`state` 不给默认值**是手段不是洁癖：让编译器在**每个调用点**拦住漏写 —— 这比补 6 句
+   `SetCallState` 可靠，而且下一次新增失败出口时自动生效。
+3. **降级钩子接管写 `Completed`**，与 `CompleteFrame` 那条路**同构**：钩子注释
+   （`rpc_channel.h:54`）写着「返回 true 表示钩子已自行完成该次调用」，即往返被收口（`Completed`）、
+   业务是否失败由 `Failed()` 表达，`rpc_awaiter.h` 的兜底 throw 接住。
+
+**第三批 · 砍掉 `RpcClient`，改为失效拦截**（09-27）
+
+见「为什么砍掉连接池 / LB / Retry」与「实施步骤 3」。删除
+`nebula/rpc/rpc_client.{h,cpp}`、`tests/rpc_client_test.cpp`、`tests/rpc_pending_writes_test.cpp`；
+`ResolveDeadline` 从 `rpc_controller.{h,cpp}` 退回 `rpc_channel.cpp` 的匿名命名空间（只剩一个使用者）。
+
+删除暴露出的两个真缺口（都不是本次新引入的，是原有代码里的）：
+
+1. **`TcpConnection::HandleError()` 是空壳** —— 只 `getsockopt` 读走 `SO_ERROR` 就返回，
+   不关连接。于是 **RST 与写失败都不会让连接进入 `HandleClose`**，也谈不上重连。
+   第 9 节之所以没发现，是因为当时的断开用例（`ForceClose` / 服务端析构）走的都是
+   `read() == 0` 那条路。本批补上 `ForceCloseInLoop()`。
+2. **静默死亡无任何兜底** —— 全库无 `SO_KEEPALIVE`。本批补上，见「连接失效的发现手段」。
+
+**第四批 · 静默死亡发现**（09-27）
+
+`socket.h/.cpp` 加 `SetKeepAlive`；`tcp_connection.cpp` 构造里开启（`10s / 3s / 3`）；
+`HandleError` 补 `ForceCloseInLoop()`。
+
+**第五批 · SIGPIPE 崩溃修复**（09-27，跑 `rpc_reconnect_test` 时暴露）
+
+`tcp_connection.cpp` 两处裸 `::write`（`:202` 补写 / `:279` 直写）换成 `::send(..., MSG_NOSIGNAL)`。
+
+这是本批第三个真缺口：**对端 RST 之后任何一次写都会让内核产生 `SIGPIPE`，默认动作是终止进程** ——
+`SendInLoop` 里那个 `written < 0 → HandleError()` 分支（`:292-300`）写了等于没写，
+进程在 `write` 返回之前就被信号杀掉了。
+
+触发窗口**无法在应用层消除**：服务端进程刚死、FIN 还没到的那几十毫秒里，通道仍认为自己是
+`kConnected`，闸门放行 → 请求真写到 socket 上。所以只能保证 write 不崩、让它返回 `EPIPE`
+走 `HandleError`。`notes/knowledge/02` §9.1 早就记录了这个隐患（当时写的是「未处理」），
+本批按修法 A 落地。`TcpConnection` 服务端也在用，所以两侧一起修好。
+
+**第六批 · 对外原因归位**（09-27，跑通 `rpc_reconnect_test` 后按实测修正）
+
+用例全绿，但 `first_error` 打印出来的是 `"connect failed: Connection refused"` ——
+**源码里搜不到这四个单词**。它来自 `connector.cpp:266` 的
+`"connect failed: " + std::strerror(ECONNREFUSED)`：字面量是我们的，`Connection refused`
+是 libc 把 `errno = 111` 翻出来的。链路是：
+
+```text
+Connector 每轮重连尝试失败
+  -> ReportError("connect failed: " + strerror(errno))        connector.cpp:177/227/266
+     -> TcpClient::HandleConnectError                          tcp_client.cpp:133
+        -> RpcChannel::OnConnectError                          （本批已删）
+             connection_error_ = reason   <- 【覆盖】掉线分支刚写的 "RPC connection closed"
+                -> 闸门透传 -> 业务看到的是 libc 的句子
+```
+
+两个后果，一个坏一个好：
+
+- **时序不确定**（坏）：`reset()` 之后 10ms 发请求拿到 `"RPC connection closed"`，
+  120ms 发就变成 refused；远程主机不通时 connect 会挂几秒，那几秒里又是另一个答案。
+  同一故障、同一段代码，答案随「什么时候问」和「对端在哪儿」变。
+- **层次越权**（坏）：`connection_error_` 是 rpc 层「这条路为什么不可用」的语义槽，
+  被写入了 net 层单次尝试的细节。libc / kernel 的词顺着回调漏进了业务可见字段。
+- **顺手捞回的区分度**（好）：掉线那刻在途的（`FailAllPending`，`:383`）与空窗期新发的
+  （闸门，`:239-241`）本来就是「可能已执行」与「一次没发出」两批 —— 归位后它们各自
+  对应一个**原子串**，不再依赖 `strerror`。
+
+修法三处：删 `OnConnectError` 函数、删 `rpc_channel.h` 里的声明、删构造里的
+`SetConnectErrorCallback` 注册；闸门从「按字符串取」改成「按状态取」。
+`TcpClient::SetConnectErrorCallback` **保留** —— `playground/03_client_reconnect.cpp:46`
+正在用它看重连节奏，那是 net 层该有的能力，只是 rpc 层不该把它的输出当自己的原因。
+`connection_error_` 从此只在 `kDisconnected` 时被读，语义收缩为「这条路永久废掉的原因」。
+
+**删除带来的行为变更（要记住的三条）**
+
+1. **掉了线就当场失败，不再排队等冲刷。** 服务端重启的那一两百毫秒里，业务发出的请求全部失败，
+   由业务自己退避重发。这是本批最大的语义变化，也是 `tests/rpc_reconnect_test.cpp` 断言
+   与之前完全相反的原因。
+2. **冷启动的首个请求必失败。** `connection_state_` 初值就是 `kConnecting`
+   （`rpc_channel.h:125`），进程刚起、`Connector` 还在建连的那几十毫秒里任何请求都被拒。
+   业务需要「启动后先探活再放量」。
+3. **「肯定没执行」这个集合没了。** 队列天然把掉线时刻的请求分成「已 Send（服务端可能执行过）」
+   与「只在队列（肯定没执行）」两类；取消队列后**全部**归为「可能执行过」，
+   业务补发时每一条都要走幂等判断，且整体是 at-least-once。
+
+### 与草案的差异
+
+1. **草案漏了「连接建立后再掉线」这条线。** 草案只提「连接失败即永久停止」，且把
+   `connect_ = false` 归给 `Connector` —— 实际那行在 `TcpClient::HandleConnectError`
+   （改动前位于 `tcp_client.cpp:122`，09-27 已删除）。更关键的是「连接建立后再掉线」这条线
+   **根本没人接**：`Connector` 建连成功即**退役** —— fd 交出去、channel 摘掉、
+   `socket_fd_ = -1`（`connector.cpp:220-221` / `:242`），它不再持有那条连接的任何句柄，
+   所以 `state_` 也没有从 `kConnected` 出发的转换出口（全部 `state_ =` 赋值都发生在建连之前）；
+   而掉线走的是
+   `TcpConnection::HandleClose -> close_callback_ -> TcpClient::RemoveConnection`
+   （`tcp_client.cpp:103-124`），**不经过 Connector**。两件事叠加，掉线后就没有任何人叫它重新连；
+   `StartInLoop` 的守卫又要求 `state_ == kDisconnected`（`connector.cpp:76`），即使有人调 `Start()`
+   也是空转。而进程被杀走的正是这条「先连上、后掉线」的路 —— 只修连接失败的重试，验收第 1 条
+   依然过不了。**两条缺口已于 09-27 补上**（报丧线 + `RestartInLoop`）。
+2. **草案的四件套砍成一件。** 连接池 / LB / Retry 在单 endpoint 下全是空转，
+   见「为什么砍掉连接池 / LB / Retry」；本节的实质内容收缩为**连接自愈 + 失效拦截**。
+3. **草案把「断开」当终态。** 重连窗口内 `kConnecting` 就是「暂时不可用」，
+   理由见「职责边界」的状态表。
+4. **草案漏了 `HandleError` 空壳、keepalive 与 SIGPIPE；也没料到对外原因会被 net 层覆盖。**
+   见第三、四、五、六批。第四、五批是前者的兜底，第六批是「rpc 层的原因槽被 net 层的
+   per-attempt 字符串污染」—— 草案只考虑了「状态机怎么走」，没考虑「业务读到的字符串谁写的」。
+5. **草案给 Retry 配了独立退避定时器，随 Retry 一起没了。** 退避在 `Connector` 那层本来就有。
+6. 顺带修正草案一处措辞：`pending_writes_` 的上限第 9 节已经落地过
+   （`max_pending_writes_`，reason `"too many queued rpcs"`）—— 但该队列本批已删，
+   第 9 节那条「测不到」的欠账随之作废（机制不存在了，不是没测）。
 
 ------------------------------------------------------------------------
 
@@ -917,7 +1206,8 @@ RpcClient（新增）
 -   请求追踪
 -   优雅关闭
 
-状态：未开始（spdlog 已引入，RPC 层零日志调用）
+状态：未开始（spdlog 已引入，RPC 层零日志调用）。另外第 10 节的静默死亡发现只做到 keepalive，
+「进程级 hang」这一半欠在第 5 点。
 
 ### 实现细节
 
@@ -942,6 +1232,17 @@ RpcClient（新增）
      逐个 `Shutdown` 连接 -> 退出；
    - `RpcServer` 需要 in-flight 表（可与服务端取消共用）；
    - 信号接入：`SIGTERM` -> `loop->QueueInLoop(server.Stop)`。
+5. 应用层心跳（**第 10 节移入的欠账**）：
+   - 背景：第 10 节用 `SO_KEEPALIVE`（10s / 3s / 3）补了「静默死亡」的发现手段，但它由对端
+     **内核**应答，只能证明「对端机器和网络还活着」—— **服务端进程 hang 住而内核正常时，
+     探测照样成功**，客户端仍以为连接可用；
+   - 做法：RPC 层加一个心跳方法（`rpc_meta.proto` 增 `HEARTBEAT` 类型，或复用一个预留
+     method），客户端定时发、服务端原样回；连续 N 次无响应 -> 判连接失效 ->
+     `ForceClose` 走报丧线 -> 重连；
+   - 代价：动 `rpc_meta.proto` + `rpc_codec` + `rpc_channel::OnMessage` + `rpc_server::OnMessage`
+     四处，还要定「间隔 / 判定次数」两个常量；
+   - 与 keepalive 的分工：keepalive 管「机器 / 网络层没了」（内核探测比 TCP 重传快得多），
+     心跳管「进程不干活了」。两者互补，**keepalive 仍要保留**。
 
 验收标准：
 
@@ -1068,16 +1369,25 @@ QPS / P99 / CPU 占用 / 内存 / 连接数 / 线程数
 
 笔记服务于已经完成的项目能力，不反向驱动开发。
 
+阶段推进方式：
+
+    Roadmap 只记录「这一阶段要达成什么」
+        ↓
+    上一阶段落地后，按当时的代码现状重写下一阶段的实现方案
+        ↓
+    实施 -> 测试验证 -> 笔记 -> 进入下一阶段
+
+Roadmap 里的实现步骤都写于开工之前，看不到上一阶段最终长成什么样。
+所以每进入新阶段，先核一遍现有家底的 file:line，再改本节方案 —— 沿用草案
+等于按「上一阶段之前」的代码假设施工。第 10 节就是按这条规则重写的第一例。
+
 当前推进顺序：
 
-    第 7 节收尾（状态机接线 + 超时测试修复 + Cancel）
+    第 1 ~ 9 节  已完成（第 9 节 2026-09-26 封版，Case 1~4 全部通过）
         ↓
-    第 8 节 Coroutine
+    第 10 节 Client Runtime      <- 已收口（09-27）：连接自愈 + 失效拦截 + keepalive；
+                                      连接池 / LB / Retry / RpcClient 已按单 endpoint 现状砍掉
         ↓
-    第 9 节 Backpressure
-        ↓
-    第 10 节 Client Runtime
-        ↓
-    第 11 节 Observability
+    第 11 节 Observability       <- 含第 10 节移入的「应用层心跳」欠账
         ↓
     第 12 / 13 节 性能与对照

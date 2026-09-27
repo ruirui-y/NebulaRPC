@@ -28,7 +28,7 @@
 | `read` 返回 **-1 / EAGAIN** | 非阻塞模式下暂时没数据 | **不是**，要重试 |
 | `read` 返回 **-1 / EINTR** | 被信号打断 | **不是**，要重试 |
 | `read` 返回 **-1 / ECONNRESET** | 连接被复位（RST） | 是 |
-| `write` 返回 **-1 / EPIPE** | 对端已经关了，我还写 | 是（且会附带 `SIGPIPE`，本仓库未处理 —— 见 §9.1） |
+| `write` 返回 **-1 / EPIPE** | 对端已经关了，我还写 | 是（且会附带 `SIGPIPE`，**09-27 起用 `MSG_NOSIGNAL` 压住** —— 见 §9.1） |
 | epoll 报 **EPOLLHUP** | 两端都关了 | —— |
 
 ### 0.3 本仓库的三个关连接落点
@@ -36,7 +36,7 @@
 | 落点 | 路径:行 | 干什么 |
 |---|---|---|
 | `Socket::ShutdownWrite()` | `nebula/net/socket.cpp:65` | `shutdown(fd, SHUT_WR)`，只关写方向，fd 留着 |
-| `TcpConnection::ForceCloseInLoop()` | `nebula/net/tcp_connection.cpp:314` | 丢缓冲 + 状态置死，**不关 fd** |
+| `TcpConnection::ForceCloseInLoop()` | `nebula/net/tcp_connection.cpp:335` | 丢缓冲 + 状态置死，**不关 fd** |
 | `Socket::~Socket()` | `nebula/net/socket.cpp:15` | `close(fd)` —— **全项目唯一真正关 fd 的地方** |
 
 记住这张表，后面第 5 节全靠它。
@@ -284,7 +284,7 @@ FIN 不是「管子断了」，它是**数据流里的一个带序列号的位�
 不发 FIN，改发 RST          ← 对端看到的是 ECONNRESET，不是优雅 EOF
 ```
 
-所以「优雅关闭」的标准姿势是**读到 `0` 再 `close`** —— 本仓库 `HandleRead` 的 `n == 0` 分支（`tcp_connection.cpp:149-177`）走的就是这条路，对端 FIN 之后才 `HandleClose()`，中间不会留下未读数据。
+所以「优雅关闭」的标准姿势是**读到 `0` 再 `close`** —— 本仓库 `HandleRead` 的 `n == 0` 分支（`tcp_connection.cpp:183-186`）走的就是这条路，对端 FIN 之后才 `HandleClose()`，中间不会留下未读数据。
 
 `shutdown(SHUT_WR)` **完全不受这条影响**：它只关写方向，接收缓冲里的未读数据照旧能读出来。
 
@@ -361,7 +361,7 @@ FIN 不是「管子断了」，它是**数据流里的一个带序列号的位�
 ### 4.3 本仓库的「有序关闭」
 
 ```cpp
-// nebula/net/tcp_connection.cpp:304
+// nebula/net/tcp_connection.cpp:326
 void TcpConnection::ShutdownInLoop()
 {
     loop_->AssertInLoopThread();
@@ -373,7 +373,7 @@ void TcpConnection::ShutdownInLoop()
 ```
 
 ```cpp
-// nebula/net/tcp_connection.cpp:201  —— 排空之后补上那一刀
+// nebula/net/tcp_connection.cpp:217  —— 排空之后补上那一刀
 if (state_.load() == State::kDisconnecting)
 {
     ShutdownInLoop();
@@ -487,7 +487,7 @@ HandleEventWithGuard()         channel.cpp:37
 ### 5.3 HandleRead 的两个分支
 
 ```cpp
-// nebula/net/tcp_connection.cpp:149
+// nebula/net/tcp_connection.cpp:164
 const ssize_t n = input_buffer_.ReadFd(socket_.Fd(), &saved_errno);
 if (n > 0)          { message_callback_(...); }
 else if (n == 0)    { HandleClose(); }                        // 对端 FIN
@@ -500,7 +500,7 @@ else if (saved_errno != EAGAIN && saved_errno != EWOULDBLOCK)
 ### 5.4 HandleClose 是「应用层认定已死」，不是「关 fd」
 
 ```cpp
-// nebula/net/tcp_connection.cpp:213
+// nebula/net/tcp_connection.cpp:229
 void TcpConnection::HandleClose()
 {
     loop_->AssertInLoopThread();
@@ -520,7 +520,7 @@ void TcpConnection::HandleClose()
 这是最容易漏的一环。完整的销毁链：
 
 ```
-HandleClose()                             tcp_connection.cpp:213
+HandleClose()                             tcp_connection.cpp:229
    └─ close_callback_(guard)
         └─ TcpServer::RemoveConnection()  tcp_server.cpp:80
              └─ RunInLoop →（跨线程投回 owner loop）
@@ -583,7 +583,7 @@ FIN 永远发不出去 → 等不到对端的 FIN → 连接永远挂着，内�
 复位点全项目只有一个：
 
 ```cpp
-// nebula/net/tcp_connection.cpp:190-192
+// nebula/net/tcp_connection.cpp:206-208
 if (output_buffer_.ReadableBytes() == 0U)   // 必须【排空】
 {
     channel_->DisableWriting();              // 只有这里能把 IsWriting() 变回 false
@@ -611,7 +611,7 @@ EPOLLOUT 到来
 **最反直觉的一点**：`Shutdown()` 是「立刻」改状态的 ——
 
 ```cpp
-// nebula/net/tcp_connection.cpp:109
+// nebula/net/tcp_connection.cpp:126
 State expected = State::kConnected;
 if (state_.compare_exchange_strong(expected, State::kDisconnecting))
 ```
@@ -621,7 +621,7 @@ if (state_.compare_exchange_strong(expected, State::kDisconnecting))
 `ForceCloseInLoop` 就是直接跳过「等对端」这一步：
 
 ```cpp
-// nebula/net/tcp_connection.cpp:314
+// nebula/net/tcp_connection.cpp:344
 output_buffer_.RetrieveAll();      // 丢数据 → 内存立刻回落
 channel_->DisableWriting();        // 不再等 EPOLLOUT
 HandleClose();                     // 状态置死 → 走第 5.5 节的回收链
@@ -687,12 +687,12 @@ HandleClose();                     // 状态置死 → 走第 5.5 节的回收�
 | 2 | 「`close` 之后对端一定收到 RST」 | 默认是**尽力发完数据再 FIN**。RST 只出现在特定条件下（`SO_LINGER=0`、close 时接收缓冲还有未读数据等） |
 | 2b | 「只有 `close` 才会发 FIN」 | 两条路：`shutdown(fd, SHUT_WR/SHUT_RDWR)` 和 `close(fd)`。本仓库两条都在用（`socket.cpp:67` / `socket.cpp:15`）。见 §3.4 |
 | 2c | 「`close` 就是把连接对象关掉」 | `close` 关的是 **fd（句柄）**。而且 fd 引用计数没归零时 `close` 不发 FIN；写方向已经 `shutdown` 过的话，`close` 也不再发 FIN |
-| 3 | 「`read` 返回 -1 就是连接断了」 | 必须看 `errno`：`EAGAIN`/`EINTR` 都**不是**错误。本仓库 `tcp_connection.cpp:172` 显式排除了 EAGAIN |
+| 3 | 「`read` 返回 -1 就是连接断了」 | 必须看 `errno`：`EAGAIN`/`EINTR` 都**不是**错误。本仓库 `tcp_connection.cpp:187` 显式排除了 EAGAIN |
 | 4 | 「四次挥手的四个步骤必须分开」 | 本质是「两个方向各关一次」；对端没数据要发时，ACK 和 FIN 可能在同一个报文里 |
 | 5 | 「TIME_WAIT 是浪费，应该关掉」 | 它保证最后的 ACK 能重传 + 避免迟到报文污染新连接。要缓解用 `SO_REUSEADDR` 或长连接 |
 | 6 | 「`accept` 返回时连接才建立」 | 握手在 `accept` 之前就完成了；`accept` 只是从全连接队列里取一个现成的 |
 | 7 | 「`listen` 的 backlog 是 SYN 队列长度」 | Linux 2.2 之后管的是**全连接队列**；SYN 队列长度由 `tcp_max_syn_backlog` 控制 |
-| 8 | 「FIN 排在数据后面，所以 close 时数据一定发得出去」 | 对**内核发送缓冲**成立（内核会先发完里面的数据再发 FIN）。但**用户态缓冲**里还没 `write()` 进去的数据不在此列 —— shutdown 之后再写会得到 EPIPE。本仓库 `if (!channel_->IsWriting())`（`tcp_connection.cpp:308`）保护的正是这一层 |
+| 8 | 「FIN 排在数据后面，所以 close 时数据一定发得出去」 | 对**内核发送缓冲**成立（内核会先发完里面的数据再发 FIN）。但**用户态缓冲**里还没 `write()` 进去的数据不在此列 —— shutdown 之后再写会得到 EPIPE。本仓库 `if (!channel_->IsWriting())`（`tcp_connection.cpp:329`）保护的正是这一层 |
 | 8b | 「对端关了写方向，我这边读会报错 / 阻塞」 | 不会。`read` 会先把存量数据读完，然后返回 **0**（EOF）。见 §3.3 |
 | 9 | 「加 `EPOLLRDHUP` 才能发现对端关闭」 | 不加也能发现（FIN 后 fd 变可读，epoll 报 EPOLLIN）。加了是让「半关闭」从「需要主动 read 探测」变成「被动收到通知」 |
 | 10 | 「TIME_WAIT 在被动关闭方」 | **只有主动关闭方有**。被动方的对应状态是 `CLOSE_WAIT` |
@@ -708,66 +708,76 @@ HandleClose();                     // 状态置死 → 走第 5.5 节的回收�
 | `accept4` 一次设好非阻塞 + CLOEXEC | `nebula/net/socket.cpp:58-63` |
 | 循环 `accept` 直到 EAGAIN（水平触发必须排空） | `nebula/net/acceptor.cpp:33-63` |
 | `SO_REUSEADDR`（TIME_WAIT 复用） | `nebula/net/acceptor.cpp:16` |
-| `TCP_NODELAY` | `nebula/net/tcp_connection.cpp:37` |
+| `TCP_NODELAY` | `nebula/net/tcp_connection.cpp:46` |
 | `EPOLLRDHUP` 挂进读事件 | `nebula/net/channel.cpp:10` |
 | HUP / ERR / 读 / 写 四条转发 | `nebula/net/channel.cpp:37-70` |
-| 读方向 EOF（`read` 返回 0） | `nebula/net/tcp_connection.cpp:168-171` |
-| 读方向错误分支（排除 EAGAIN） | `nebula/net/tcp_connection.cpp:172-176` |
-| half-close 触发点（`SHUT_WR`） | `nebula/net/socket.cpp:65-68` + `tcp_connection.cpp:305-313` |
-| 有序关闭（排空后补 FIN） | `nebula/net/tcp_connection.cpp:201-204` |
-| 强制关闭（丢缓冲 + 摘写事件 + 置死） | `nebula/net/tcp_connection.cpp:314-326` |
-| 应用层认定已死 + 幂等保护 | `nebula/net/tcp_connection.cpp:213-233` |
+| 读方向 EOF（`read` 返回 0） | `nebula/net/tcp_connection.cpp:183-186` |
+| 读方向错误分支（排除 EAGAIN） | `nebula/net/tcp_connection.cpp:187-191` |
+| half-close 触发点（`SHUT_WR`） | `nebula/net/socket.cpp:65-68` + `tcp_connection.cpp:326-333` |
+| 有序关闭（排空后补 FIN） | `nebula/net/tcp_connection.cpp:217-220` |
+| 强制关闭（丢缓冲 + 摘写事件 + 置死） | `nebula/net/tcp_connection.cpp:335-347` |
+| 应用层认定已死 + 幂等保护 | `nebula/net/tcp_connection.cpp:229-249` |
 | 连接表摘除 + 异步销毁 | `nebula/net/tcp_server.cpp:80-97` |
 | fd 真正关闭 | `nebula/net/socket.cpp:15-21` |
 | `Tie` 用 `weak_ptr`（不延长寿命） | `nebula/net/channel.h:102`、`channel.cpp:17-35` |
-| `SIGPIPE` 处理 | **缺失** —— `tcp_connection.cpp:186` 与 `:258` 用裸 `::write`，全仓库无 `SIGPIPE`/`MSG_NOSIGNAL` 处置，见 §9.1 |
+| `SIGPIPE` 处理 | **已处理** —— `tcp_connection.cpp:202` / `:279` 用 `::send(..., MSG_NOSIGNAL)`；**曾全程缺失**，见 §9.1 |
 
 ---
 
-## 9. 本仓库的两处隐患
+## 9. 两处历史隐患（**均已修复，09-27**）
 
-### 9.1 已确认：SIGPIPE 全程未处理
+### 9.1 SIGPIPE 曾经全程未处理 —— **已于 09-27 修复**
 
 `TcpConnection` 往外写用的是裸 `::write`：
 
 ```cpp
-// nebula/net/tcp_connection.cpp:258   直写路径
+// 修复前
+// nebula/net/tcp_connection.cpp:279   直写路径
 written = ::write(socket_.Fd(), data.data(), data.size());
 
-// nebula/net/tcp_connection.cpp:186   HandleWrite 补写
+// nebula/net/tcp_connection.cpp:202   HandleWrite 补写
 const ssize_t n = ::write(socket_.Fd(), output_buffer_.Peek(), output_buffer_.ReadableBytes());
 ```
 
 `::write` 对 socket 的行为等价于 `send(fd, buf, len, 0)` —— **没有 `MSG_NOSIGNAL`**。向一个已经被对端 RST 的 socket 写数据，内核会产生 `SIGPIPE`；而 `SIGPIPE` 的默认处置动作是**终止进程**。
 
-全仓库检索 `SIGPIPE` / `MSG_NOSIGNAL` / `signal(`：
+当时全仓库检索 `SIGPIPE` / `MSG_NOSIGNAL` / `signal(`：`nebula/` 与 `examples/` 均 **0 处**，只有 `tests/rpc_backpressure_test.cpp:346` 有 `MSG_NOSIGNAL`（那是测试自己发裸数据用的）。
+
+后果：**只要对端异常断开（RST）后本端还试图写一次，整个进程会被信号杀掉。**
+
+注意 `SendInLoop` 的 `::write` 失败分支（`tcp_connection.cpp:292-300`）只处理了 `EWOULDBLOCK/EAGAIN`，其余 `errno`（含 `EPIPE`）走 `HandleError()` —— 但信号是在 `write` **返回之前**就投递的，所以先到的是信号，**进程根本活不到 `HandleError`**。那个分支写了等于没写。
+
+两种标准修法：
 
 ```
-nebula/ 下：0 处
-examples/ 下：0 处
-tests/rpc_backpressure_test.cpp:346  有 MSG_NOSIGNAL（但那是测试自己发裸数据用的）
-```
-
-也就是说：**只要对端异常断开（RST）后本端还试图写一次，整个服务进程会被信号杀掉。** 慢消费者 → 硬上限断连 → 若此刻还有残留写动作，就可能踩到。
-
-注意 `SendInLoop` 的 `::write` 失败分支（`tcp_connection.cpp:271-279`）只处理了 `EWOULDBLOCK/EAGAIN`，其余 `errno`（含 `EPIPE`）走 `HandleError()` —— 但信号是在 `write` **返回之前**就投递的，所以先到的是信号，进程可能根本活不到 `HandleError`。
-
-两种标准修法，任选其一：
-
-```
-A. 调用级（精确，推荐）：把两处 ::write 换成 ::send(fd, buf, len, MSG_NOSIGNAL)
+A. 调用级（精确）：把两处 ::write 换成 ::send(fd, buf, len, MSG_NOSIGNAL)
    影响面只限这条 socket
 
 B. 进程级（简单）：main 开头 signal(SIGPIPE, SIG_IGN)
    一处解决全部 fd，但会连带忽略其他来源的 SIGPIPE
 ```
 
-（本节只记录现状与修法，**未改动任何代码**。）
-
-### 9.2 未验证：`HandleError()` 不关连接
+**09-27 选了 A** —— 这是一个库，不该替业务的 `main` 做进程级设置：
 
 ```cpp
-// nebula/net/tcp_connection.cpp:235
+// nebula/net/tcp_connection.cpp:279   直写路径
+// MSG_NOSIGNAL：裸 write 遇对端 RST 会发 SIGPIPE 杀进程，下面的错误分支永远到不了
+written = ::send(socket_.Fd(), data.data(), data.size(), MSG_NOSIGNAL);
+
+// nebula/net/tcp_connection.cpp:202   HandleWrite 补写
+// MSG_NOSIGNAL：裸 write 遇对端 RST 会发 SIGPIPE 杀进程，下面的错误分支永远到不了
+const ssize_t n = ::send(socket_.Fd(), output_buffer_.Peek(), output_buffer_.ReadableBytes(), MSG_NOSIGNAL);
+```
+
+全仓库 `::write` 仅剩 `event_loop.cpp:174` —— 那是写自己进程内的 `eventfd`（不是 pipe、没有「读端关闭」概念，不会产生 `SIGPIPE`），**故意保留**。
+
+**怎么暴露的**：第 10 节的 `rpc_reconnect_test` 一跑就崩在 `__GI___libc_write`。「掐掉服务端后发请求」正好造出「FIN 还没到、通道仍以为连着」的窗口，写一次就中。这也说明**该窗口无法在应用层消除** —— 只能保证 write 不崩、让它返回 `EPIPE` 走 `HandleError`。
+
+### 9.2 `HandleError()` 曾经不关连接 —— **已于 09-27 修复**
+
+原实现取完 `SO_ERROR` 就返回，`error` 赋值后再没被使用 —— 走 `EPOLLERR` 或 `read` 真错误两条路径进来时，**连接不会被关闭**：
+
+```cpp
 void TcpConnection::HandleError()
 {
     int error = 0;
@@ -780,18 +790,9 @@ void TcpConnection::HandleError()
 }
 ```
 
-局部变量 `error` 赋值后再没有被使用，函数直接返回 —— **连接不会被关闭**。走 `EPOLLERR` 或 `read` 真错误这两条路径时都会进这里。
+**09-27 已在末尾补上 `ForceCloseInLoop()`（`tcp_connection.cpp:251-263`）**：先读走 `SO_ERROR`（水平触发下不消费错误，epoll 会反复报同一条连接），再关连接、走正常回收链。
 
-这是**观察到的代码现状**，不是结论 —— 是否真的会卡住（epoll 反复报错、连接表项一直不消失）需要实验确认。按「只相信日志」的做法：
-
-```
-1. 起 echo server，客户端连上
-2. 用 iptables 制造 RST，或直接 kill -9 客户端进程
-3. 观察 server 侧：HandleError 之后还有没有后续动作
-4. 若 connections_ 里该连接一直不消失 / epoll 反复唤醒 → 确认卡住
-```
-
-参考做法：`HandleError` 里取到 `error` 后应当记日志并调 `HandleClose()`（或 `ForceCloseInLoop()`），让连接走正常回收链。
+收益：**对端发 RST、或写失败，现在能真正触发关闭 → `close_callback_` → `TcpClient::RemoveConnection` → `Connector::Restart()`**，此前这条路径是断的。同一批配套加上 `SO_KEEPALIVE`（对端既不发 FIN 也不发 RST 时，靠探测耗尽把错误暴露给 `read`/`write`），见 Roadmap 第 10 节。
 
 ---
 
@@ -805,7 +806,7 @@ void TcpConnection::HandleError()
 不能 waite，能读，不算连接结束
 ```
 
-**2.** 为什么本仓库的 FIN 必须等 `output_buffer_` 排空才能发（`tcp_connection.cpp:308`）？如果反过来先发 FIN 会发生什么？
+**2.** 为什么本仓库的 FIN 必须等 `output_buffer_` 排空才能发（`tcp_connection.cpp:329`）？如果反过来先发 FIN 会发生什么？
 
 ```
 让一个响应完整的到达客户端，如果先发FIN会导致响应很可能只接收到了一半，客户端不知道请求是否成功，此时需要服务端记录该请求的状态，等客户端下次连上时来获取上次请求的状态
