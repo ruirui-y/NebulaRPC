@@ -25,6 +25,7 @@ add_library(nebula_rpc STATIC
     rpc_call.cpp
     rpc_controller.cpp
     rpc_codec.cpp
+    rpc_metrics.cpp
     rpc_server.cpp
     rpc_channel.cpp
 )
