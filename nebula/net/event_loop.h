@@ -9,6 +9,7 @@
 #include <memory>
 #include <mutex>
 #include <thread>
+#include <utility>
 #include <vector>
 
 namespace nebula::net
@@ -33,6 +34,15 @@ public:
 
     void RunInLoop(Functor cb);
     void QueueInLoop(Functor cb);
+
+    // 信号处理函数专用：只做原子置位与 async-signal-safe 的 eventfd 写入，不取锁、不分配
+    void NotifyFromSignal() noexcept;
+
+    // 收到信号通知后在 loop 线程执行一次；必须在 Loop() 启动前设置
+    void SetSignalCallback(Functor cb)
+    {
+        signal_callback_ = std::move(cb);
+    }
 
     TimerId RunAt(TimePoint deadline, Functor cb);
     TimerId RunAfter(std::chrono::milliseconds delay, Functor cb);
@@ -59,7 +69,11 @@ private:
     std::atomic_bool looping_{false};
     std::atomic_bool quit_{false};
     std::atomic_bool calling_pending_functors_{false};
+    std::atomic_bool signal_pending_{false};
     const std::thread::id thread_id_;
+
+    // 只在 Loop() 启动前写、之后只读，因此不需要额外同步
+    Functor signal_callback_;
 
     std::unique_ptr<Poller> poller_;
     int wakeup_fd_;

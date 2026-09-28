@@ -1,9 +1,11 @@
 #include "nebula/net/tcp_server.h"
 
+#include "nebula/base/logger.h"
 #include "nebula/net/event_loop.h"
 #include "nebula/net/tcp_connection.h"
 
 #include <sstream>
+#include <utility>
 
 namespace nebula::net
 {
@@ -50,6 +52,78 @@ void TcpServer::Start(std::size_t io_thread_count)
         });
 }
 
+void TcpServer::Stop()
+{
+    loop_->RunInLoop([this]
+        {
+            StopInLoop();
+        });
+}
+
+void TcpServer::StopInLoop()
+{
+    loop_->AssertInLoopThread();
+
+    if (stopping_)
+    {
+        return;
+    }
+    stopping_ = true;
+
+    NLOG_INFO("tcp server stop accepting connections={}", connections_.size());
+
+    acceptor_->Stop();
+}
+
+void TcpServer::CloseAllConnections(std::function<void()> on_all_closed)
+{
+    loop_->RunInLoop([this, callback = std::move(on_all_closed)]() mutable
+        {
+            CloseAllConnectionsInLoop(std::move(callback));
+        });
+}
+
+void TcpServer::CloseAllConnectionsInLoop(std::function<void()> on_all_closed)
+{
+    loop_->AssertInLoopThread();
+
+    if (closing_)
+    {
+        return;
+    }
+    closing_ = true;
+    all_closed_callback_ = std::move(on_all_closed);
+
+    // 连接分散在各自的 io loop 上，Shutdown 自己会投递过去
+    for (auto& [name, connection] : connections_)
+    {
+        (void)name;
+        connection->Shutdown();
+    }
+
+    CheckAllClosedInLoop();
+}
+
+void TcpServer::CheckAllClosedInLoop()
+{
+    loop_->AssertInLoopThread();
+
+    if (!closing_ || !connections_.empty())
+    {
+        return;
+    }
+
+    closing_ = false;
+
+    if (all_closed_callback_)
+    {
+        // 先换出来再调用：回调里可能又发起一次关闭
+        auto callback = std::move(all_closed_callback_);
+        all_closed_callback_ = {};
+        callback();
+    }
+}
+
 void TcpServer::NewConnection(int socket_fd)
 {
     loop_->AssertInLoopThread();
@@ -89,11 +163,15 @@ void TcpServer::RemoveConnectionInLoop(const TcpConnectionPtr& conn)
 {
     loop_->AssertInLoopThread();
     connections_.erase(conn->Name());
+
     EventLoop* io_loop = conn->Loop();
     io_loop->QueueInLoop([conn]
         {
             conn->ConnectDestroyed();
         });
+
+    // 最后一条连接退场即通知关闭完成，不必靠轮询
+    CheckAllClosedInLoop();
 }
 
 }  // namespace nebula::net

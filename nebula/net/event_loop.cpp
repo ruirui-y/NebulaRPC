@@ -88,6 +88,12 @@ void EventLoop::Loop()
         }
 
         DoPendingFunctors();
+
+        // 信号只负责把循环叫醒并置位，真正的动作回到这里执行
+        if (signal_pending_.exchange(false, std::memory_order_acq_rel) && signal_callback_)
+        {
+            signal_callback_();
+        }
     }
 
     looping_ = false;
@@ -177,6 +183,15 @@ void EventLoop::WakeUp()
     {
         throw std::runtime_error("eventfd write failed: " + std::string(std::strerror(errno)));
     }
+}
+
+void EventLoop::NotifyFromSignal() noexcept
+{
+    signal_pending_.store(true, std::memory_order_release);
+
+    // 信号上下文里唯一安全的动作：原子写 + write；QueueInLoop 会取 mutex，不能用
+    constexpr std::uint64_t one = 1;
+    [[maybe_unused]] const ssize_t n = ::write(wakeup_fd_, &one, sizeof(one));
 }
 
 void EventLoop::HandleWakeUpRead()

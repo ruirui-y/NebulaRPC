@@ -32,6 +32,9 @@ public:
     }
     void Listen();
 
+    // 停止接受新连接：摘掉读事件，listen fd 交给对象析构关闭
+    void Stop();
+
 private:
     void HandleRead();
 

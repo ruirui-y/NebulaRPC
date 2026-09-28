@@ -52,7 +52,17 @@ public:
 
     void Start(std::size_t io_thread_count = 0);
 
+    // 停止接受新连接；已在册的连接不动，由 CloseAllConnections 收尾
+    void Stop();
+
+    // 逐个 Shutdown（FIN 排在待发缓冲之后），连接全部退场后回调；可在任意线程调用
+    void CloseAllConnections(std::function<void()> on_all_closed);
+
 private:
+    void StopInLoop();
+    void CloseAllConnectionsInLoop(std::function<void()> on_all_closed);
+    void CheckAllClosedInLoop();
+
     void NewConnection(int socket_fd);
     void RemoveConnection(const TcpConnectionPtr& conn);
     void RemoveConnectionInLoop(const TcpConnectionPtr& conn);
@@ -68,6 +78,9 @@ private:
     std::size_t max_output_buffer_bytes_{0};
     std::size_t max_input_buffer_bytes_{0};
     bool started_{false};
+    bool stopping_{false};
+    bool closing_{false};
+    std::function<void()> all_closed_callback_;
     std::uint64_t next_connection_id_{1};
     std::unordered_map<std::string, TcpConnectionPtr> connections_;
 };

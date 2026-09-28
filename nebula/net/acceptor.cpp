@@ -30,6 +30,20 @@ void Acceptor::Listen()
     accept_channel_.EnableReading();
 }
 
+void Acceptor::Stop()
+{
+    loop_->AssertInLoopThread();
+
+    if (!listening_)
+    {
+        return;
+    }
+
+    listening_ = false;
+    accept_channel_.DisableAll();
+    accept_channel_.Remove();
+}
+
 void Acceptor::HandleRead()
 {
     loop_->AssertInLoopThread();
