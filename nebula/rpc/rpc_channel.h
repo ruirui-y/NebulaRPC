@@ -5,7 +5,9 @@
 #include "nebula/net/timer_id.h"
 #include "nebula/rpc/rpc_call.h"
 #include "nebula/rpc/rpc_codec.h"
+#include "nebula/rpc/rpc_metrics.h"
 
+#include <google/protobuf/descriptor.h>
 #include <google/protobuf/service.h>
 #include <atomic>
 #include <chrono>
@@ -15,6 +17,7 @@
 #include <memory>
 #include <optional>
 #include <string>
+#include <string_view>
 #include <unordered_map>
 
 namespace nebula::net
@@ -57,6 +60,10 @@ public:
                                               const std::string&)>;
     void SetDegradeHandler(DegradeHandler handler);
 
+    // 周期输出 QPS 与分位数；interval 为 0 表示关闭
+    void StartMetricsReport(std::chrono::milliseconds interval);
+    void StopMetricsReport();
+
     [[nodiscard]] std::size_t PendingCallCount() const noexcept;
     [[nodiscard]] std::uint64_t OverloadRejectCount() const noexcept;
 
@@ -68,10 +75,13 @@ private:
         google::protobuf::Message* response{};
         google::protobuf::RpcController* controller{};
         google::protobuf::Closure* done{};
+        // 描述符指向生成代码里的静态对象，进程内长存，存指针不额外分配
+        const google::protobuf::MethodDescriptor* method{};
         std::optional<TimePoint> deadline;
+        TimePoint sent_at{};
         net::TimerId timeout_timer;
-        int cancel_token{-1};   // 注册在 RpcController 上的取消回调编号，-1 表示未注册
-        RpcCall call;           // 完成权仲裁：response/timeout/cancel/disconnect 只能赢一个
+        int cancel_token{-1};                                                           // 注册在 RpcController 上的取消回调编号，-1 表示未注册
+        RpcCall call;                                                                   // 完成权仲裁：response/timeout/cancel/disconnect 只能赢一个
     };
 
     // 前两种都拒发，区别只在原因能不能自愈：kConnecting 由 Connector 重连，kDisconnected 永久废
@@ -92,6 +102,13 @@ private:
     void OnTimeout(std::uint64_t request_id);
     void HandleFrame(RpcFrame frame);
 
+    void ScheduleHeartbeatInLoop();
+    void CancelHeartbeatInLoop();
+    void OnHeartbeatTimer();
+    void SendHeartbeatInLoop();
+
+    void ReportMetricsInLoop();
+
     // 存活守卫：先 lock 再 Acquire；是 atomic 因为写与读不在同一线程
     struct AliveGuard
     {
@@ -111,6 +128,17 @@ private:
                                  RpcCallState state);
     void CompleteCallWithCancel(std::uint64_t request_id);
 
+    // 返回实测延迟，日志与指标共用同一份数字
+    [[nodiscard]] std::chrono::microseconds RecordMetrics(const PendingCall& pending_call,
+                                                          RpcCallState state);
+
+    // 完成日志的固定字段：request_id / service / method / latency_ms / error
+    void LogCompletion(std::uint64_t request_id,
+                       const PendingCall& pending_call,
+                       std::string_view outcome,
+                       std::chrono::microseconds latency,
+                       std::string_view error);
+
     void FailAllPending(const std::string& reason);
     void FailAllPendingNow(const std::string& reason);
 
@@ -128,6 +156,14 @@ private:
     std::size_t max_pending_calls_{0};
     DegradeHandler degrade_handler_;
     std::atomic_uint64_t overload_reject_count_{0};
+
+    RpcMetrics metrics_;
+    TimePoint metrics_window_start_{};
+    std::chrono::milliseconds metrics_interval_{0};
+    net::TimerId metrics_timer_;
+
+    int heartbeat_missed_{0};
+    net::TimerId heartbeat_timer_;
 
     inline static std::atomic_uint64_t next_request_id_{1};
 };
