@@ -1,9 +1,11 @@
+#include "nebula/base/logger.h"
 #include "nebula/net/event_loop.h"
 #include "nebula/net/tcp_connection.h"
 #include "nebula/rpc/rpc_server.h"
 #include "echo.pb.h"
 
 #include <atomic>
+#include <csignal>
 #include <cstddef>
 #include <cstdint>
 #include <cstdlib>
@@ -33,11 +35,25 @@ private:
     std::atomic_uint64_t next_sequence_{1};
 };
 
+// 信号处理函数只能碰全局对象：闭包捕获是信号上下文里的未定义行为
+nebula::net::EventLoop* g_loop = nullptr;
+
 }  // namespace
+
+extern "C" void HandleSigterm(int)
+{
+    // 只置位 + 写 eventfd，真正的 Stop 回到 loop 线程执行
+    if (g_loop != nullptr)
+    {
+        g_loop->NotifyFromSignal();
+    }
+}
 
 int main(int argc, char** argv)
 {
     const std::uint16_t port = argc > 1 ? static_cast<std::uint16_t>(std::atoi(argv[1])) : 9000;
+
+    nebula::base::InitLogger();
 
     nebula::net::EventLoop loop;
     nebula::rpc::RpcServer server(&loop, "0.0.0.0", port);
@@ -55,9 +71,22 @@ int main(int argc, char** argv)
 
     server.SetMaxOutputBufferBytes(16U * 1024U * 1024U);
 
+    // SIGTERM -> 停 accept -> 等在途请求清零（上限 10s）-> 逐个 Shutdown -> 退出
+    g_loop = &loop;
+    server.SetShutdownCompleteCallback([&loop]
+        {
+            loop.Quit();
+        });
+    loop.SetSignalCallback([&server]
+        {
+            server.Stop();
+        });
+    std::signal(SIGTERM, HandleSigterm);
+
     server.Start(0);
 
-    std::cout << "NebulaRPC RPC echo server listening on 0.0.0.0:" << port << '\n';
+    std::cout << "NebulaRPC RPC echo server listening on 0.0.0.0:" << port
+              << " (SIGTERM triggers graceful shutdown)\n";
     loop.Loop();
     return 0;
 }

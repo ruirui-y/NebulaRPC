@@ -31,3 +31,8 @@ target_link_libraries(nebula_rpc_echo_sequence_client PRIVATE nebula_rpc nebula_
 add_executable(nebula_rpc_echo_sequence_coroutine_client rpc_echo_sequence_coroutine_client.cpp)
 target_include_directories(nebula_rpc_echo_sequence_coroutine_client PRIVATE ${CMAKE_CURRENT_BINARY_DIR})
 target_link_libraries(nebula_rpc_echo_sequence_coroutine_client PRIVATE nebula_rpc nebula_rpc_echo_proto)
+
+# 可观测性演示：持续打流 + 周期输出 QPS/分位数，配合 server 验证结构日志与优雅关闭
+add_executable(nebula_rpc_echo_observability_client rpc_echo_observability_client.cpp)
+target_include_directories(nebula_rpc_echo_observability_client PRIVATE ${CMAKE_CURRENT_BINARY_DIR})
+target_link_libraries(nebula_rpc_echo_observability_client PRIVATE nebula_rpc nebula_rpc_echo_proto)
