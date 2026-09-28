@@ -17,7 +17,7 @@
 |---|---|---|---|---|
 | 1 | `output_buffer_` | `nebula/net/tcp_connection.h:103` | 服务端回包速度 > 客户端读速度（慢消费者） | 软水位 + 硬上限 |
 | 2 | `input_buffer_` | `nebula/net/tcp_connection.h:102` | 对端灌无效流量，上层认不出帧、也不排空 | 输入水位 |
-| 3 | `pending_calls_` | `nebula/rpc/rpc_channel.h:123` | 客户端无限堆在途请求 | `SetMaxPendingCalls` |
+| 3 | `pending_calls_` | `nebula/rpc/rpc_channel.h:151` | 客户端无限堆在途请求 | `SetMaxPendingCalls` |
 | 4 | ~~**`pending_writes_`**~~ | ~~`nebula/rpc/rpc_channel.h:133`~~ | **未建连时的排队完全无界** | ~~`SetMaxPendingWrites`~~ **09-27 已删（§7）** |
 
 第 4 个是草案漏掉的。它原来只受「连接是否很快建立」影响 —— 连接一直建不起来，队列就能一直涨。`RegisterAndSend` 的路由是：先进 `pending_calls_`，**再**决定「直发」还是「进 `pending_writes_`」，所以两个上限是叠加的，不是二选一。**（09-27 后只剩前半段成立：不再有排队，见 §7。）**
@@ -239,13 +239,13 @@ Case 4 的输出即上面最后一段：`server_requests=1`（服务端 `message
               （或客户端自己 Shutdown，连接在服务端超限之前就死了）
 ```
 
-正确做法：用 `RpcCodec::Encode` 造一个合法帧（`RESPONSE` + 一个绝不撞车的 `request_id`），连发 512 个。客户端能正常解码，未知 `request_id` 的帧被**直接丢弃、零副作用**（`rpc_channel.cpp:472-475`）。
+正确做法：用 `RpcCodec::Encode` 造一个合法帧（`RESPONSE` + 一个绝不撞车的 `request_id`），连发 512 个。客户端能正常解码，未知 `request_id` 的帧被**直接丢弃、零副作用**（`rpc_channel.cpp:743-749`）。
 
 **`request_id` 的选择是关键**：必须是一个绝不会等于在途调用 id 的值。若撞上，`CompleteCallWithFrame` 会**在连接被踢之前**就把那次调用成功完成，`Failed()` 变成 false、`done_count` 提前到 1 —— 断言同样失真。
 
 ### 遗留项（诚实记账）
 
-**已闭环**：~~跨层闭环未测~~ → **Case 4 已覆盖并通过**。补齐时顺带**纠正了一次我的错误判断**：连接的断开路径不是 `FailAllPendingNow`（那只在 `RpcChannel::~RpcChannel` 里，`rpc_channel.cpp:139`，reason `"RPC channel closed"`），而是 `OnConnection` 的断开分支 —— 真实链路是：
+**已闭环**：~~跨层闭环未测~~ → **Case 4 已覆盖并通过**。补齐时顺带**纠正了一次我的错误判断**：连接的断开路径不是 `FailAllPendingNow`（那只在 `RpcChannel::~RpcChannel` 里，`rpc_channel.cpp:157`，reason `"RPC channel closed"`），而是 `OnConnection` 的断开分支 —— 真实链路是：
 
 ```
 服务端 SendInLoop:311 超限
@@ -275,7 +275,7 @@ Case 4 的输出即上面最后一段：`server_requests=1`（服务端 `message
 
 剩余四条，**按性质分类**（不要笼统都叫「没测」，混在一起会让人误以为机制有洞）：
 
-1. ~~**`max_pending_writes_` 闸门没有测试 —— 测试无法稳定控制窗口。**~~ **（09-27 作废：机制已删除，§7）** 原归因是「未建连的时间窗口太窄」—— **这个说法不完整**。源码里有两处相关事实：`rpc_channel.h:125` 的 `connection_state_` 初值就是 `kConnecting`，而 `CallMethod` 的投递在 loop 线程内是内联的 —— 所以**构造 channel 之后同步发请求，其实稳定落在窗口内**；窗口真正关闭的条件是 `connector.cpp:115` 的 `::connect` 同步返回 0（当场建连）+ 跑过一轮 loop。也就是说，测不了的原因不是「窄」，而是**窗口何时关闭由 Connector 的内部行为决定，测试无法控制**。要稳定覆盖，需要一个可注入延迟的 Connector 替身；没有它就只能靠时间赌，测试会 flaky —— 宁可不写，也不写一个偶尔红的测试。
+1. ~~**`max_pending_writes_` 闸门没有测试 —— 测试无法稳定控制窗口。**~~ **（09-27 作废：机制已删除，§7）** 原归因是「未建连的时间窗口太窄」—— **这个说法不完整**。源码里有两处相关事实：`rpc_channel.h:88` 的 `connection_state_` 初值就是 `kConnecting`，而 `CallMethod` 的投递在 loop 线程内是内联的 —— 所以**构造 channel 之后同步发请求，其实稳定落在窗口内**；窗口真正关闭的条件是 `connector.cpp:115` 的 `::connect` 同步返回 0（当场建连）+ 跑过一轮 loop。也就是说，测不了的原因不是「窄」，而是**窗口何时关闭由 Connector 的内部行为决定，测试无法控制**。要稳定覆盖，需要一个可注入延迟的 Connector 替身；没有它就只能靠时间赌，测试会 flaky —— 宁可不写，也不写一个偶尔红的测试。
 2. **输入水位与单帧上限的边界未测 —— 参数问题，不是机制缺口。** §3.6 说水位值必须显著大于单帧上限，否则合法大帧会被误杀 —— 但 Case 3 用的是 64KB 水位 + 64KB 垃圾，只证了「机制工作」，没证「配置边界安全」。
 3. **heaptrack 内存曲线没跑 —— 唯一一条「机制在、只是数据没测」。** 草案验收第 1 条因此只完成一半。
 4. **慢客户端压测的 P99 / 错误率未测 —— 属第 12 节（Benchmark）的工作**，不在本节验收范围内。
@@ -335,10 +335,10 @@ tests              rpc_backpressure_test.cpp 里打印 PendingWriteCount() 的�
    `OnConnection` 里 `conn->Connected()` 若为 true，会把已经死掉的 `conn` 赋回 `connection_`，
    后续 `Send` 全打到一条死连接上。
 2. **`FailSentPending` 的「已上线 / 没上线」差集判定消失。** 掉线时全部在途调用一律走
-   `FailAllPending`，reason 仍是 `"RPC connection closed"`（`rpc_channel.cpp:383`）。
+   `FailAllPending`，reason 仍是 `"RPC connection closed"`（`rpc_channel.cpp:453`）。
    业务拿到的 reason 集合没变；变的是「有一部分请求本来可以安全重发」这个信息不再由库提供。
 3. **§5 的 Case 4 链路图已同步更新**：`FailSentPending` 读作 `FailAllPending`（无差集），
-   行号也按 09-27 的代码重新校准过（`OnConnection` 在 `rpc_channel.cpp:358`）。
+   行号也按 09-27 的代码重新校准过（`OnConnection` 在 `rpc_channel.cpp:420`）。
 
 **没有变的部分（本节正题）**：输出软水位 / 输出硬上限 / 输入水位 / 在途闸门 / 降级钩子全部保留，
 `tests/rpc_backpressure_test.cpp` 的四个 case 不受影响，验收试卷 `NRPC-BP-V2` 仍有效。

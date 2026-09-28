@@ -667,7 +667,7 @@ HandleClose();                     // 状态置死 → 走第 5.5 节的回收�
                  └─ 只有业务对软水位毫无反应时才会走到这里
 ```
 
-对照本仓库 echo 示例（`examples/rpc_echo/rpc_echo_server.cpp:48-56`）只打日志不拒绝 —— 因为 echo 没有「可拒绝的入口」（请求已经收了，响应必须发完）。有上游队列的业务（比如 gateway 的 task slot）就能在这里回一个 `SERVER_BUSY`，把「未知」变成「明确失败」。
+对照本仓库 echo 示例（`examples/rpc_echo/rpc_echo_server.cpp:64-72`）只打日志不拒绝 —— 因为 echo 没有「可拒绝的入口」（请求已经收了，响应必须发完）。有上游队列的业务（比如 gateway 的 task slot）就能在这里回一个 `SERVER_BUSY`，把「未知」变成「明确失败」。
 
 ---
 
@@ -706,7 +706,7 @@ HandleClose();                     // 状态置死 → 走第 5.5 节的回收�
 | 非阻塞 socket 创建（`SOCK_NONBLOCK \| SOCK_CLOEXEC`） | `nebula/net/socket.cpp:23-31` |
 | `listen` backlog = `SOMAXCONN` | `nebula/net/socket.cpp:50-56` |
 | `accept4` 一次设好非阻塞 + CLOEXEC | `nebula/net/socket.cpp:58-63` |
-| 循环 `accept` 直到 EAGAIN（水平触发必须排空） | `nebula/net/acceptor.cpp:33-63` |
+| 循环 `accept` 直到 EAGAIN（水平触发必须排空） | `nebula/net/acceptor.cpp:47-76` |
 | `SO_REUSEADDR`（TIME_WAIT 复用） | `nebula/net/acceptor.cpp:16` |
 | `TCP_NODELAY` | `nebula/net/tcp_connection.cpp:46` |
 | `EPOLLRDHUP` 挂进读事件 | `nebula/net/channel.cpp:10` |
@@ -717,7 +717,7 @@ HandleClose();                     // 状态置死 → 走第 5.5 节的回收�
 | 有序关闭（排空后补 FIN） | `nebula/net/tcp_connection.cpp:217-220` |
 | 强制关闭（丢缓冲 + 摘写事件 + 置死） | `nebula/net/tcp_connection.cpp:335-347` |
 | 应用层认定已死 + 幂等保护 | `nebula/net/tcp_connection.cpp:229-249` |
-| 连接表摘除 + 异步销毁 | `nebula/net/tcp_server.cpp:80-97` |
+| 连接表摘除 + 异步销毁 | `nebula/net/tcp_server.cpp:154-174` |
 | fd 真正关闭 | `nebula/net/socket.cpp:15-21` |
 | `Tie` 用 `weak_ptr`（不延长寿命） | `nebula/net/channel.h:102`、`channel.cpp:17-35` |
 | `SIGPIPE` 处理 | **已处理** —— `tcp_connection.cpp:202` / `:279` 用 `::send(..., MSG_NOSIGNAL)`；**曾全程缺失**，见 §9.1 |
@@ -769,7 +769,7 @@ written = ::send(socket_.Fd(), data.data(), data.size(), MSG_NOSIGNAL);
 const ssize_t n = ::send(socket_.Fd(), output_buffer_.Peek(), output_buffer_.ReadableBytes(), MSG_NOSIGNAL);
 ```
 
-全仓库 `::write` 仅剩 `event_loop.cpp:174` —— 那是写自己进程内的 `eventfd`（不是 pipe、没有「读端关闭」概念，不会产生 `SIGPIPE`），**故意保留**。
+全仓库还剩两处 `::write`，都在 `event_loop.cpp`：`:180`（`WakeUp`）与 `:194`（`NotifyFromSignal`，§11 信号注入）—— 两处都是写自己进程内的 `eventfd`（不是 pipe、没有「读端关闭」概念，不会产生 `SIGPIPE`），**故意保留**。
 
 **怎么暴露的**：第 10 节的 `rpc_reconnect_test` 一跑就崩在 `__GI___libc_write`。「掐掉服务端后发请求」正好造出「FIN 还没到、通道仍以为连着」的窗口，写一次就中。这也说明**该窗口无法在应用层消除** —— 只能保证 write 不崩、让它返回 `EPIPE` 走 `HandleError`。
 

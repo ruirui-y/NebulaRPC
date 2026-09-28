@@ -995,7 +995,7 @@ keepalive 探测耗尽
      走 `Disconnect()` 淘汰，必须补这个判据。
 3. `RpcChannel` 改为「不可用即拒发」—— **已落地**
    - `RegisterAndSend` 的闸门判据从 `== kDisconnected` 改成 `!= kConnected`
-     （`rpc_channel.cpp:237`），两种不可用状态一起拒发；
+     （`rpc_channel.cpp:284`），两种不可用状态一起拒发；
    - 删掉 `pending_writes_` 队列、建连冲刷循环、`FailSentPending` 差集判定、
      `max_pending_writes_` 闸门与 `SetMaxPendingWrites` / `PendingWriteCount` 两个 API；
      掉线分支改用 `FailAllPending`（`:384`）；
@@ -1075,7 +1075,7 @@ keepalive 探测耗尽
 | `:668` | `RejectOverloaded` 内 | `Failed` |
 | `:659` | 降级钩子接管分支 | `Completed` |
 
-改动：`rpc_call.h` 加 `Invalid`；`rpc_channel.cpp:66-78` 的 `CompleteFailure` 加 `RpcCallState state`
+改动：`rpc_call.h` 加 `Invalid`；`rpc_channel.cpp:97-109` 的 `CompleteFailure` 加 `RpcCallState state`
 （**不给默认值**）并在内部 `SetCallState`。
 
 1. **必须新增 `Invalid`，不能复用 `Failed`。** 三个 per-call 错误若标 `Failed`，重试逻辑
@@ -1085,7 +1085,7 @@ keepalive 探测耗尽
 2. **`state` 不给默认值**是手段不是洁癖：让编译器在**每个调用点**拦住漏写 —— 这比补 6 句
    `SetCallState` 可靠，而且下一次新增失败出口时自动生效。
 3. **降级钩子接管写 `Completed`**，与 `CompleteFrame` 那条路**同构**：钩子注释
-   （`rpc_channel.h:54`）写着「返回 true 表示钩子已自行完成该次调用」，即往返被收口（`Completed`）、
+   （`rpc_channel.h:57`）写着「返回 true 表示钩子已自行完成该次调用」，即往返被收口（`Completed`）、
    业务是否失败由 `Failed()` 表达，`rpc_awaiter.h` 的兜底 throw 接住。
 
 **第三批 · 砍掉 `RpcClient`，改为失效拦截**（09-27）
@@ -1159,7 +1159,7 @@ Connector 每轮重连尝试失败
    由业务自己退避重发。这是本批最大的语义变化，也是 `tests/rpc_reconnect_test.cpp` 断言
    与之前完全相反的原因。
 2. **冷启动的首个请求必失败。** `connection_state_` 初值就是 `kConnecting`
-   （`rpc_channel.h:125`），进程刚起、`Connector` 还在建连的那几十毫秒里任何请求都被拒。
+   （`rpc_channel.h:88`），进程刚起、`Connector` 还在建连的那几十毫秒里任何请求都被拒。
    业务需要「启动后先探活再放量」。
 3. **「肯定没执行」这个集合没了。** 队列天然把掉线时刻的请求分成「已 Send（服务端可能执行过）」
    与「只在队列（肯定没执行）」两类；取消队列后**全部**归为「可能执行过」，
@@ -1206,8 +1206,7 @@ Connector 每轮重连尝试失败
 -   请求追踪
 -   优雅关闭
 
-状态：未开始（spdlog 已引入，RPC 层零日志调用）。另外第 10 节的静默死亡发现只做到 keepalive，
-「进程级 hang」这一半欠在第 5 点。
+状态：**已落地（2026-09-28，待编译验证）**。五块全部实现；下面「实际落地」一节记录与草案的四处偏差。
 
 ### 实现细节
 
@@ -1249,6 +1248,57 @@ Connector 每轮重连尝试失败
 - 一次 RPC 的日志能串起 发起 -> 完成 全链路（同一 request_id）；
 - 周期指标输出的 P99 与手工统计一致；
 - 优雅关闭期间已收到的请求全部正常返回，不丢请求。
+
+### 实际落地（2026-09-28）
+
+五块都落了。**与草案的四处偏差**（草案是按想象写的，实现被现实改了）：
+
+1. **④ 的 `SIGTERM -> loop->QueueInLoop(server.Stop)` 不合法，已改**。
+   `QueueInLoop` 要取 `mutex_` 并构造 `std::function`，两者都不是 async-signal-safe 的 ——
+   在信号上下文里调用是未定义行为（最坏是与被中断线程自己的取锁死锁）。
+   实际做法：`EventLoop::NotifyFromSignal()`（`event_loop.cpp:188`）只做**原子置位 + `::write(wakeup_fd_)`**
+   两件信号安全的事；`Loop()` 每轮迭代末尾检查 `signal_pending_`（`event_loop.cpp:93`）后
+   才回 loop 线程执行 `signal_callback_`（`event_loop.h:39/72/76`）。
+2. **④ 的 `TcpServer::Stop()` 拆成了两个方法**。草案把「停 accept -> 等 in-flight -> 逐个 Shutdown」
+   写成一个方法，但 `TcpServer` 不知道什么叫「in-flight」（那是 RPC 层的概念）。实际拆为
+   `Stop()`（`tcp_server.cpp:55`，停 accept）、`CloseAllConnections(on_all_closed)`（`:78`，
+   逐个 Shutdown 并在连接全部退场后回调）；**等 in-flight 由 `RpcServer` 负责**。
+3. **③⑤ 都不用动 `rpc_codec`**。`RpcCodec::Encode/Decode` 对 `type` 完全无感知（meta 整体序列化），
+   加 `trace_id` 与 `HEARTBEAT` 都不需要改 codec。草案里「改 4 处」实际是 3 处：
+   `rpc_meta.proto` + 客户端 `HandleFrame`/心跳定时器 + 服务端 `OnMessage` 分流。
+4. **① 的 service/method 用描述符指针存，不存字符串**。
+   `PendingCall` 里放 `const MethodDescriptor*`（`rpc_channel.h:79`，8 字节、指向生成代码的静态对象），
+   完成日志直接从它取 `service()->full_name()` / `name()`；只有指标表才拼 `"service.method"` 串做 key。
+   这样不给 §12 的分配热点清单凭空加一条 per-call 字符串。
+
+**关键锚点**：
+
+| 块 | 落点 |
+|---|---|
+| ① 结构化日志 | `rpc_channel.cpp:246`（发起日志 `rpc call start`）、`:891` `LogCompletion`（打点 `:906`，固定字段 request_id/outcome/service/method/latency_ms/error）、`:455` 断连日志、`:484` 协议错误、`rpc_server.cpp:228` dispatch |
+| ② Metrics | 新增 `nebula/rpc/rpc_metrics.h` / `.cpp`；`LatencyHistogram` 桶界 `kBoundsUs` = 1/5/10/50/100/500/1000ms + 溢出桶；`RpcChannel::StartMetricsReport`（`rpc_channel.cpp:607`）、`ReportMetricsInLoop`（`:656`）；`RpcMetrics::TakeCycleCount()` 由 channel 计时算 QPS，`Dump()` 只出计数与 P50/P95/P99 |
+| ③ Trace | `rpc_meta.proto:20` `string trace_id = 8`；`GenerateTraceId()`（`rpc_channel.cpp:28`，进程盐 + 计数 + 时钟 → 16 位 hex）；服务端 `SendResponse`/`SendError` 原样带回 |
+| ④ 优雅关闭 | `TcpServer::Stop`（`tcp_server.cpp:55`）/ `CloseAllConnections`（`:78`）/ `CheckAllClosedInLoop`（`:107`，由 `RemoveConnectionInLoop:174` 驱动）；`Acceptor::Stop`（`acceptor.cpp:33`，摘读事件，**listen fd 留给对象析构**）；`RpcServer::Stop/StopInLoop`（`rpc_server.cpp:62/70`）、`CloseConnectionsInLoop`（`:97`）、`FinishShutdownInLoop`（`:121`）、`OnCallFinished`（`:145`）、`in_flight_` 计数（`rpc_server.h:81`）；总上限 `kGracefulTimeout = 10s`（`rpc_server.cpp:21`） |
+| ⑤ 应用层心跳 | `rpc_meta.proto:10` `HEARTBEAT = 3`；常量 `kHeartbeatInterval = 3s` / `kHeartbeatMaxMissed = 3`（`rpc_channel.cpp:24-25`）；客户端 `ScheduleHeartbeatInLoop`（`:518`）/ `OnHeartbeatTimer`（`:557`，连丢 3 次 → `ForceClose` 走报丧线）；服务端 `SendHeartbeatEcho`（`rpc_server.cpp:297`），`OnMessage` 在 REQUEST 判定**之前**分流（`:175`） |
+| 演示 | `examples/rpc_echo/rpc_echo_server.cpp:43/76/80/84`（SIGTERM → 优雅关闭）；新增 `rpc_echo_observability_client.cpp`（持续打流 + 周期指标） |
+
+**两处口径选择（不是疏漏，是刻意）**：
+
+- **没进 `pending_calls_` 的调用也计入指标**（连接不可用 / 过载拒绝 / 入队前已超时，`rpc_channel.cpp:291/301/318`）。
+  否则「被闸门拦下」这一整类请求在统计里不存在，`failed` 会被系统性低估。
+- **对端回 `ERROR` 帧计入 `failed`**（按对端结果记，`rpc_channel.cpp:765`），但完成权仍是 `Completed` ——
+  `RpcCallState` 表达的是「谁抢到完成权」，不是成败，这条语义没动。
+
+**本阶段不做 / 未验证（诚实记账）**：
+
+- **代码未编译未运行**（按护栏由用户自行验证）；
+- **心跳的「进程僵死」场景没有自动化验证** —— 要造一个「内核活、进程不干活」的对端，测试不可控；
+  与 §10 keepalive 同性质，不写偶发红的测试；
+- 验收标准第 1 条（日志串链）与第 3 条（优雅关闭不丢请求）目前只有示例可人工观察，**没有断言用例**；
+- **服务端无 metrics**：`超时` 本身就是客户端概念，本轮指标只做客户端侧；服务端 QPS 由 §12 从外部测；
+- `Stop()` 不立即 `close` listen fd（交给 `~Acceptor` → `~Socket`），与 §10 的 FIN 是同一条纪律：
+  「逻辑置死」与「释放 fd」分两处；
+- `trace_id` 只支持本端生成，**没有「透传上游」的入口**（当前没有上游可透传，等真有 service→service 再加 setter）。
 
 ------------------------------------------------------------------------
 

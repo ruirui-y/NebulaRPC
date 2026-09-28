@@ -110,7 +110,7 @@ loop->QueueInLoop([guard]
 
 1. **`CallMethod` 会同步失败**。method 为空 / 序列化失败 / 帧编码失败都会走
    `loop_->RunInLoop(CompleteFailure(...))`，而 `RunInLoop` 在 loop 线程上是**内联执行**的
-   （`event_loop.cpp:108`）。于是 `done->Run()` 发生在 `await_suspend` 还没返回时——
+   （`event_loop.cpp:116`）。于是 `done->Run()` 发生在 `await_suspend` 还没返回时——
    此刻协程**尚未挂起**，`resume()` 它是 UB。
    `QueueInLoop` 把恢复变成积压任务，`DoPendingFunctors()` 只在当前栈全部展开后跑 → 时序安全。
 2. 顺带抹平 done 四条路径「内联 / 排队」的差异，恢复点统一在 loop 线程队列里。
