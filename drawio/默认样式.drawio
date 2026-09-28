@@ -1,0 +1,718 @@
+<mxfile host="Electron" pages="7">
+  <diagram id="pg1" name="① 常用框样式">
+    <mxGraphModel dx="1400" dy="800" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1900" pageHeight="735" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="pg1" value="① 常用框样式 —— 左边拖走，右边是它的用途" style="swimlane;html=1;startSize=28;fillColor=#fafafa;strokeColor=#888888;fontSize=13;fontStyle=1;verticalAlign=top;align=left;spacingLeft=10;" vertex="1" parent="1">
+          <mxGeometry x="40" y="40" width="1820" height="655" as="geometry" />
+        </mxCell>
+        <mxCell id="p1note" value="用法：① 把左边的图形直接拖到你的画布；② 或选中 Ctrl+C → 切窗口 Ctrl+V；③ 想长期用就拖进左下「便签本」（随软件保存，这才是真正的默认样式）。&#xa;图形里的文字是占位符，替换即可；四类语义配色与「流程梳理_answer.drawio」完全一致。" style="rounded=0;whiteSpace=wrap;html=1;fontSize=10;align=left;spacingLeft=8;verticalAlign=top;spacingTop=4;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="pg1">
+          <mxGeometry x="30" y="50" width="1760" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="p1s0" value="流程框" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;spacingLeft=8;verticalAlign=top;spacingTop=4;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="pg1">
+          <mxGeometry x="30" y="115" width="240" height="64" as="geometry" />
+        </mxCell>
+        <mxCell id="p1t0" value="正常步骤 / 函数调用 / 主干节点&#xa;fillColor #dae8fc" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontSize=11;fontColor=#555555;" vertex="1" parent="pg1">
+          <mxGeometry x="284" y="115" width="310" height="64" as="geometry" />
+        </mxCell>
+        <mxCell id="p1s1" value="出口 · 成功" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;spacingLeft=8;verticalAlign=top;spacingTop=4;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="pg1">
+          <mxGeometry x="610" y="115" width="240" height="64" as="geometry" />
+        </mxCell>
+        <mxCell id="p1t1" value="完成点 / 唯一出口 / 正常返回&#xa;fillColor #d5e8d4" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontSize=11;fontColor=#555555;" vertex="1" parent="pg1">
+          <mxGeometry x="864" y="115" width="310" height="64" as="geometry" />
+        </mxCell>
+        <mxCell id="p1s2" value="坑 · 警告" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;spacingLeft=8;verticalAlign=top;spacingTop=4;fillColor=#f8cecc;strokeColor=#b85450;" vertex="1" parent="pg1">
+          <mxGeometry x="1190" y="115" width="240" height="64" as="geometry" />
+        </mxCell>
+        <mxCell id="p1t2" value="易错点 / UB / 反直觉行为&#xa;fillColor #f8cecc" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontSize=11;fontColor=#555555;" vertex="1" parent="pg1">
+          <mxGeometry x="1444" y="115" width="310" height="64" as="geometry" />
+        </mxCell>
+        <mxCell id="p1s3" value="说明 · 为什么" style="rounded=0;whiteSpace=wrap;html=1;fontSize=10;align=left;spacingLeft=8;verticalAlign=top;spacingTop=4;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="pg1">
+          <mxGeometry x="30" y="255" width="240" height="64" as="geometry" />
+        </mxCell>
+        <mxCell id="p1t3" value="概念解释 / 设计动机&#xa;fillColor #fff2cc（直角）" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontSize=11;fontColor=#555555;" vertex="1" parent="pg1">
+          <mxGeometry x="284" y="255" width="310" height="64" as="geometry" />
+        </mxCell>
+        <mxCell id="p1s4" value="客户端" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;spacingLeft=8;verticalAlign=top;spacingTop=4;fillColor=#e1d5e7;strokeColor=#9673a6;" vertex="1" parent="pg1">
+          <mxGeometry x="610" y="255" width="240" height="64" as="geometry" />
+        </mxCell>
+        <mxCell id="p1t4" value="客户端侧逻辑（紫）&#xa;与服务端一眼可分" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontSize=11;fontColor=#555555;" vertex="1" parent="pg1">
+          <mxGeometry x="864" y="255" width="310" height="64" as="geometry" />
+        </mxCell>
+        <mxCell id="p1s5" value="服务端" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;spacingLeft=8;verticalAlign=top;spacingTop=4;fillColor=#b1ddf0;strokeColor=#10739e;" vertex="1" parent="pg1">
+          <mxGeometry x="1190" y="255" width="240" height="64" as="geometry" />
+        </mxCell>
+        <mxCell id="p1t5" value="服务端侧逻辑（青）&#xa;与客户端一眼可分" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontSize=11;fontColor=#555555;" vertex="1" parent="pg1">
+          <mxGeometry x="1444" y="255" width="310" height="64" as="geometry" />
+        </mxCell>
+        <mxCell id="p1s6" value="代码锚点" style="rounded=0;whiteSpace=wrap;html=1;fontSize=10;align=left;spacingLeft=8;verticalAlign=top;spacingTop=4;fillColor=#f5f5f5;strokeColor=#666666;fontFamily=Courier New;spacingLeft=6;spacingTop=3;" vertex="1" parent="pg1">
+          <mxGeometry x="30" y="395" width="240" height="64" as="geometry" />
+        </mxCell>
+        <mxCell id="p1t6" value="file.cpp:NNN + 代码片段&#xa;等宽 Courier New、灰底" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontSize=11;fontColor=#555555;" vertex="1" parent="pg1">
+          <mxGeometry x="284" y="395" width="310" height="64" as="geometry" />
+        </mxCell>
+        <mxCell id="p1s7" value="节标题条" style="rounded=0;whiteSpace=wrap;html=1;fontSize=10;fillColor=#333333;strokeColor=#000000;fontColor=#ffffff;fontSize=12;fontStyle=1;align=left;spacingLeft=10;verticalAlign=middle;" vertex="1" parent="pg1">
+          <mxGeometry x="610" y="395" width="240" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="p1t7" value="页面 / 小节标题&#xa;深底白字、fontStyle=1" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontSize=11;fontColor=#555555;" vertex="1" parent="pg1">
+          <mxGeometry x="864" y="395" width="310" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="p1s8" value="纯文本注释" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontSize=11;fontColor=#555555;" vertex="1" parent="pg1">
+          <mxGeometry x="1190" y="395" width="240" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="p1t8" value="不占框的旁注，可贴任意位置&#xa;strokeColor=none" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontSize=11;fontColor=#555555;" vertex="1" parent="pg1">
+          <mxGeometry x="1444" y="395" width="310" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="p1s9" value="分组虚线框" style="rounded=0;whiteSpace=wrap;html=1;fontSize=10;align=left;spacingLeft=8;verticalAlign=top;spacingTop=4;fillColor=none;strokeColor=#999999;dashed=1;fontSize=11;fontColor=#666666;" vertex="1" parent="pg1">
+          <mxGeometry x="30" y="535" width="240" height="72" as="geometry" />
+        </mxCell>
+        <mxCell id="p1t9" value="圈一组，表示同属一个概念&#xa;dashed=1、fillColor=none" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontSize=11;fontColor=#555555;" vertex="1" parent="pg1">
+          <mxGeometry x="284" y="535" width="310" height="72" as="geometry" />
+        </mxCell>
+        <mxCell id="p1s10" value="判定菱形" style="rhombus;whiteSpace=wrap;html=1;fontSize=10;fillColor=#ffe6cc;strokeColor=#d79b00;align=center;verticalAlign=middle;" vertex="1" parent="pg1">
+          <mxGeometry x="610" y="535" width="200" height="90" as="geometry" />
+        </mxCell>
+        <mxCell id="p1t10" value="分支判断（只能两个出口）&#xa;rhombus" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontSize=11;fontColor=#555555;" vertex="1" parent="pg1">
+          <mxGeometry x="824" y="535" width="350" height="90" as="geometry" />
+        </mxCell>
+        <mxCell id="p1s11" value="存储 · 数据库" style="shape=cylinder3;whiteSpace=wrap;html=1;fontSize=10;boundedLbl=1;backgroundOutline=1;size=15;fillColor=#dae8fc;strokeColor=#6c8ebf;align=center;verticalAlign=middle;" vertex="1" parent="pg1">
+          <mxGeometry x="1190" y="535" width="140" height="90" as="geometry" />
+        </mxCell>
+        <mxCell id="p1t11" value="Redis / MySQL / SQLite&#xa;shape=cylinder3" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontSize=11;fontColor=#555555;" vertex="1" parent="pg1">
+          <mxGeometry x="1344" y="535" width="410" height="90" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+  <diagram id="pg2" name="② 连线 · 容器 · 组合">
+    <mxGraphModel dx="1400" dy="800" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1900" pageHeight="620" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="pg2" value="② 连线 · 容器 · 组合示例（连线请连同两端框一起复制）" style="swimlane;html=1;startSize=28;fillColor=#fafafa;strokeColor=#888888;fontSize=13;fontStyle=1;verticalAlign=top;align=left;spacingLeft=10;" vertex="1" parent="1">
+          <mxGeometry x="40" y="40" width="1820" height="540" as="geometry" />
+        </mxCell>
+        <mxCell id="p2note" value="连线要连同两端的框一起复制，否则样式对不上；泳道是容器，子节点坐标相对它（这是「只改泳道原点就能分页」的原因）。" style="rounded=0;whiteSpace=wrap;html=1;fontSize=10;align=left;spacingLeft=8;verticalAlign=top;spacingTop=4;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="pg2">
+          <mxGeometry x="30" y="50" width="1760" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="p2lane" value="泳道（容器）  startSize=28" style="swimlane;html=1;startSize=28;fillColor=#fafafa;strokeColor=#888888;fontSize=13;fontStyle=1;verticalAlign=top;align=left;spacingLeft=10;" vertex="1" parent="pg2">
+          <mxGeometry x="30" y="105" width="620" height="215" as="geometry" />
+        </mxCell>
+        <mxCell id="p2b1" value="子节点坐标&#xa;相对泳道（parent）" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;spacingLeft=8;verticalAlign=top;spacingTop=4;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="p2lane">
+          <mxGeometry x="30" y="45" width="250" height="66" as="geometry" />
+        </mxCell>
+        <mxCell id="p2b2" value="拖动泳道&#xa;整组跟随" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;spacingLeft=8;verticalAlign=top;spacingTop=4;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="p2lane">
+          <mxGeometry x="320" y="45" width="250" height="66" as="geometry" />
+        </mxCell>
+        <mxCell id="p2lane_t" value="容器语义：往里拖一个方块，它的 parent 就变成泳道，&#xa;坐标变成「相对泳道」。所以移动/缩放泳道时整组跟随。&#xa;⚠ 内容区高度 = 总高 − startSize(28)，留够余量。" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontSize=11;fontColor=#555555;" vertex="1" parent="pg2">
+          <mxGeometry x="680" y="105" width="560" height="90" as="geometry" />
+        </mxCell>
+        <mxCell id="p2a1" value="TcpConnection::Send&#xa;rpc_channel.cpp:417" style="rounded=0;whiteSpace=wrap;html=1;fontSize=10;align=left;spacingLeft=8;verticalAlign=top;spacingTop=4;fillColor=#f5f5f5;strokeColor=#666666;fontFamily=Courier New;spacingLeft=6;spacingTop=3;" vertex="1" parent="pg2">
+          <mxGeometry x="30" y="370" width="200" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="p2a2" value="RpcServer::OnMessage&#xa;rpc_server.cpp:157" style="rounded=0;whiteSpace=wrap;html=1;fontSize=10;align=left;spacingLeft=8;verticalAlign=top;spacingTop=4;fillColor=#f5f5f5;strokeColor=#666666;fontFamily=Courier New;spacingLeft=6;spacingTop=3;" vertex="1" parent="pg2">
+          <mxGeometry x="330" y="370" width="200" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="p2edge_t" value="主干 / 同步路径：edgeStyle=orthogonalEdgeStyle;rounded=0&#xa;标签白底 labelBackgroundColor=#ffffff" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontSize=11;fontColor=#555555;" vertex="1" parent="pg2">
+          <mxGeometry x="600" y="370" width="640" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="p2b3" value="ForceClose&#xa;rpc_channel.cpp:574" style="rounded=0;whiteSpace=wrap;html=1;fontSize=10;align=left;spacingLeft=8;verticalAlign=top;spacingTop=4;fillColor=#f5f5f5;strokeColor=#666666;fontFamily=Courier New;spacingLeft=6;spacingTop=3;" vertex="1" parent="pg2">
+          <mxGeometry x="30" y="460" width="200" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="p2b4" value="Connector::Restart&#xa;连接重建" style="rounded=0;whiteSpace=wrap;html=1;fontSize=10;align=left;spacingLeft=8;verticalAlign=top;spacingTop=4;fillColor=#f5f5f5;strokeColor=#666666;fontFamily=Courier New;spacingLeft=6;spacingTop=3;" vertex="1" parent="pg2">
+          <mxGeometry x="330" y="460" width="200" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="p2bedge_t" value="异步 / 回调 / 报丧线：同样串加 dashed=1&#xa;（虚线一律表示「不是同步返回」）" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontSize=11;fontColor=#555555;" vertex="1" parent="pg2">
+          <mxGeometry x="600" y="460" width="640" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="p2e1" value="网络" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;fontSize=11;labelBackgroundColor=#ffffff;" edge="1" parent="pg2" source="p2a1" target="p2a2">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="p2e2" value="报丧线" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;fontSize=11;labelBackgroundColor=#ffffff;dashed=1;" edge="1" parent="pg2" source="p2b3" target="p2b4">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+  <diagram id="pg3" name="③ 箭头 · 标签样式">
+    <mxGraphModel dx="1400" dy="800" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1900" pageHeight="812" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="pg3" value="③ 箭头 + 标签成套样式（每组请连同两端框一起复制）" style="swimlane;html=1;startSize=28;fillColor=#fafafa;strokeColor=#888888;fontSize=13;fontStyle=1;verticalAlign=top;align=left;spacingLeft=10;" vertex="1" parent="1">
+          <mxGeometry x="40" y="40" width="1820" height="732" as="geometry" />
+        </mxCell>
+        <mxCell id="p3note" value="标签位置：默认「压线」（labelBackgroundColor=#ffffff，密集图首选）。想让它浮到箭头上方 → 选中连线后拖线上那个黄色标签手柄（drawio 自动记进样式），或用第 ② 组那种独立文本块。&#xa;拐弯形状：rounded=0 直角 / rounded=1 圆角。虚线 dashed=1 一律表示「不是同步返回」。连线必须连同两端的框一起复制，否则样式对不上。" style="rounded=0;whiteSpace=wrap;html=1;fontSize=10;align=left;spacingLeft=8;verticalAlign=top;spacingTop=4;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="pg3">
+          <mxGeometry x="30" y="45" width="1760" height="65" as="geometry" />
+        </mxCell>
+        <mxCell id="p3d0" value="① 箭头 + 压线标签（推荐）&#xa;rounded=0; labelBackgroundColor=#ffffff" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontSize=11;fontColor=#555555;" vertex="1" parent="pg3">
+          <mxGeometry x="30" y="125" width="820" height="44" as="geometry" />
+        </mxCell>
+        <mxCell id="p3n0a" value="起点框&#xa;file.cpp:NNN" style="rounded=0;whiteSpace=wrap;html=1;fontSize=10;align=left;spacingLeft=8;verticalAlign=top;spacingTop=4;fillColor=#f5f5f5;strokeColor=#666666;fontFamily=Courier New;spacingLeft=6;spacingTop=3;" vertex="1" parent="pg3">
+          <mxGeometry x="50" y="187" width="170" height="46" as="geometry" />
+        </mxCell>
+        <mxCell id="p3n0b" value="终点框&#xa;file.cpp:NNN" style="rounded=0;whiteSpace=wrap;html=1;fontSize=10;align=left;spacingLeft=8;verticalAlign=top;spacingTop=4;fillColor=#f5f5f5;strokeColor=#666666;fontFamily=Courier New;spacingLeft=6;spacingTop=3;" vertex="1" parent="pg3">
+          <mxGeometry x="360" y="187" width="170" height="46" as="geometry" />
+        </mxCell>
+        <mxCell id="p3t0" value="用途：主干 / 同步路径。&#xa;标签白底压住线，密集图首选" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontSize=11;fontColor=#555555;" vertex="1" parent="pg3">
+          <mxGeometry x="560" y="187" width="320" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="p3d1" value="② 文字浮在箭头上方&#xa;不写 labelBackgroundColor + 独立文本块" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontSize=11;fontColor=#555555;" vertex="1" parent="pg3">
+          <mxGeometry x="910" y="125" width="820" height="44" as="geometry" />
+        </mxCell>
+        <mxCell id="p3n1a" value="起点框&#xa;file.cpp:NNN" style="rounded=0;whiteSpace=wrap;html=1;fontSize=10;align=left;spacingLeft=8;verticalAlign=top;spacingTop=4;fillColor=#f5f5f5;strokeColor=#666666;fontFamily=Courier New;spacingLeft=6;spacingTop=3;" vertex="1" parent="pg3">
+          <mxGeometry x="930" y="187" width="170" height="46" as="geometry" />
+        </mxCell>
+        <mxCell id="p3n1b" value="终点框&#xa;file.cpp:NNN" style="rounded=0;whiteSpace=wrap;html=1;fontSize=10;align=left;spacingLeft=8;verticalAlign=top;spacingTop=4;fillColor=#f5f5f5;strokeColor=#666666;fontFamily=Courier New;spacingLeft=6;spacingTop=3;" vertex="1" parent="pg3">
+          <mxGeometry x="1240" y="187" width="170" height="46" as="geometry" />
+        </mxCell>
+        <mxCell id="p3t1" value="两种做法：① 选中连线拖那个黄色&#xa;标签手柄；② 像这样用独立文本块" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontSize=11;fontColor=#555555;" vertex="1" parent="pg3">
+          <mxGeometry x="1440" y="187" width="320" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="p3x1" value="网络调用" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;fontSize=10;fontColor=#333333;" vertex="1" parent="pg3">
+          <mxGeometry x="1058" y="151" width="150" height="22" as="geometry" />
+        </mxCell>
+        <mxCell id="p3d2" value="③ 圆角折线 + 标签&#xa;rounded=1" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontSize=11;fontColor=#555555;" vertex="1" parent="pg3">
+          <mxGeometry x="30" y="280" width="820" height="44" as="geometry" />
+        </mxCell>
+        <mxCell id="p3n2a" value="起点框&#xa;file.cpp:NNN" style="rounded=0;whiteSpace=wrap;html=1;fontSize=10;align=left;spacingLeft=8;verticalAlign=top;spacingTop=4;fillColor=#f5f5f5;strokeColor=#666666;fontFamily=Courier New;spacingLeft=6;spacingTop=3;" vertex="1" parent="pg3">
+          <mxGeometry x="50" y="342" width="170" height="46" as="geometry" />
+        </mxCell>
+        <mxCell id="p3n2b" value="终点框&#xa;file.cpp:NNN" style="rounded=0;whiteSpace=wrap;html=1;fontSize=10;align=left;spacingLeft=8;verticalAlign=top;spacingTop=4;fillColor=#f5f5f5;strokeColor=#666666;fontFamily=Courier New;spacingLeft=6;spacingTop=3;" vertex="1" parent="pg3">
+          <mxGeometry x="360" y="342" width="170" height="46" as="geometry" />
+        </mxCell>
+        <mxCell id="p3t2" value="拐弯圆角 = rounded=1&#xa;直角改回 rounded=0" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontSize=11;fontColor=#555555;" vertex="1" parent="pg3">
+          <mxGeometry x="560" y="342" width="320" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="p3d3" value="④ 虚线箭头 + 标签&#xa;dashed=1" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontSize=11;fontColor=#555555;" vertex="1" parent="pg3">
+          <mxGeometry x="910" y="280" width="820" height="44" as="geometry" />
+        </mxCell>
+        <mxCell id="p3n3a" value="起点框&#xa;file.cpp:NNN" style="rounded=0;whiteSpace=wrap;html=1;fontSize=10;align=left;spacingLeft=8;verticalAlign=top;spacingTop=4;fillColor=#f5f5f5;strokeColor=#666666;fontFamily=Courier New;spacingLeft=6;spacingTop=3;" vertex="1" parent="pg3">
+          <mxGeometry x="930" y="342" width="170" height="46" as="geometry" />
+        </mxCell>
+        <mxCell id="p3n3b" value="终点框&#xa;file.cpp:NNN" style="rounded=0;whiteSpace=wrap;html=1;fontSize=10;align=left;spacingLeft=8;verticalAlign=top;spacingTop=4;fillColor=#f5f5f5;strokeColor=#666666;fontFamily=Courier New;spacingLeft=6;spacingTop=3;" vertex="1" parent="pg3">
+          <mxGeometry x="1240" y="342" width="170" height="46" as="geometry" />
+        </mxCell>
+        <mxCell id="p3t3" value="异步 / 回调 / 报丧线。&#xa;虚线一律表示「不是同步返回」" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontSize=11;fontColor=#555555;" vertex="1" parent="pg3">
+          <mxGeometry x="1440" y="342" width="320" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="p3d4" value="⑤ 加粗箭头 + 标签&#xa;strokeWidth=2" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontSize=11;fontColor=#555555;" vertex="1" parent="pg3">
+          <mxGeometry x="30" y="435" width="820" height="44" as="geometry" />
+        </mxCell>
+        <mxCell id="p3n4a" value="起点框&#xa;file.cpp:NNN" style="rounded=0;whiteSpace=wrap;html=1;fontSize=10;align=left;spacingLeft=8;verticalAlign=top;spacingTop=4;fillColor=#f5f5f5;strokeColor=#666666;fontFamily=Courier New;spacingLeft=6;spacingTop=3;" vertex="1" parent="pg3">
+          <mxGeometry x="50" y="497" width="170" height="46" as="geometry" />
+        </mxCell>
+        <mxCell id="p3n4b" value="终点框&#xa;file.cpp:NNN" style="rounded=0;whiteSpace=wrap;html=1;fontSize=10;align=left;spacingLeft=8;verticalAlign=top;spacingTop=4;fillColor=#f5f5f5;strokeColor=#666666;fontFamily=Courier New;spacingLeft=6;spacingTop=3;" vertex="1" parent="pg3">
+          <mxGeometry x="360" y="497" width="170" height="46" as="geometry" />
+        </mxCell>
+        <mxCell id="p3t4" value="强调主路径 / 关键链路" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontSize=11;fontColor=#555555;" vertex="1" parent="pg3">
+          <mxGeometry x="560" y="497" width="320" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="p3d5" value="⑥ 双向箭头 + 标签&#xa;startArrow=block;startFill=1 + endArrow=block;endFill=1" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontSize=11;fontColor=#555555;" vertex="1" parent="pg3">
+          <mxGeometry x="910" y="435" width="820" height="44" as="geometry" />
+        </mxCell>
+        <mxCell id="p3n5a" value="起点框&#xa;file.cpp:NNN" style="rounded=0;whiteSpace=wrap;html=1;fontSize=10;align=left;spacingLeft=8;verticalAlign=top;spacingTop=4;fillColor=#f5f5f5;strokeColor=#666666;fontFamily=Courier New;spacingLeft=6;spacingTop=3;" vertex="1" parent="pg3">
+          <mxGeometry x="930" y="497" width="170" height="46" as="geometry" />
+        </mxCell>
+        <mxCell id="p3n5b" value="终点框&#xa;file.cpp:NNN" style="rounded=0;whiteSpace=wrap;html=1;fontSize=10;align=left;spacingLeft=8;verticalAlign=top;spacingTop=4;fillColor=#f5f5f5;strokeColor=#666666;fontFamily=Courier New;spacingLeft=6;spacingTop=3;" vertex="1" parent="pg3">
+          <mxGeometry x="1240" y="497" width="170" height="46" as="geometry" />
+        </mxCell>
+        <mxCell id="p3t5" value="双向交互：心跳探活、双向 notify" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontSize=11;fontColor=#555555;" vertex="1" parent="pg3">
+          <mxGeometry x="1440" y="497" width="320" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="p3d6" value="⑦ 起点圆点 + 终点箭头&#xa;startArrow=oval;startFill=1" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontSize=11;fontColor=#555555;" vertex="1" parent="pg3">
+          <mxGeometry x="30" y="590" width="820" height="44" as="geometry" />
+        </mxCell>
+        <mxCell id="p3n6a" value="起点框&#xa;file.cpp:NNN" style="rounded=0;whiteSpace=wrap;html=1;fontSize=10;align=left;spacingLeft=8;verticalAlign=top;spacingTop=4;fillColor=#f5f5f5;strokeColor=#666666;fontFamily=Courier New;spacingLeft=6;spacingTop=3;" vertex="1" parent="pg3">
+          <mxGeometry x="50" y="652" width="170" height="46" as="geometry" />
+        </mxCell>
+        <mxCell id="p3n6b" value="终点框&#xa;file.cpp:NNN" style="rounded=0;whiteSpace=wrap;html=1;fontSize=10;align=left;spacingLeft=8;verticalAlign=top;spacingTop=4;fillColor=#f5f5f5;strokeColor=#666666;fontFamily=Courier New;spacingLeft=6;spacingTop=3;" vertex="1" parent="pg3">
+          <mxGeometry x="360" y="652" width="170" height="46" as="geometry" />
+        </mxCell>
+        <mxCell id="p3t6" value="标出「这条边是谁发起的」，&#xa;画报丧线 / 回调链时很有用" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontSize=11;fontColor=#555555;" vertex="1" parent="pg3">
+          <mxGeometry x="560" y="652" width="320" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="p3d7" value="⑧ 无箭头关联线 + 标签&#xa;endArrow=none" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontSize=11;fontColor=#555555;" vertex="1" parent="pg3">
+          <mxGeometry x="910" y="590" width="820" height="44" as="geometry" />
+        </mxCell>
+        <mxCell id="p3n7a" value="起点框&#xa;file.cpp:NNN" style="rounded=0;whiteSpace=wrap;html=1;fontSize=10;align=left;spacingLeft=8;verticalAlign=top;spacingTop=4;fillColor=#f5f5f5;strokeColor=#666666;fontFamily=Courier New;spacingLeft=6;spacingTop=3;" vertex="1" parent="pg3">
+          <mxGeometry x="930" y="652" width="170" height="46" as="geometry" />
+        </mxCell>
+        <mxCell id="p3n7b" value="终点框&#xa;file.cpp:NNN" style="rounded=0;whiteSpace=wrap;html=1;fontSize=10;align=left;spacingLeft=8;verticalAlign=top;spacingTop=4;fillColor=#f5f5f5;strokeColor=#666666;fontFamily=Courier New;spacingLeft=6;spacingTop=3;" vertex="1" parent="pg3">
+          <mxGeometry x="1240" y="652" width="170" height="46" as="geometry" />
+        </mxCell>
+        <mxCell id="p3t7" value="不分方向：包含、归属、&#xa;同一概念的分组关系" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontSize=11;fontColor=#555555;" vertex="1" parent="pg3">
+          <mxGeometry x="1440" y="652" width="320" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="p3e0" value="网络调用" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;fontSize=11;labelBackgroundColor=#ffffff;" edge="1" parent="pg3" source="p3n0a" target="p3n0b">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="p3e1" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;fontSize=11;" edge="1" parent="pg3" source="p3n1a" target="p3n1b">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="p3e2" value="回调" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;fontSize=11;labelBackgroundColor=#ffffff;" edge="1" parent="pg3" source="p3n2a" target="p3n2b">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="p3e3" value="报丧线 / 异步" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;fontSize=11;labelBackgroundColor=#ffffff;dashed=1;" edge="1" parent="pg3" source="p3n3a" target="p3n3b">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="p3e4" value="主路径" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;fontSize=11;labelBackgroundColor=#ffffff;strokeWidth=2;" edge="1" parent="pg3" source="p3n4a" target="p3n4b">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="p3e5" value="心跳 / 双向" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;fontSize=11;labelBackgroundColor=#ffffff;startArrow=block;startFill=1;endArrow=block;endFill=1;" edge="1" parent="pg3" source="p3n5a" target="p3n5b">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="p3e6" value="从哪发出" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;fontSize=11;labelBackgroundColor=#ffffff;startArrow=oval;startFill=1;endArrow=classic;" edge="1" parent="pg3" source="p3n6a" target="p3n6b">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="p3e7" value="关联 / 包含" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;fontSize=11;labelBackgroundColor=#ffffff;endArrow=none;" edge="1" parent="pg3" source="p3n7a" target="p3n7b">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+  <diagram id="pg4" name="④ 分叉 · 汇聚 · 折线">
+    <mxGraphModel dx="1400" dy="800" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1900" pageHeight="1076" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="pg4" value="④ 连线形态：分叉 / 汇聚 / 三种拐弯 / 直线两种走法 / 加粗强调" style="swimlane;html=1;startSize=28;fillColor=#fafafa;strokeColor=#888888;fontSize=13;fontStyle=1;verticalAlign=top;align=left;spacingLeft=10;" vertex="1" parent="1">
+          <mxGeometry x="40" y="40" width="1820" height="996" as="geometry" />
+        </mxCell>
+        <mxCell id="p4note" value="分叉 / 汇聚不是特殊图形，是「多条边共用同一个出口 + 同一批折点」拼出来的：style 里 exitX=1;exitY=0.5 把出口钉在源的右中，再靠 mxGeometry 的 &lt;Array as=&quot;points&quot;&gt; 指定主干折点。&#xa;所以复制时必须整组带走（框 + 边 + 折点）；只复制一条边，折点会留在原图里。&#xa;拐弯默认直角；rounded=1 圆角；再加 curved=1 变成平滑曲线。" style="rounded=0;whiteSpace=wrap;html=1;fontSize=10;align=left;spacingLeft=8;verticalAlign=top;spacingTop=4;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="pg4">
+          <mxGeometry x="30" y="45" width="1760" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="p4d0" value="① 分叉（一源 → 多目标）&#xa;e_fan：exitX=1;exitY=0.5 + 折点" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontSize=11;fontColor=#555555;" vertex="1" parent="pg4">
+          <mxGeometry x="30" y="140" width="840" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="p4g0_s" value="一个源&#xa;请求 / 事件" style="rounded=0;whiteSpace=wrap;html=1;fontSize=10;align=left;spacingLeft=8;verticalAlign=top;spacingTop=4;fillColor=#f5f5f5;strokeColor=#666666;fontFamily=Courier New;spacingLeft=6;spacingTop=3;" vertex="1" parent="pg4">
+          <mxGeometry x="50" y="241" width="150" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="p4g0_t0" value="目标 1" style="rounded=0;whiteSpace=wrap;html=1;fontSize=10;align=left;spacingLeft=8;verticalAlign=top;spacingTop=4;fillColor=#f5f5f5;strokeColor=#666666;fontFamily=Courier New;spacingLeft=6;spacingTop=3;" vertex="1" parent="pg4">
+          <mxGeometry x="430" y="194" width="160" height="38" as="geometry" />
+        </mxCell>
+        <mxCell id="p4g0_t1" value="目标 2" style="rounded=0;whiteSpace=wrap;html=1;fontSize=10;align=left;spacingLeft=8;verticalAlign=top;spacingTop=4;fillColor=#f5f5f5;strokeColor=#666666;fontFamily=Courier New;spacingLeft=6;spacingTop=3;" vertex="1" parent="pg4">
+          <mxGeometry x="430" y="244" width="160" height="38" as="geometry" />
+        </mxCell>
+        <mxCell id="p4g0_t2" value="目标 3" style="rounded=0;whiteSpace=wrap;html=1;fontSize=10;align=left;spacingLeft=8;verticalAlign=top;spacingTop=4;fillColor=#f5f5f5;strokeColor=#666666;fontFamily=Courier New;spacingLeft=6;spacingTop=3;" vertex="1" parent="pg4">
+          <mxGeometry x="430" y="294" width="160" height="38" as="geometry" />
+        </mxCell>
+        <mxCell id="p4d1" value="② 汇聚（多源 → 一目标）&#xa;e_fan 的镜像：出口同一根主干" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontSize=11;fontColor=#555555;" vertex="1" parent="pg4">
+          <mxGeometry x="910" y="140" width="840" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="p4g1_s0" value="来源 1" style="rounded=0;whiteSpace=wrap;html=1;fontSize=10;align=left;spacingLeft=8;verticalAlign=top;spacingTop=4;fillColor=#f5f5f5;strokeColor=#666666;fontFamily=Courier New;spacingLeft=6;spacingTop=3;" vertex="1" parent="pg4">
+          <mxGeometry x="930" y="194" width="160" height="38" as="geometry" />
+        </mxCell>
+        <mxCell id="p4g1_s1" value="来源 2" style="rounded=0;whiteSpace=wrap;html=1;fontSize=10;align=left;spacingLeft=8;verticalAlign=top;spacingTop=4;fillColor=#f5f5f5;strokeColor=#666666;fontFamily=Courier New;spacingLeft=6;spacingTop=3;" vertex="1" parent="pg4">
+          <mxGeometry x="930" y="244" width="160" height="38" as="geometry" />
+        </mxCell>
+        <mxCell id="p4g1_s2" value="来源 3" style="rounded=0;whiteSpace=wrap;html=1;fontSize=10;align=left;spacingLeft=8;verticalAlign=top;spacingTop=4;fillColor=#f5f5f5;strokeColor=#666666;fontFamily=Courier New;spacingLeft=6;spacingTop=3;" vertex="1" parent="pg4">
+          <mxGeometry x="930" y="294" width="160" height="38" as="geometry" />
+        </mxCell>
+        <mxCell id="p4g1_t" value="汇到一点&#xa;汇总 / 合并" style="rounded=0;whiteSpace=wrap;html=1;fontSize=10;align=left;spacingLeft=8;verticalAlign=top;spacingTop=4;fillColor=#f5f5f5;strokeColor=#666666;fontFamily=Courier New;spacingLeft=6;spacingTop=3;" vertex="1" parent="pg4">
+          <mxGeometry x="1310" y="241" width="150" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="p4d2" value="③ 折线拐弯 · 直角&#xa;edgeStyle=orthogonalEdgeStyle;rounded=0" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontSize=11;fontColor=#555555;" vertex="1" parent="pg4">
+          <mxGeometry x="30" y="350" width="840" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="p4g2_a" value="起点框" style="rounded=0;whiteSpace=wrap;html=1;fontSize=10;align=left;spacingLeft=8;verticalAlign=top;spacingTop=4;fillColor=#f5f5f5;strokeColor=#666666;fontFamily=Courier New;spacingLeft=6;spacingTop=3;" vertex="1" parent="pg4">
+          <mxGeometry x="70" y="416" width="150" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="p4g2_b" value="终点框" style="rounded=0;whiteSpace=wrap;html=1;fontSize=10;align=left;spacingLeft=8;verticalAlign=top;spacingTop=4;fillColor=#f5f5f5;strokeColor=#666666;fontFamily=Courier New;spacingLeft=6;spacingTop=3;" vertex="1" parent="pg4">
+          <mxGeometry x="410" y="496" width="150" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="p4d3" value="④ 折线拐弯 · 圆角&#xa;rounded=1" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontSize=11;fontColor=#555555;" vertex="1" parent="pg4">
+          <mxGeometry x="910" y="350" width="840" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="p4g3_a" value="起点框" style="rounded=0;whiteSpace=wrap;html=1;fontSize=10;align=left;spacingLeft=8;verticalAlign=top;spacingTop=4;fillColor=#f5f5f5;strokeColor=#666666;fontFamily=Courier New;spacingLeft=6;spacingTop=3;" vertex="1" parent="pg4">
+          <mxGeometry x="950" y="416" width="150" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="p4g3_b" value="终点框" style="rounded=0;whiteSpace=wrap;html=1;fontSize=10;align=left;spacingLeft=8;verticalAlign=top;spacingTop=4;fillColor=#f5f5f5;strokeColor=#666666;fontFamily=Courier New;spacingLeft=6;spacingTop=3;" vertex="1" parent="pg4">
+          <mxGeometry x="1290" y="496" width="150" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="p4d4" value="⑤ 折线拐弯 · 平滑曲线&#xa;rounded=1;curved=1" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontSize=11;fontColor=#555555;" vertex="1" parent="pg4">
+          <mxGeometry x="30" y="560" width="840" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="p4g4_a" value="起点框" style="rounded=0;whiteSpace=wrap;html=1;fontSize=10;align=left;spacingLeft=8;verticalAlign=top;spacingTop=4;fillColor=#f5f5f5;strokeColor=#666666;fontFamily=Courier New;spacingLeft=6;spacingTop=3;" vertex="1" parent="pg4">
+          <mxGeometry x="70" y="626" width="150" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="p4g4_b" value="终点框" style="rounded=0;whiteSpace=wrap;html=1;fontSize=10;align=left;spacingLeft=8;verticalAlign=top;spacingTop=4;fillColor=#f5f5f5;strokeColor=#666666;fontFamily=Courier New;spacingLeft=6;spacingTop=3;" vertex="1" parent="pg4">
+          <mxGeometry x="410" y="706" width="150" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="p4d5" value="⑥ 直线 · 水平&#xa;edgeStyle=none" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontSize=11;fontColor=#555555;" vertex="1" parent="pg4">
+          <mxGeometry x="910" y="560" width="840" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="p4g5_a" value="起点框" style="rounded=0;whiteSpace=wrap;html=1;fontSize=10;align=left;spacingLeft=8;verticalAlign=top;spacingTop=4;fillColor=#f5f5f5;strokeColor=#666666;fontFamily=Courier New;spacingLeft=6;spacingTop=3;" vertex="1" parent="pg4">
+          <mxGeometry x="950" y="636" width="150" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="p4g5_b" value="终点框" style="rounded=0;whiteSpace=wrap;html=1;fontSize=10;align=left;spacingLeft=8;verticalAlign=top;spacingTop=4;fillColor=#f5f5f5;strokeColor=#666666;fontFamily=Courier New;spacingLeft=6;spacingTop=3;" vertex="1" parent="pg4">
+          <mxGeometry x="1290" y="636" width="150" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="p4d6" value="⑦ 直线 · 斜向&#xa;edgeStyle=none（两端错位即成斜线）" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontSize=11;fontColor=#555555;" vertex="1" parent="pg4">
+          <mxGeometry x="30" y="770" width="840" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="p4g6_a" value="起点框" style="rounded=0;whiteSpace=wrap;html=1;fontSize=10;align=left;spacingLeft=8;verticalAlign=top;spacingTop=4;fillColor=#f5f5f5;strokeColor=#666666;fontFamily=Courier New;spacingLeft=6;spacingTop=3;" vertex="1" parent="pg4">
+          <mxGeometry x="70" y="846" width="150" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="p4g6_b" value="终点框" style="rounded=0;whiteSpace=wrap;html=1;fontSize=10;align=left;spacingLeft=8;verticalAlign=top;spacingTop=4;fillColor=#f5f5f5;strokeColor=#666666;fontFamily=Courier New;spacingLeft=6;spacingTop=3;" vertex="1" parent="pg4">
+          <mxGeometry x="410" y="926" width="150" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="p4d7" value="⑧ 加粗强调&#xa;strokeWidth=3  vs  默认" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontSize=11;fontColor=#555555;" vertex="1" parent="pg4">
+          <mxGeometry x="910" y="770" width="840" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="p4g7_a" value="起点框" style="rounded=0;whiteSpace=wrap;html=1;fontSize=10;align=left;spacingLeft=8;verticalAlign=top;spacingTop=4;fillColor=#f5f5f5;strokeColor=#666666;fontFamily=Courier New;spacingLeft=6;spacingTop=3;" vertex="1" parent="pg4">
+          <mxGeometry x="950" y="831" width="150" height="38" as="geometry" />
+        </mxCell>
+        <mxCell id="p4g7_b" value="终点框" style="rounded=0;whiteSpace=wrap;html=1;fontSize=10;align=left;spacingLeft=8;verticalAlign=top;spacingTop=4;fillColor=#f5f5f5;strokeColor=#666666;fontFamily=Courier New;spacingLeft=6;spacingTop=3;" vertex="1" parent="pg4">
+          <mxGeometry x="1290" y="831" width="150" height="38" as="geometry" />
+        </mxCell>
+        <mxCell id="p4g7_c" value="起点框" style="rounded=0;whiteSpace=wrap;html=1;fontSize=10;align=left;spacingLeft=8;verticalAlign=top;spacingTop=4;fillColor=#f5f5f5;strokeColor=#666666;fontFamily=Courier New;spacingLeft=6;spacingTop=3;" vertex="1" parent="pg4">
+          <mxGeometry x="950" y="916" width="150" height="38" as="geometry" />
+        </mxCell>
+        <mxCell id="p4g7_d" value="终点框" style="rounded=0;whiteSpace=wrap;html=1;fontSize=10;align=left;spacingLeft=8;verticalAlign=top;spacingTop=4;fillColor=#f5f5f5;strokeColor=#666666;fontFamily=Courier New;spacingLeft=6;spacingTop=3;" vertex="1" parent="pg4">
+          <mxGeometry x="1290" y="916" width="150" height="38" as="geometry" />
+        </mxCell>
+        <mxCell id="p4g0_e0" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;fontSize=11;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;labelBackgroundColor=#ffffff;" edge="1" parent="pg4" source="p4g0_s" target="p4g0_t0">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="270" y="261" />
+              <mxPoint x="270" y="213" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="p4g0_e1" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;fontSize=11;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;labelBackgroundColor=#ffffff;" edge="1" parent="pg4" source="p4g0_s" target="p4g0_t1">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="270" y="261" />
+              <mxPoint x="270" y="263" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="p4g0_e2" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;fontSize=11;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;labelBackgroundColor=#ffffff;" edge="1" parent="pg4" source="p4g0_s" target="p4g0_t2">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="270" y="261" />
+              <mxPoint x="270" y="313" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="p4g1_e0" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;fontSize=11;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;labelBackgroundColor=#ffffff;" edge="1" parent="pg4" source="p4g1_s0" target="p4g1_t">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1240" y="213" />
+              <mxPoint x="1240" y="261" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="p4g1_e1" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;fontSize=11;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;labelBackgroundColor=#ffffff;" edge="1" parent="pg4" source="p4g1_s1" target="p4g1_t">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1240" y="263" />
+              <mxPoint x="1240" y="261" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="p4g1_e2" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;fontSize=11;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;labelBackgroundColor=#ffffff;" edge="1" parent="pg4" source="p4g1_s2" target="p4g1_t">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1240" y="313" />
+              <mxPoint x="1240" y="261" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="p4g2_e" value="直角" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;fontSize=11;labelBackgroundColor=#ffffff;" edge="1" parent="pg4" source="p4g2_a" target="p4g2_b">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="p4g3_e" value="圆角" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;fontSize=11;labelBackgroundColor=#ffffff;" edge="1" parent="pg4" source="p4g3_a" target="p4g3_b">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="p4g4_e" value="平滑" style="edgeStyle=orthogonalEdgeStyle;rounded=1;curved=1;html=1;fontSize=11;labelBackgroundColor=#ffffff;" edge="1" parent="pg4" source="p4g4_a" target="p4g4_b">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="p4g5_e" value="水平" style="edgeStyle=none;html=1;fontSize=11;labelBackgroundColor=#ffffff;" edge="1" parent="pg4" source="p4g5_a" target="p4g5_b">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="p4g6_e" value="斜向" style="edgeStyle=none;html=1;fontSize=11;labelBackgroundColor=#ffffff;" edge="1" parent="pg4" source="p4g6_a" target="p4g6_b">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="p4g7_e0" value="strokeWidth=3 加粗" style="edgeStyle=orthogonalEdgeStyle;rounded=0;strokeWidth=3;html=1;fontSize=11;labelBackgroundColor=#ffffff;" edge="1" parent="pg4" source="p4g7_a" target="p4g7_b">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="p4g7_e1" value="默认粗细" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;fontSize=11;labelBackgroundColor=#ffffff;" edge="1" parent="pg4" source="p4g7_c" target="p4g7_d">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+  <diagram id="pg5" name="⑤ 函数 · 分步（可增删）">
+    <mxGraphModel grid="1" page="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" pageScale="1" pageWidth="1900" pageHeight="1017" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="pg5" parent="1" style="swimlane;html=1;startSize=28;fillColor=#fafafa;strokeColor=#888888;fontSize=13;fontStyle=1;verticalAlign=top;align=left;spacingLeft=10;" value="⑤ 一个函数做了什么：并列步骤用分叉 / 有序步骤用竖排链，步数自己增删" vertex="1">
+          <mxGeometry height="937" width="1820" x="40" y="40" as="geometry" />
+        </mxCell>
+        <mxCell id="p5note" parent="pg5" style="rounded=0;whiteSpace=wrap;html=1;fontSize=10;align=left;spacingLeft=8;verticalAlign=top;spacingTop=4;fillColor=#fff2cc;strokeColor=#d6b656;" value="一个函数做了哪几件事：【并列的】步骤（没有先后）→ 用分叉式，一步一个框；【有先后的】步骤 → 用竖排链式，只向下长、不占横向。&#xa;增删一步：框选「某个步骤框 + 它那条边」→ Ctrl+C / Ctrl+V → 改文字，主干折点会一起复制；若粘贴后边断了，从函数框右边框拉一条过去即可。&#xa;⚠ 别把步骤写在边标签上：边标签只有一行，步骤一多只能全塞进去，长了压线或被截断，也没法单独改其中某一步。" vertex="1">
+          <mxGeometry height="100" width="1760" x="30" y="45" as="geometry" />
+        </mxCell>
+        <mxCell id="p5d0" parent="pg5" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontSize=11;fontColor=#555555;" value="① 并列的步骤 → 分叉式 ｜ 示例：RpcChannel::CallMethod 做的六件事&#xa;N 想改成几步都行：3 步 / 5 步 / 8 步，骨架不变" vertex="1">
+          <mxGeometry height="40" width="1720" x="30" y="155" as="geometry" />
+        </mxCell>
+        <mxCell id="p5g0_fn" parent="pg5" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;spacingLeft=8;verticalAlign=top;spacingTop=4;fillColor=#dae8fc;strokeColor=#6c8ebf;" value="RpcChannel::CallMethod&#xa;rpc_channel.cpp:177" vertex="1">
+          <mxGeometry height="76" width="300" x="30" y="345" as="geometry" />
+        </mxCell>
+        <mxCell id="p5g0_s0" parent="pg5" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;spacingLeft=8;verticalAlign=top;spacingTop=4;fillColor=#ffffff;strokeColor=#999999;" value="① done 非空校验 —— 空则 Invalid 完成&#xa;rpc_channel.cpp:183" vertex="1">
+          <mxGeometry height="46" width="740" x="500" y="215" as="geometry" />
+        </mxCell>
+        <mxCell id="p5g0_s1" parent="pg5" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;spacingLeft=8;verticalAlign=top;spacingTop=4;fillColor=#ffffff;strokeColor=#999999;" value="② ResolveDeadline → deadline&#xa;rpc_channel.cpp:204" vertex="1">
+          <mxGeometry height="46" width="740" x="500" y="273" as="geometry" />
+        </mxCell>
+        <mxCell id="p5g0_s2" parent="pg5" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;spacingLeft=8;verticalAlign=top;spacingTop=4;fillColor=#ffffff;strokeColor=#999999;" value="③ 生成 request_id / trace_id&#xa;rpc_channel.cpp:220" vertex="1">
+          <mxGeometry height="46" width="740" x="500" y="331" as="geometry" />
+        </mxCell>
+        <mxCell id="p5g0_s3" parent="pg5" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;spacingLeft=8;verticalAlign=top;spacingTop=4;fillColor=#ffffff;strokeColor=#999999;" value="④ RpcCodec::Encode 组帧&#xa;rpc_channel.cpp:230" vertex="1">
+          <mxGeometry height="46" width="740" x="500" y="389" as="geometry" />
+        </mxCell>
+        <mxCell id="p5g0_s4" parent="pg5" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;spacingLeft=8;verticalAlign=top;spacingTop=4;fillColor=#ffffff;strokeColor=#999999;" value="⑤ 打 rpc call start 结构化日志&#xa;rpc_channel.cpp:246" vertex="1">
+          <mxGeometry height="46" width="740" x="500" y="447" as="geometry" />
+        </mxCell>
+        <mxCell id="p5g0_s5" parent="pg5" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;spacingLeft=8;verticalAlign=top;spacingTop=4;fillColor=#ffffff;strokeColor=#999999;" value="⑥ RunInLoop → RegisterAndSend&#xa;rpc_channel.cpp:265" vertex="1">
+          <mxGeometry height="46" width="740" x="500" y="505" as="geometry" />
+        </mxCell>
+        <mxCell id="p5g0_n0" parent="pg5" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontSize=11;fontColor=#555555;" value="只在调用方线程上做，没进 loop" vertex="1">
+          <mxGeometry height="34" width="480" x="1250" y="221" as="geometry" />
+        </mxCell>
+        <mxCell id="p5g0_n1" parent="pg5" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontSize=11;fontColor=#555555;" value="调用方没设 deadline 就是 nullopt" vertex="1">
+          <mxGeometry height="34" width="480" x="1250" y="279" as="geometry" />
+        </mxCell>
+        <mxCell id="p5g0_n2" parent="pg5" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontSize=11;fontColor=#555555;" value="trace_id 由这里生成（§11 ③）" vertex="1">
+          <mxGeometry height="34" width="480" x="1250" y="337" as="geometry" />
+        </mxCell>
+        <mxCell id="p5g0_n3" parent="pg5" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontSize=11;fontColor=#555555;" value="序列化失败要回 loop 线程再完成" vertex="1">
+          <mxGeometry height="34" width="480" x="1250" y="395" as="geometry" />
+        </mxCell>
+        <mxCell id="p5g0_n4" parent="pg5" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontSize=11;fontColor=#555555;" value="此时请求还没入队、还没发送" vertex="1">
+          <mxGeometry height="34" width="480" x="1250" y="453" as="geometry" />
+        </mxCell>
+        <mxCell id="p5g0_n5" parent="pg5" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontSize=11;fontColor=#555555;" value="真正干活的是投过去的那个闭包" vertex="1">
+          <mxGeometry height="34" width="480" x="1250" y="511" as="geometry" />
+        </mxCell>
+        <mxCell id="p5d1" parent="pg5" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontSize=11;fontColor=#555555;" value="② 同一个骨架，改成 3 步 ｜ 示例：RegisterAndSend 的三道闸门&#xa;每道闸门都是「当场失败、不排队」，彼此没有先后" vertex="1">
+          <mxGeometry height="40" width="840" x="30" y="591" as="geometry" />
+        </mxCell>
+        <mxCell id="p5g1_fn" parent="pg5" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;spacingLeft=8;verticalAlign=top;spacingTop=4;fillColor=#dae8fc;strokeColor=#6c8ebf;" value="RpcChannel::RegisterAndSend&#xa;rpc_channel.cpp:274" vertex="1">
+          <mxGeometry height="76" width="210" x="30" y="694" as="geometry" />
+        </mxCell>
+        <mxCell id="p5g1_s0" parent="pg5" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;spacingLeft=8;verticalAlign=top;spacingTop=4;fillColor=#ffffff;strokeColor=#999999;" value="① 连接态闸门：非 kConnected 当场失败&#xa;rpc_channel.cpp:284" vertex="1">
+          <mxGeometry height="46" width="500" x="380" y="651" as="geometry" />
+        </mxCell>
+        <mxCell id="p5g1_s1" parent="pg5" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;spacingLeft=8;verticalAlign=top;spacingTop=4;fillColor=#ffffff;strokeColor=#999999;" value="② 过载闸门：pending 满 → RejectOverloaded&#xa;rpc_channel.cpp:299" vertex="1">
+          <mxGeometry height="46" width="500" x="380" y="709" as="geometry" />
+        </mxCell>
+        <mxCell id="p5g1_s2" parent="pg5" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;spacingLeft=8;verticalAlign=top;spacingTop=4;fillColor=#ffffff;strokeColor=#999999;" value="③ 入队前已超时 → 直接 Timeout 完成&#xa;rpc_channel.cpp:315" vertex="1">
+          <mxGeometry height="46" width="500" x="380" y="767" as="geometry" />
+        </mxCell>
+        <mxCell id="p5d2" parent="pg5" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontSize=11;fontColor=#555555;" value="③ 有先后的步骤 → 竖排链式 ｜ 示例：RegisterAndSend 的四步&#xa;源码注释里就写着「第一步~第四步」（rpc_channel.cpp:332 / :372 / :382 / :408）" vertex="1">
+          <mxGeometry height="40" width="840" x="910" y="591" as="geometry" />
+        </mxCell>
+        <mxCell id="p5g2_b0" parent="pg5" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;spacingLeft=8;verticalAlign=top;spacingTop=4;fillColor=#ffffff;strokeColor=#999999;" value="第一步 · 注册取消回调 RegisterOnCancel&#xa;rpc_channel.cpp:332" vertex="1">
+          <mxGeometry height="52" width="760" x="970" y="651" as="geometry" />
+        </mxCell>
+        <mxCell id="p5g2_b1" parent="pg5" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;spacingLeft=8;verticalAlign=top;spacingTop=4;fillColor=#ffffff;strokeColor=#999999;" value="第二步 · 重新查表（已取消就 return）&#xa;rpc_channel.cpp:372" vertex="1">
+          <mxGeometry height="52" width="760" x="970" y="719" as="geometry" />
+        </mxCell>
+        <mxCell id="p5g2_b2" parent="pg5" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;spacingLeft=8;verticalAlign=top;spacingTop=4;fillColor=#ffffff;strokeColor=#999999;" value="第三步 · 有 deadline 就挂超时定时器&#xa;rpc_channel.cpp:382" vertex="1">
+          <mxGeometry height="52" width="760" x="970" y="787" as="geometry" />
+        </mxCell>
+        <mxCell id="p5g2_b3" parent="pg5" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;spacingLeft=8;verticalAlign=top;spacingTop=4;fillColor=#ffffff;strokeColor=#999999;" value="第四步 · connection_-&gt;Send 发出&#xa;rpc_channel.cpp:408" vertex="1">
+          <mxGeometry height="52" width="760" x="970" y="855" as="geometry" />
+        </mxCell>
+        <mxCell id="p5g0_e0" edge="1" parent="pg5" source="p5g0_fn" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;fontSize=11;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;labelBackgroundColor=#ffffff;" target="p5g0_s0" value="">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="420" y="383" />
+              <mxPoint x="420" y="238" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="p5g0_e1" edge="1" parent="pg5" source="p5g0_fn" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;fontSize=11;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;labelBackgroundColor=#ffffff;" target="p5g0_s1" value="">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="420" y="383" />
+              <mxPoint x="420" y="296" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="p5g0_e2" edge="1" parent="pg5" source="p5g0_fn" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;fontSize=11;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;labelBackgroundColor=#ffffff;" target="p5g0_s2" value="">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="420" y="383" />
+              <mxPoint x="420" y="354" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="p5g0_e3" edge="1" parent="pg5" source="p5g0_fn" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;fontSize=11;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;labelBackgroundColor=#ffffff;" target="p5g0_s3" value="">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="420" y="383" />
+              <mxPoint x="420" y="412" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="p5g0_e4" edge="1" parent="pg5" source="p5g0_fn" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;fontSize=11;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;labelBackgroundColor=#ffffff;" target="p5g0_s4" value="">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="420" y="383" />
+              <mxPoint x="420" y="470" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="p5g0_e5" edge="1" parent="pg5" source="p5g0_fn" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;fontSize=11;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;labelBackgroundColor=#ffffff;" target="p5g0_s5" value="">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="420" y="383" />
+              <mxPoint x="420" y="528" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="p5g1_e0" edge="1" parent="pg5" source="p5g1_fn" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;fontSize=11;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;labelBackgroundColor=#ffffff;" target="p5g1_s0" value="">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="310" y="732" />
+              <mxPoint x="310" y="674" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="p5g1_e1" edge="1" parent="pg5" source="p5g1_fn" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;fontSize=11;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;labelBackgroundColor=#ffffff;" target="p5g1_s1" value="">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="310" y="732" />
+              <mxPoint x="310" y="732" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="p5g1_e2" edge="1" parent="pg5" source="p5g1_fn" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;fontSize=11;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;labelBackgroundColor=#ffffff;" target="p5g1_s2" value="">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="310" y="732" />
+              <mxPoint x="310" y="790" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="p5g2_e0" edge="1" parent="pg5" source="p5g2_b0" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;fontSize=11;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;labelBackgroundColor=#ffffff;" target="p5g2_b1" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="p5g2_e1" edge="1" parent="pg5" source="p5g2_b1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;fontSize=11;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;labelBackgroundColor=#ffffff;" target="p5g2_b2" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="p5g2_e2" edge="1" parent="pg5" source="p5g2_b2" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;fontSize=11;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;labelBackgroundColor=#ffffff;" target="p5g2_b3" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+  <diagram id="pg6" name="⑥ 分步模板 · 10 步">
+    <mxGraphModel dx="2946" dy="630" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1900" pageHeight="844" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="pg6" parent="1" style="swimlane;html=1;startSize=28;fillColor=#fafafa;strokeColor=#888888;fontSize=13;fontStyle=1;verticalAlign=top;align=left;spacingLeft=10;" value="⑥ 可增删的分步骨架（N=10）" vertex="1">
+          <mxGeometry height="764" width="1820" x="-30" y="20" as="geometry" />
+        </mxCell>
+        <mxCell id="p6note" parent="pg6" style="rounded=0;whiteSpace=wrap;html=1;fontSize=10;align=left;spacingLeft=8;verticalAlign=top;spacingTop=4;fillColor=#fff2cc;strokeColor=#d6b656;" value="增一步：框选「一个步骤框 + 它那条边」→ Ctrl+D 复制 → 只上下拖（不左右移，折点 x 不变，新箭头自动落在主干上）→ 双击改文字&#xa;删一步：框选「步骤框 + 它的边」→ Delete          调完步数：拖大括号的高度，让上下两端对齐首末两个步骤框&#xa;N=1 时不用主干（源框一条水平箭头直接到步骤框），也不必画大括号 —— 见第 ⑦ 页" vertex="1">
+          <mxGeometry height="86" width="1760" x="30" y="45" as="geometry" />
+        </mxCell>
+        <mxCell id="p6d" parent="pg6" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontSize=11;fontColor=#555555;" value="① 完整骨架（N=10）｜ 一个源 → 主干 → 十个「这一步做了什么」→ 大括号 → 总结箭头" vertex="1">
+          <mxGeometry height="26" width="1700" x="30" y="142" as="geometry" />
+        </mxCell>
+        <mxCell id="4yl64vPsQ9rsRQgOEI8i-8" edge="1" parent="pg6" source="p6g_fn" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="p6g_s8">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="4yl64vPsQ9rsRQgOEI8i-9" edge="1" parent="pg6" source="p6g_fn" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="4yl64vPsQ9rsRQgOEI8i-5">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="4yl64vPsQ9rsRQgOEI8i-10" edge="1" parent="pg6" source="p6g_fn" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="p6g_s9">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="p6g_fn" parent="pg6" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;spacingLeft=8;verticalAlign=top;spacingTop=4;fillColor=#ffffff;strokeColor=#999999;" value="一个源&#xa;请求 / 事件" vertex="1">
+          <mxGeometry height="60" width="120" x="150" y="442" as="geometry" />
+        </mxCell>
+        <mxCell id="4yl64vPsQ9rsRQgOEI8i-12" edge="1" parent="pg6" source="p6g_s8" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="p6g_sum">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="p6g_s8" parent="pg6" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;spacingLeft=8;verticalAlign=top;spacingTop=4;fillColor=#ffffff;strokeColor=#999999;" value="" vertex="1">
+          <mxGeometry height="44" width="360" x="340" y="450" as="geometry" />
+        </mxCell>
+        <mxCell id="4yl64vPsQ9rsRQgOEI8i-13" edge="1" parent="pg6" source="p6g_s9" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="p6g_sum">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="p6g_s9" parent="pg6" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;spacingLeft=8;verticalAlign=top;spacingTop=4;fillColor=#ffffff;strokeColor=#999999;" value="" vertex="1">
+          <mxGeometry height="44" width="360" x="340" y="510" as="geometry" />
+        </mxCell>
+        <mxCell id="p6g_sum" parent="pg6" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;spacingLeft=8;verticalAlign=top;spacingTop=4;fillColor=#ffffff;strokeColor=#999999;" value="总结 / 结论" vertex="1">
+          <mxGeometry height="60" width="160" x="770" y="442" as="geometry" />
+        </mxCell>
+        <mxCell id="4yl64vPsQ9rsRQgOEI8i-11" edge="1" parent="pg6" source="4yl64vPsQ9rsRQgOEI8i-5" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="p6g_sum">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="4yl64vPsQ9rsRQgOEI8i-5" parent="pg6" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;spacingLeft=8;verticalAlign=top;spacingTop=4;fillColor=#ffffff;strokeColor=#999999;" value="" vertex="1">
+          <mxGeometry height="44" width="360" x="340" y="386" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+  <diagram id="pg7" name="⑦ 分步模板 · 1 步">
+    <mxGraphModel dx="1400" dy="800" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1900" pageHeight="515" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="pg7" value="⑦ 同一个骨架的 N=1 形态（不需要主干 / 不需要大括号）" style="swimlane;html=1;startSize=28;fillColor=#fafafa;strokeColor=#888888;fontSize=13;fontStyle=1;verticalAlign=top;align=left;spacingLeft=10;" vertex="1" parent="1">
+          <mxGeometry x="40" y="40" width="1820" height="435" as="geometry" />
+        </mxCell>
+        <mxCell id="p7note" value="增一步：框选「一个步骤框 + 它那条边」→ Ctrl+D 复制 → 只上下拖（不左右移，折点 x 不变，新箭头自动落在主干上）→ 双击改文字&#xa;删一步：框选「步骤框 + 它的边」→ Delete          调完步数：拖大括号的高度，让上下两端对齐首末两个步骤框&#xa;N=1 时不用主干（源框一条水平箭头直接到步骤框），也不必画大括号 —— 见第 ⑦ 页" style="rounded=0;whiteSpace=wrap;html=1;fontSize=10;align=left;spacingLeft=8;verticalAlign=top;spacingTop=4;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="pg7">
+          <mxGeometry x="30" y="45" width="1760" height="86" as="geometry" />
+        </mxCell>
+        <mxCell id="p7d0" value="② N=1（带大括号）｜ 共用一个出口、只多两步折点，形态与 N=10 完全一致" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontSize=11;fontColor=#555555;" vertex="1" parent="pg7">
+          <mxGeometry x="30" y="142" width="1700" height="26" as="geometry" />
+        </mxCell>
+        <mxCell id="p7g0_fn" value="一个源&#xa;请求 / 事件" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;spacingLeft=8;verticalAlign=top;spacingTop=4;fillColor=#ffffff;strokeColor=#999999;" vertex="1" parent="pg7">
+          <mxGeometry x="40" y="182" width="200" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="p7g0_s0" value="唯一的一步做了什么" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;spacingLeft=8;verticalAlign=top;spacingTop=4;fillColor=#ffffff;strokeColor=#999999;" vertex="1" parent="pg7">
+          <mxGeometry x="340" y="190" width="880" height="44" as="geometry" />
+        </mxCell>
+        <mxCell id="p7g0_brace" value="" style="shape=curlyBracket;whiteSpace=wrap;html=1;rounded=0;fillColor=none;strokeColor=#cc0000;strokeWidth=2;" vertex="1" parent="pg7">
+          <mxGeometry x="1270" y="190" width="40" height="44" as="geometry" />
+        </mxCell>
+        <mxCell id="p7g0_sum" value="总结 / 结论" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;spacingLeft=8;verticalAlign=top;spacingTop=4;fillColor=#ffffff;strokeColor=#999999;" vertex="1" parent="pg7">
+          <mxGeometry x="1380" y="182" width="300" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="p7d1" value="③ N=1 最简形态 ｜ 去掉主干与大括号，三个框一条直线（步骤多了再加主干）" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontSize=11;fontColor=#555555;" vertex="1" parent="pg7">
+          <mxGeometry x="30" y="300" width="1700" height="26" as="geometry" />
+        </mxCell>
+        <mxCell id="p7g1_a" value="一个源&#xa;请求 / 事件" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;spacingLeft=8;verticalAlign=top;spacingTop=4;fillColor=#ffffff;strokeColor=#999999;" vertex="1" parent="pg7">
+          <mxGeometry x="40" y="345" width="200" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="p7g1_b" value="唯一的一步做了什么" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;spacingLeft=8;verticalAlign=top;spacingTop=4;fillColor=#ffffff;strokeColor=#999999;" vertex="1" parent="pg7">
+          <mxGeometry x="340" y="353" width="880" height="44" as="geometry" />
+        </mxCell>
+        <mxCell id="p7g1_c" value="总结 / 结论" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;spacingLeft=8;verticalAlign=top;spacingTop=4;fillColor=#ffffff;strokeColor=#999999;" vertex="1" parent="pg7">
+          <mxGeometry x="1380" y="345" width="300" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="p7g0_e0" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;fontSize=11;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;labelBackgroundColor=#ffffff;" edge="1" parent="pg7" source="p7g0_fn" target="p7g0_s0">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="p7g0_se" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;fontSize=11;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;labelBackgroundColor=#ffffff;" edge="1" parent="pg7" source="p7g0_brace" target="p7g0_sum">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="p7g1_e0" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;fontSize=11;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;labelBackgroundColor=#ffffff;" edge="1" parent="pg7" source="p7g1_a" target="p7g1_b">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="p7g1_e1" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;fontSize=11;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;labelBackgroundColor=#ffffff;" edge="1" parent="pg7" source="p7g1_b" target="p7g1_c">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

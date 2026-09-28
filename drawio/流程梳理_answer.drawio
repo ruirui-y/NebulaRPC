@@ -1,0 +1,367 @@
+<mxfile host="Electron" pages="7">
+  <diagram id="cover" name="总览">
+    <mxGraphModel dx="673" dy="400" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1900" pageHeight="630" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="cover" parent="1" style="swimlane;html=1;startSize=28;fillColor=#fafafa;strokeColor=#888888;fontSize=13;fontStyle=1;verticalAlign=top;align=left;spacingLeft=10;" value="§11 五块地图 · 读图说明（一个流程一页，共 7 页）" vertex="1">
+          <mxGeometry height="550" width="1820" x="160" y="30" as="geometry" />
+        </mxCell>
+        <mxCell id="cv1" parent="cover" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;align=left;spacingLeft=8;verticalAlign=top;spacingTop=4;fontSize=10;" value="第 2 页&#xa;主干：一次 RPC 的旅程&#xa;（六个机制同场出场的那条链）" vertex="1">
+          <mxGeometry height="100" width="280" x="20" y="50" as="geometry" />
+        </mxCell>
+        <mxCell id="cv2" parent="cover" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;align=left;spacingLeft=8;verticalAlign=top;spacingTop=4;fontSize=10;" value="第 3 页&#xa;① 结构化日志&#xa;让一次调用可被 grep" vertex="1">
+          <mxGeometry height="100" width="280" x="320" y="50" as="geometry" />
+        </mxCell>
+        <mxCell id="cv3" parent="cover" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;align=left;spacingLeft=8;verticalAlign=top;spacingTop=4;fontSize=10;" value="第 4 页&#xa;② Metrics&#xa;QPS + P50 / P95 / P99" vertex="1">
+          <mxGeometry height="100" width="280" x="620" y="50" as="geometry" />
+        </mxCell>
+        <mxCell id="cv4" parent="cover" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;align=left;spacingLeft=8;verticalAlign=top;spacingTop=4;fontSize=10;" value="第 5 页&#xa;③ Trace&#xa;trace_id 跨进程串因果链" vertex="1">
+          <mxGeometry height="100" width="280" x="920" y="50" as="geometry" />
+        </mxCell>
+        <mxCell id="cv5" parent="cover" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;align=left;spacingLeft=8;verticalAlign=top;spacingTop=4;fontSize=10;" value="第 6 页&#xa;④ Graceful Shutdown&#xa;重启不丢在途请求" vertex="1">
+          <mxGeometry height="100" width="280" x="1220" y="50" as="geometry" />
+        </mxCell>
+        <mxCell id="cv6" parent="cover" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;align=left;spacingLeft=8;verticalAlign=top;spacingTop=4;fontSize=10;" value="第 7 页&#xa;⑤ 应用层心跳&#xa;补 keepalive 探不到的洞" vertex="1">
+          <mxGeometry height="100" width="280" x="1520" y="50" as="geometry" />
+        </mxCell>
+        <mxCell id="cvn1" parent="cover" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;align=left;spacingLeft=8;verticalAlign=top;spacingTop=4;fontSize=10;" value="线程边界（每一页的方框都按这个标注读）&#xa;  「调用方线程」= 业务线程，任意线程 —— CallMethod 在这里进入，日志 rpc call start 也打在这里&#xa;  「loop 线程」  = EventLoop::Loop() 所在线程 —— pending_calls_ / connection_ / 超时定时器 / 心跳定时器 全归它&#xa;  跨线程只有两条合法通道：RunInLoop / QueueInLoop（普通代码），NotifyFromSignal（信号 handler，只做原子置位 + write）&#xa;  ⚠ 「日志出现的时刻」≠「请求已发出的时刻」：CallMethod 里那句 rpc call start（rpc_channel.cpp:246）打在调用方线程，此刻请求还没入队。" vertex="1">
+          <mxGeometry height="115" width="1780" x="20" y="175" as="geometry" />
+        </mxCell>
+        <mxCell id="cvn2" parent="cover" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;align=left;spacingLeft=8;verticalAlign=top;spacingTop=4;fontSize=10;" value="看每块时带这四个问题（§11 五块共用同一套套路）&#xa;  1. 这块「该知道什么、不该知道什么」？&#xa;     TcpServer 不知道 in-flight（那是 RPC 层概念）· 指标类不知道「周期」（计时归 channel）· 心跳回包不进 pending_calls_&#xa;  2. 哪一对 API 是孪生的？靠什么选？&#xa;     Shutdown vs ForceClose · FailAllPending vs FailAllPendingNow —— 判据永远是「缓冲里该不该发出去」&#xa;  3. 哪些动作必须在 loop 线程？&#xa;     一切碰 pending_calls_ / connection_ / 定时器的动作；跨线程一律「置位 + 回 loop 线程处理」&#xa;  4. 这个计数属于谁？&#xa;     heartbeat_missed_ 属于「连接」不属于 channel —— 所以没有连接可探时必须清零" vertex="1">
+          <mxGeometry height="135" width="1780" x="20" y="310" as="geometry" />
+        </mxCell>
+        <mxCell id="cvn3" parent="cover" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;align=left;spacingLeft=8;verticalAlign=top;spacingTop=4;fontSize=10;" value="⚠ 本图是「标准答案」，每个方框都标了 file:line（已全部回源核对）。你手写的 流程梳理.drawio 里 3 处必须改 + 4 处缺口，见对话记录。" vertex="1">
+          <mxGeometry height="55" width="1780" x="20" y="465" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+  <diagram id="sec0" name="主干 · 一次 RPC 的旅程">
+    <mxGraphModel dx="793" dy="481" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1900" pageHeight="335" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="sec0" parent="1" style="swimlane;html=1;startSize=28;fillColor=#fafafa;strokeColor=#888888;fontSize=13;fontStyle=1;verticalAlign=top;align=left;spacingLeft=10;" value="主干 · 一次 RPC 的旅程（注意每个方框的线程归属）" vertex="1">
+          <mxGeometry height="255" width="1820" x="50" y="40" as="geometry" />
+        </mxCell>
+        <mxCell id="s0n1" parent="sec0" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;align=left;spacingLeft=8;verticalAlign=top;spacingTop=4;fontSize=10;" value="① 调用方线程（任意线程）&#xa;CallMethod  rpc_channel.cpp:177&#xa;异步 RPC：done 必须非空" vertex="1">
+          <mxGeometry height="80" width="270" x="30" y="55" as="geometry" />
+        </mxCell>
+        <mxCell id="s0n2" parent="sec0" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;align=left;spacingLeft=8;verticalAlign=top;spacingTop=4;fontSize=10;" value="② RunInLoop  rpc_channel.cpp:265&#xa;投递 → 此后都在 loop 线程" vertex="1">
+          <mxGeometry height="80" width="250" x="330" y="55" as="geometry" />
+        </mxCell>
+        <mxCell id="s0n3" parent="sec0" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;align=left;spacingLeft=8;verticalAlign=top;spacingTop=4;fontSize=10;" value="③ loop 线程&#xa;RegisterAndSend  rpc_channel.cpp:274" vertex="1">
+          <mxGeometry height="80" width="250" x="610" y="55" as="geometry" />
+        </mxCell>
+        <mxCell id="s0n4" parent="sec0" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;align=left;spacingLeft=8;verticalAlign=top;spacingTop=4;fontSize=10;" value="④ loop 线程&#xa;connection_-&gt;Send  rpc_channel.cpp:417&#xa;（TcpConnection，不是 TcpClient）" vertex="1">
+          <mxGeometry height="80" width="260" x="890" y="55" as="geometry" />
+        </mxCell>
+        <mxCell id="s0n5" parent="sec0" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;align=left;spacingLeft=8;verticalAlign=top;spacingTop=4;fontSize=10;" value="⑤ 服务端 loop 线程&#xa;RpcServer::OnMessage  rpc_server.cpp:157&#xa;→ HandleRequest  rpc_server.cpp:194" vertex="1">
+          <mxGeometry height="80" width="290" x="1180" y="55" as="geometry" />
+        </mxCell>
+        <mxCell id="s0n6" parent="sec0" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;align=left;spacingLeft=8;verticalAlign=top;spacingTop=4;fontSize=10;" value="⑥ 客户端 loop 线程&#xa;OnMessage  rpc_channel.cpp:462&#xa;HandleFrame  rpc_channel.cpp:503" vertex="1">
+          <mxGeometry height="80" width="250" x="1500" y="55" as="geometry" />
+        </mxCell>
+        <mxCell id="s0note" parent="sec0" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;align=left;spacingLeft=8;verticalAlign=top;spacingTop=4;fontSize=10;" value="⚠ 「日志出现的时刻」≠「请求已发出的时刻」：rpc call start 在 CallMethod 里打(rpc_channel.cpp:246)，跑在调用方线程，此刻请求还没入队、还没发送。" vertex="1">
+          <mxGeometry height="65" width="1690" x="30" y="160" as="geometry" />
+        </mxCell>
+        <mxCell id="s0e1" edge="1" parent="sec0" source="s0n1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;fontSize=11;labelBackgroundColor=#ffffff;" target="s0n2" value="RunInLoop">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="s0e2" edge="1" parent="sec0" source="s0n2" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;fontSize=11;labelBackgroundColor=#ffffff;" target="s0n3" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="s0e3" edge="1" parent="sec0" source="s0n3" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;fontSize=11;labelBackgroundColor=#ffffff;" target="s0n4" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="s0e4" edge="1" parent="sec0" source="s0n4" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;fontSize=11;labelBackgroundColor=#ffffff;" target="s0n5" value="网络">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="s0e5" edge="1" parent="sec0" source="s0n5" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;fontSize=11;labelBackgroundColor=#ffffff;" target="s0n6" value="响应">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+  <diagram id="sec1" name="① 结构化日志">
+    <mxGraphModel dx="1400" dy="800" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1900" pageHeight="405" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="sec1" value="① 结构化日志 —— 让一次调用可被 grep（NLOG_* 首次接线）" style="swimlane;html=1;startSize=28;fillColor=#fafafa;strokeColor=#888888;fontSize=13;fontStyle=1;verticalAlign=top;align=left;spacingLeft=10;" vertex="1" parent="1">
+          <mxGeometry x="40" y="40" width="1820" height="325" as="geometry" />
+        </mxCell>
+        <mxCell id="s1n1" value="发起&#xa;rpc_channel.cpp:246  rpc call start&#xa;字段：request_id / trace_id /&#xa;service / method" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;align=left;spacingLeft=8;verticalAlign=top;spacingTop=4;fontSize=10;" vertex="1" parent="sec1">
+          <mxGeometry x="30" y="50" width="300" height="110" as="geometry" />
+        </mxCell>
+        <mxCell id="s1n2" value="rpc_channel.cpp —— 入队前被拦下（也计入指标）&#xa;:292 rejected（连接不可用）&#xa;:302 rejected（too many pending）&#xa;:319 timeout（入队前已超时）" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;align=left;spacingLeft=8;verticalAlign=top;spacingTop=4;fontSize=10;" vertex="1" parent="sec1">
+          <mxGeometry x="360" y="50" width="400" height="120" as="geometry" />
+        </mxCell>
+        <mxCell id="s1n3" value="rpc_server.cpp&#xa;:228 rpc server dispatch&#xa;:278 rpc server error" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;align=left;spacingLeft=8;verticalAlign=top;spacingTop=4;fontSize=10;" vertex="1" parent="sec1">
+          <mxGeometry x="790" y="50" width="260" height="110" as="geometry" />
+        </mxCell>
+        <mxCell id="s1n4" value="完成（唯一出口）&#xa;rpc_channel.cpp:891 LogCompletion（打点 :906）&#xa;固定字段：request_id / outcome /&#xa;service / method / latency_ms / error" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;align=left;spacingLeft=8;verticalAlign=top;spacingTop=4;fontSize=10;" vertex="1" parent="sec1">
+          <mxGeometry x="1080" y="50" width="320" height="110" as="geometry" />
+        </mxCell>
+        <mxCell id="s1n5" value="rpc_channel.cpp 另外两处&#xa;:455 rpc connection closed&#xa;:484 rpc protocol error" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;align=left;spacingLeft=8;verticalAlign=top;spacingTop=4;fontSize=10;" vertex="1" parent="sec1">
+          <mxGeometry x="1430" y="50" width="270" height="110" as="geometry" />
+        </mxCell>
+        <mxCell id="s1note" value="outcome 共 6 种（全部在 rpc_channel.cpp）&#xa;   :772 completed / server-error ← 响应回来（对端 ERROR 帧 = server-error）&#xa;   :813、:955 failed ← CompleteCallWithFailure / FailAllPending        :851 cancelled ← 完成权被取消抢到&#xa;   :292、:302 rejected ← 闸门拦下                                       :319 timeout ← 入队前已超时&#xa;⚠ outcome ≠ RpcCallState：对端回 ERROR 帧时 outcome=server-error、指标记 failed，但完成权仍是 Completed&#xa;   —— RpcCallState 表达「谁抢到完成权」，不表达成败。" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;align=left;spacingLeft=8;verticalAlign=top;spacingTop=4;fontSize=10;" vertex="1" parent="sec1">
+          <mxGeometry x="30" y="180" width="1670" height="115" as="geometry" />
+        </mxCell>
+        <mxCell id="s1e1" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;fontSize=11;labelBackgroundColor=#ffffff;" edge="1" parent="sec1" source="s1n1" target="s1n2">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="s1e2" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;fontSize=11;labelBackgroundColor=#ffffff;" edge="1" parent="sec1" source="s1n2" target="s1n3">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="s1e3" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;fontSize=11;labelBackgroundColor=#ffffff;" edge="1" parent="sec1" source="s1n3" target="s1n4">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="s1e4" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;fontSize=11;labelBackgroundColor=#ffffff;dashed=1;" edge="1" parent="sec1" source="s1n5" target="s1n4">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+  <diagram id="sec2" name="② Metrics">
+    <mxGraphModel dx="1400" dy="800" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1900" pageHeight="470" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="sec2" value="② Metrics —— 进程内计数 + 固定桶直方图（客户端侧）" style="swimlane;html=1;startSize=28;fillColor=#fafafa;strokeColor=#888888;fontSize=13;fontStyle=1;verticalAlign=top;align=left;spacingLeft=10;" vertex="1" parent="1">
+          <mxGeometry x="40" y="40" width="1820" height="390" as="geometry" />
+        </mxCell>
+        <mxCell id="s2n1" value="StartMetricsReport&#xa;rpc_channel.cpp:607  RunInLoop 设 interval&#xa;interval=0 → 直接返回（关）" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;align=left;spacingLeft=8;verticalAlign=top;spacingTop=4;fontSize=10;" vertex="1" parent="sec2">
+          <mxGeometry x="30" y="50" width="280" height="90" as="geometry" />
+        </mxCell>
+        <mxCell id="s2n2" value="rpc_channel.cpp:621  RunAfter(interval)&#xa;第一份报告在「一个周期之后」&#xa;（启动瞬间分母≈0，QPS 被放大成噪声）" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;align=left;spacingLeft=8;verticalAlign=top;spacingTop=4;fontSize=10;" vertex="1" parent="sec2">
+          <mxGeometry x="340" y="50" width="320" height="90" as="geometry" />
+        </mxCell>
+        <mxCell id="s2n3" value="rpc_channel.cpp:656  ReportMetricsInLoop（自驱动）&#xa;elapsed = now - metrics_window_start_&#xa;count = TakeCycleCount() ← 「结清」本周期&#xa;qps = count / elapsed秒" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;align=left;spacingLeft=8;verticalAlign=top;spacingTop=4;fontSize=10;" vertex="1" parent="sec2">
+          <mxGeometry x="690" y="50" width="340" height="100" as="geometry" />
+        </mxCell>
+        <mxCell id="s2n4" value="rpc_channel.cpp:677  NLOG_INFO&#xa;rpc metrics qps=… in_flight=…&#xa;+ Dump()" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;align=left;spacingLeft=8;verticalAlign=top;spacingTop=4;fontSize=10;" vertex="1" parent="sec2">
+          <mxGeometry x="1060" y="50" width="240" height="100" as="geometry" />
+        </mxCell>
+        <mxCell id="s2n5" value="rpc_channel.cpp 收尾&#xa;:682 metrics_window_start_ = now&#xa;:685 再 RunAfter(interval) 调自己" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;align=left;spacingLeft=8;verticalAlign=top;spacingTop=4;fontSize=10;" vertex="1" parent="sec2">
+          <mxGeometry x="1330" y="50" width="260" height="100" as="geometry" />
+        </mxCell>
+        <mxCell id="s2n6" value="rpc_channel.cpp —— 三类被拦下&#xa;:291 / :301 / :318&#xa;（不写进表，这类请求永远看不到）" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;align=left;spacingLeft=8;verticalAlign=top;spacingTop=4;fontSize=10;" vertex="1" parent="sec2">
+          <mxGeometry x="30" y="190" width="300" height="95" as="geometry" />
+        </mxCell>
+        <mxCell id="s2n7" value="rpc_channel.cpp:765&#xa;CompleteCallWithFrame&#xa;响应到达，含对端 ERROR 帧" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;align=left;spacingLeft=8;verticalAlign=top;spacingTop=4;fontSize=10;" vertex="1" parent="sec2">
+          <mxGeometry x="360" y="190" width="280" height="85" as="geometry" />
+        </mxCell>
+        <mxCell id="s2n8" value="rpc_channel.cpp:871  RecordMetrics&#xa;返回实测延迟&#xa;→ 日志与指标共用同一份数字" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;align=left;spacingLeft=8;verticalAlign=top;spacingTop=4;fontSize=10;" vertex="1" parent="sec2">
+          <mxGeometry x="670" y="190" width="280" height="85" as="geometry" />
+        </mxCell>
+        <mxCell id="s2n9" value="rpc_metrics.h:18  LatencyHistogram&#xa;:25 kBoundsUs = 1/5/10/50/100/500/1000ms + 溢出桶 = 8 桶&#xa;PercentileUs：找第一个「累计占比 ≥ p」的桶 → 返回桶上界&#xa;落溢出桶返回 -1 → Dump 打印成 &gt;1000ms" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;align=left;spacingLeft=8;verticalAlign=top;spacingTop=4;fontSize=10;" vertex="1" parent="sec2">
+          <mxGeometry x="980" y="180" width="400" height="115" as="geometry" />
+        </mxCell>
+        <mxCell id="s2n10" value="rpc_metrics.h:42  MethodMetrics&#xa;total / failed / timeout&#xa;+ latency" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;align=left;spacingLeft=8;verticalAlign=top;spacingTop=4;fontSize=10;" vertex="1" parent="sec2">
+          <mxGeometry x="1410" y="190" width="240" height="85" as="geometry" />
+        </mxCell>
+        <mxCell id="s2note" value="⚠ P50=5ms 的意思是「中位数落在 5ms 这个桶里」，不是「恰好 5ms」——固定桶的代价是分位数有桶宽误差，换来的是内存恒定（不存样本）。" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;align=left;spacingLeft=8;verticalAlign=top;spacingTop=4;fontSize=10;" vertex="1" parent="sec2">
+          <mxGeometry x="30" y="310" width="1670" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="s2e1" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;fontSize=11;labelBackgroundColor=#ffffff;" edge="1" parent="sec2" source="s2n1" target="s2n2">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="s2e2" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;fontSize=11;labelBackgroundColor=#ffffff;" edge="1" parent="sec2" source="s2n2" target="s2n3">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="s2e3" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;fontSize=11;labelBackgroundColor=#ffffff;" edge="1" parent="sec2" source="s2n3" target="s2n4">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="s2e4" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;fontSize=11;labelBackgroundColor=#ffffff;" edge="1" parent="sec2" source="s2n4" target="s2n5">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="s2e5" value="下一周期" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;fontSize=11;labelBackgroundColor=#ffffff;dashed=1;" edge="1" parent="sec2" source="s2n5" target="s2n3">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="s2e6" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;fontSize=11;labelBackgroundColor=#ffffff;" edge="1" parent="sec2" source="s2n6" target="s2n8">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="s2e7" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;fontSize=11;labelBackgroundColor=#ffffff;" edge="1" parent="sec2" source="s2n7" target="s2n8">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="s2e8" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;fontSize=11;labelBackgroundColor=#ffffff;" edge="1" parent="sec2" source="s2n8" target="s2n9">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="s2e9" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;fontSize=11;labelBackgroundColor=#ffffff;" edge="1" parent="sec2" source="s2n8" target="s2n10">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+  <diagram id="sec3" name="③ Trace">
+    <mxGraphModel dx="1400" dy="800" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1900" pageHeight="355" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="sec3" value="③ Trace —— trace_id 的传播路径（跨进程因果链）" style="swimlane;html=1;startSize=28;fillColor=#fafafa;strokeColor=#888888;fontSize=13;fontStyle=1;verticalAlign=top;align=left;spacingLeft=10;" vertex="1" parent="1">
+          <mxGeometry x="40" y="40" width="1820" height="275" as="geometry" />
+        </mxCell>
+        <mxCell id="s3n1" value="rpc_channel.cpp:28  GenerateTraceId&#xa;getpid 盐 + 计数 + steady_clock&#xa;→ 16 位 hex（进程内唯一生成点）" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;align=left;spacingLeft=8;verticalAlign=top;spacingTop=4;fontSize=10;" vertex="1" parent="sec3">
+          <mxGeometry x="30" y="50" width="330" height="95" as="geometry" />
+        </mxCell>
+        <mxCell id="s3n2" value="rpc_channel.cpp:228&#xa;meta.set_trace_id&#xa;（字段定义 rpc_meta.proto:20）" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;align=left;spacingLeft=8;verticalAlign=top;spacingTop=4;fontSize=10;" vertex="1" parent="sec3">
+          <mxGeometry x="390" y="50" width="280" height="95" as="geometry" />
+        </mxCell>
+        <mxCell id="s3n3" value="rpc_server.cpp&#xa;:226 取出 trace_id&#xa;:228 dispatch 日志带上" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;align=left;spacingLeft=8;verticalAlign=top;spacingTop=4;fontSize=10;" vertex="1" parent="sec3">
+          <mxGeometry x="700" y="50" width="280" height="95" as="geometry" />
+        </mxCell>
+        <mxCell id="s3n4" value="rpc_server.cpp&#xa;:262 SendResponse&#xa;:287 SendError（原样带回）" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;align=left;spacingLeft=8;verticalAlign=top;spacingTop=4;fontSize=10;" vertex="1" parent="sec3">
+          <mxGeometry x="1010" y="50" width="290" height="95" as="geometry" />
+        </mxCell>
+        <mxCell id="s3n5" value="rpc_channel.cpp:906  LogCompletion&#xa;带上同一个 trace_id&#xa;→ 两端日志串成一条链" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;align=left;spacingLeft=8;verticalAlign=top;spacingTop=4;fontSize=10;" vertex="1" parent="sec3">
+          <mxGeometry x="1330" y="50" width="290" height="95" as="geometry" />
+        </mxCell>
+        <mxCell id="s3note" value="为什么有了 request_id 还要 trace_id：&#xa;   request_id = 单跳内的配对 token，由 next_request_id_(rpc_channel.h:168) 分配，只活到这次响应回来&#xa;   trace_id   = 跨进程的因果标识，换连接 / 重发之后仍指向同一条业务请求&#xa;当前边界：只支持本端生成，没有「透传上游」的入口（现在没有上游）。" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;align=left;spacingLeft=8;verticalAlign=top;spacingTop=4;fontSize=10;" vertex="1" parent="sec3">
+          <mxGeometry x="30" y="165" width="1670" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="s3e1" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;fontSize=11;labelBackgroundColor=#ffffff;" edge="1" parent="sec3" source="s3n1" target="s3n2">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="s3e2" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;fontSize=11;labelBackgroundColor=#ffffff;" edge="1" parent="sec3" source="s3n2" target="s3n3">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="s3e3" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;fontSize=11;labelBackgroundColor=#ffffff;" edge="1" parent="sec3" source="s3n3" target="s3n4">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="s3e4" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;fontSize=11;labelBackgroundColor=#ffffff;" edge="1" parent="sec3" source="s3n4" target="s3n5">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+  <diagram id="sec4" name="④ 优雅关闭">
+    <mxGraphModel dx="1400" dy="800" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1900" pageHeight="515" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="sec4" value="④ Graceful Shutdown —— 五块里唯一动了连接生命周期的一块" style="swimlane;html=1;startSize=28;fillColor=#fafafa;strokeColor=#888888;fontSize=13;fontStyle=1;verticalAlign=top;align=left;spacingLeft=10;" vertex="1" parent="1">
+          <mxGeometry x="40" y="40" width="1820" height="435" as="geometry" />
+        </mxCell>
+        <mxCell id="s4n1" value="SIGTERM handler   rpc_echo_server.cpp:43&#xa;→ EventLoop::NotifyFromSignal()   event_loop.cpp:188&#xa;只做两件信号安全的事：原子置位 + ::write(wakeup_fd_)&#xa;🚫 QueueInLoop 要取 mutex + 构造 std::function，&#xa;    在信号上下文里调用是 UB（最坏与被中断线程自己死锁）" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;align=left;spacingLeft=8;verticalAlign=top;spacingTop=4;fontSize=10;" vertex="1" parent="sec4">
+          <mxGeometry x="30" y="50" width="400" height="145" as="geometry" />
+        </mxCell>
+        <mxCell id="s4n2" value="event_loop.cpp:93  Loop() 每轮末尾&#xa;signal_pending_.exchange(false)&#xa;→ signal_callback_() = server.Stop()&#xa;（真正的动作回到 loop 线程执行）" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;align=left;spacingLeft=8;verticalAlign=top;spacingTop=4;fontSize=10;" vertex="1" parent="sec4">
+          <mxGeometry x="450" y="50" width="320" height="125" as="geometry" />
+        </mxCell>
+        <mxCell id="s4n3" value="rpc_server.cpp&#xa;:62 Stop → RunInLoop&#xa;:70 StopInLoop，stopping_.exchange(true) 幂等&#xa;:82 server_.Stop() ← 停 accept" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;align=left;spacingLeft=8;verticalAlign=top;spacingTop=4;fontSize=10;" vertex="1" parent="sec4">
+          <mxGeometry x="790" y="50" width="320" height="125" as="geometry" />
+        </mxCell>
+        <mxCell id="s4n4" value="tcp_server.cpp:55 Stop → :63 StopInLoop&#xa;:75 acceptor_-&gt;Stop()&#xa;acceptor.cpp:33 = DisableAll + Remove&#xa;⚠ listen fd 不在这里关，留给 ~Acceptor→~Socket&#xa;   （与 §10 同一条纪律：逻辑置死 ≠ 释放 fd）" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;align=left;spacingLeft=8;verticalAlign=top;spacingTop=4;fontSize=10;" vertex="1" parent="sec4">
+          <mxGeometry x="1130" y="50" width="340" height="145" as="geometry" />
+        </mxCell>
+        <mxCell id="s4n5" value="rpc_server.cpp:21&#xa;kGracefulTimeout = 10s&#xa;到期 → CloseConnections&#xa;+ Finish(&quot;timeout&quot;)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;align=left;spacingLeft=8;verticalAlign=top;spacingTop=4;fontSize=10;" vertex="1" parent="sec4">
+          <mxGeometry x="1490" y="50" width="190" height="145" as="geometry" />
+        </mxCell>
+        <mxCell id="s4n6" value="rpc_server.cpp:91  in_flight_ == 0 ?&#xa;是 → :97 CloseConnectionsInLoop" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;align=left;spacingLeft=8;verticalAlign=top;spacingTop=4;fontSize=10;" vertex="1" parent="sec4">
+          <mxGeometry x="30" y="215" width="330" height="75" as="geometry" />
+        </mxCell>
+        <mxCell id="s4n7" value="否 → 等&#xa;rpc_server.cpp:145 OnCallFinished（done 可能在任何线程）&#xa;fetch_sub 减到 0 且 stopping → RunInLoop(关连接)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;align=left;spacingLeft=8;verticalAlign=top;spacingTop=4;fontSize=10;" vertex="1" parent="sec4">
+          <mxGeometry x="380" y="215" width="430" height="75" as="geometry" />
+        </mxCell>
+        <mxCell id="s4n8" value="rpc_server.cpp:236  in_flight_ 在哪加&#xa;⚠「先计数再 CallMethod」：业务可能同步回调 done，&#xa;    计数晚了就会在清零之后又减一次" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;align=left;spacingLeft=8;verticalAlign=top;spacingTop=4;fontSize=10;" vertex="1" parent="sec4">
+          <mxGeometry x="830" y="215" width="420" height="95" as="geometry" />
+        </mxCell>
+        <mxCell id="s4n9" value="rpc_server.cpp:97  CloseConnectionsInLoop&#xa;tcp_server.cpp:101 逐个 connection-&gt;Shutdown()&#xa;⚠ 用 Shutdown 不用 ForceClose：FIN 排在&#xa;   待发缓冲之后，已生成的响应不会丢" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;align=left;spacingLeft=8;verticalAlign=top;spacingTop=4;fontSize=10;" vertex="1" parent="sec4">
+          <mxGeometry x="1270" y="215" width="410" height="95" as="geometry" />
+        </mxCell>
+        <mxCell id="s4n10" value="tcp_server.cpp&#xa;:107 CheckAllClosedInLoop&#xa;:174 由 RemoveConnectionInLoop 驱动（最后一条&#xa;连接退场即回调，不靠轮询）" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;align=left;spacingLeft=8;verticalAlign=top;spacingTop=4;fontSize=10;" vertex="1" parent="sec4">
+          <mxGeometry x="30" y="330" width="470" height="75" as="geometry" />
+        </mxCell>
+        <mxCell id="s4n11" value="rpc_server.cpp:121  FinishShutdownInLoop&#xa;reason = drained / timeout&#xa;→ shutdown_complete_callback_ → loop.Quit()" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;align=left;spacingLeft=8;verticalAlign=top;spacingTop=4;fontSize=10;" vertex="1" parent="sec4">
+          <mxGeometry x="520" y="330" width="470" height="75" as="geometry" />
+        </mxCell>
+        <mxCell id="s4e1" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;fontSize=11;labelBackgroundColor=#ffffff;" edge="1" parent="sec4" source="s4n1" target="s4n2">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="s4e2" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;fontSize=11;labelBackgroundColor=#ffffff;" edge="1" parent="sec4" source="s4n2" target="s4n3">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="s4e3" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;fontSize=11;labelBackgroundColor=#ffffff;" edge="1" parent="sec4" source="s4n3" target="s4n4">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="s4e4" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;fontSize=11;labelBackgroundColor=#ffffff;" edge="1" parent="sec4" source="s4n3" target="s4n5">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="s4e5" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;fontSize=11;labelBackgroundColor=#ffffff;" edge="1" parent="sec4" source="s4n6" target="s4n9">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="s4e6" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;fontSize=11;labelBackgroundColor=#ffffff;" edge="1" parent="sec4" source="s4n7" target="s4n9">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="s4e7" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;fontSize=11;labelBackgroundColor=#ffffff;" edge="1" parent="sec4" source="s4n8" target="s4n7">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="s4e8" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;fontSize=11;labelBackgroundColor=#ffffff;" edge="1" parent="sec4" source="s4n9" target="s4n10">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="s4e9" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;fontSize=11;labelBackgroundColor=#ffffff;" edge="1" parent="sec4" source="s4n10" target="s4n11">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+  <diagram id="sec5" name="⑤ 应用层心跳">
+    <mxGraphModel dx="1400" dy="800" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1900" pageHeight="595" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="sec5" value="⑤ 应用层心跳 —— 补 keepalive 探不到的洞（进程僵死）" style="swimlane;html=1;startSize=28;fillColor=#fafafa;strokeColor=#888888;fontSize=13;fontStyle=1;verticalAlign=top;align=left;spacingLeft=10;" vertex="1" parent="1">
+          <mxGeometry x="40" y="40" width="1820" height="515" as="geometry" />
+        </mxCell>
+        <mxCell id="s5n1" value="rpc_channel.cpp&#xa;:420 OnConnection（loop 线程）&#xa;:430 连接建立 → heartbeat_missed_ = 0&#xa;:518 ScheduleHeartbeatInLoop" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;align=left;spacingLeft=8;verticalAlign=top;spacingTop=4;fontSize=10;" vertex="1" parent="sec5">
+          <mxGeometry x="30" y="50" width="350" height="100" as="geometry" />
+        </mxCell>
+        <mxCell id="s5n2" value="rpc_channel.cpp&#xa;:455 断连时的 rpc connection closed&#xa;:544 CancelHeartbeatInLoop" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;align=left;spacingLeft=8;verticalAlign=top;spacingTop=4;fontSize=10;" vertex="1" parent="sec5">
+          <mxGeometry x="410" y="50" width="320" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="s5n3" value="rpc_channel.cpp:557&#xa;RunAfter(3s) → OnHeartbeatTimer&#xa;三个分支 ↓" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;align=left;spacingLeft=8;verticalAlign=top;spacingTop=4;fontSize=10;" vertex="1" parent="sec5">
+          <mxGeometry x="760" y="50" width="280" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="s5n4" value="[1] 没有连接可探   rpc_channel.cpp:561&#xa;connection_state_ != kConnected 或 connection_ == nullptr&#xa;→ heartbeat_missed_ = 0&#xa;（不是漏写：不清零会累加到下一条连接，新连接刚建就被误杀）" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;align=left;spacingLeft=8;verticalAlign=top;spacingTop=4;fontSize=10;" vertex="1" parent="sec5">
+          <mxGeometry x="30" y="175" width="520" height="100" as="geometry" />
+        </mxCell>
+        <mxCell id="s5n5" value="[2] missed &gt;= 3   rpc_channel.cpp:565（第 4 个 tick 才判）&#xa;:567 NLOG_WARN → :574 ForceClose()&#xa;→ 报丧线 → Connector 重连&#xa;⚠ tick1/2/3 各发一次并 ++，tick4 才判 → 共约 12s" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;align=left;spacingLeft=8;verticalAlign=top;spacingTop=4;fontSize=10;" vertex="1" parent="sec5">
+          <mxGeometry x="570" y="175" width="480" height="110" as="geometry" />
+        </mxCell>
+        <mxCell id="s5n6" value="[3] 否则   rpc_channel.cpp:576&#xa;:578 ++heartbeat_missed_，:579 调 SendHeartbeatInLoop（定义 :585）&#xa;:582 结尾 ScheduleHeartbeatInLoop 续下一轮&#xa;发送即协议 HEARTBEAT（rpc_meta.proto:10），也分配 request_id（rpc_channel.cpp:596）" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;align=left;spacingLeft=8;verticalAlign=top;spacingTop=4;fontSize=10;" vertex="1" parent="sec5">
+          <mxGeometry x="1070" y="175" width="470" height="110" as="geometry" />
+        </mxCell>
+        <mxCell id="s5n7" value="服务端 rpc_server.cpp&#xa;:157 OnMessage&#xa;:175 HEARTBEAT 在 REQUEST 判定「之前」分流&#xa;:297 SendHeartbeatEcho（:303 trace_id 原样带回）&#xa;:181 非 HEARTBEAT → 继续走 REQUEST 处理" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;align=left;spacingLeft=8;verticalAlign=top;spacingTop=4;fontSize=10;" vertex="1" parent="sec5">
+          <mxGeometry x="30" y="305" width="520" height="110" as="geometry" />
+        </mxCell>
+        <mxCell id="s5n8" value="客户端 rpc_channel.cpp&#xa;:503 HandleFrame&#xa;:508 HEARTBEAT → heartbeat_missed_ = 0 并提前 return&#xa;⚠ 不进 pending_calls_ → 不占 in_flight_&#xa;    → 心跳不会拖住优雅关闭（④⑤ 的咬合点）" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;align=left;spacingLeft=8;verticalAlign=top;spacingTop=4;fontSize=10;" vertex="1" parent="sec5">
+          <mxGeometry x="570" y="305" width="520" height="110" as="geometry" />
+        </mxCell>
+        <mxCell id="s5note" value="keepalive 由对端「内核」应答，只能证明机器和网络还活着；服务端进程 hang 住而内核正常时它照样成功。两者互补，keepalive 保留。" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;align=left;spacingLeft=8;verticalAlign=top;spacingTop=4;fontSize=10;" vertex="1" parent="sec5">
+          <mxGeometry x="30" y="430" width="1510" height="55" as="geometry" />
+        </mxCell>
+        <mxCell id="s5e1" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;fontSize=11;labelBackgroundColor=#ffffff;" edge="1" parent="sec5" source="s5n1" target="s5n2">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="s5e2" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;fontSize=11;labelBackgroundColor=#ffffff;" edge="1" parent="sec5" source="s5n3" target="s5n4">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="s5e3" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;fontSize=11;labelBackgroundColor=#ffffff;" edge="1" parent="sec5" source="s5n3" target="s5n5">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="s5e4" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;fontSize=11;labelBackgroundColor=#ffffff;" edge="1" parent="sec5" source="s5n3" target="s5n6">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="s5e5" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;fontSize=11;labelBackgroundColor=#ffffff;dashed=1;" edge="1" parent="sec5" source="s5n4" target="s5n6">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="s5e6" value="HEARTBEAT 回包" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;fontSize=11;labelBackgroundColor=#ffffff;" edge="1" parent="sec5" source="s5n7" target="s5n8">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

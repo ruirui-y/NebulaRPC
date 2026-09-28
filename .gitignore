@@ -16,3 +16,6 @@ compile_commands.json
 
 # 本地打包/交付压缩包不入库（历史提交 77f05e4 曾专门删除过一个）
 *.zip
+
+# drawio 保存时自动生成的备份（形如 .$流程梳理.drawio.bkp），不入库
+*.drawio.bkp
