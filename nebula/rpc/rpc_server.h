@@ -4,6 +4,7 @@
 #include "nebula/net/tcp_server.h"
 #include "nebula/net/timer_id.h"
 #include "nebula/rpc/rpc_codec.h"
+#include "nebula/rpc/rpc_error.h"
 
 #include <google/protobuf/service.h>
 
@@ -64,7 +65,7 @@ private:
     void SendError(const net::TcpConnectionPtr& conn,
                    std::uint64_t request_id,
                    const std::string& trace_id,
-                   int error_code,
+                   RpcErrorCode error_code,
                    std::string error_text);
     void SendHeartbeatEcho(const net::TcpConnectionPtr& conn, const proto::RpcMeta& request_meta);
 

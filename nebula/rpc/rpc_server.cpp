@@ -175,19 +175,20 @@ void RpcServer::OnMessage(const net::TcpConnectionPtr& conn, net::Buffer* buffer
         if (frame.meta.type() == proto::RpcMeta::HEARTBEAT)
         {
             SendHeartbeatEcho(conn, frame.meta);
-            continue;
+            return;
         }
 
         if (frame.meta.type() != proto::RpcMeta::REQUEST)
         {
-            SendError(conn,
-                      frame.meta.request_id(),
-                      frame.meta.trace_id(),
-                      400,
-                      "server received a non-request frame");
-            continue;
+            HandleRequest(conn, frame);
+            return;
         }
-        HandleRequest(conn, frame);
+        
+        SendError(conn,
+            frame.meta.request_id(),
+            frame.meta.trace_id(),
+            RpcErrorCode::BadRequest,
+            "server received a non-request/heartbeat frame");
     }
 }
 
@@ -196,7 +197,7 @@ void RpcServer::HandleRequest(const net::TcpConnectionPtr& conn, const RpcFrame&
     const auto service_it = services_.find(frame.meta.service_name());
     if (service_it == services_.end())
     {
-        SendError(conn, frame.meta.request_id(), frame.meta.trace_id(), 404, "service not found");
+        SendError(conn, frame.meta.request_id(), frame.meta.trace_id(), RpcErrorCode::NotFound, "service not found");
         return;
     }
 
@@ -204,7 +205,7 @@ void RpcServer::HandleRequest(const net::TcpConnectionPtr& conn, const RpcFrame&
     const auto* method = service->GetDescriptor()->FindMethodByName(frame.meta.method_name());
     if (method == nullptr)
     {
-        SendError(conn, frame.meta.request_id(), frame.meta.trace_id(), 404, "method not found");
+        SendError(conn, frame.meta.request_id(), frame.meta.trace_id(), RpcErrorCode::NotFound, "method not found");
         return;
     }
 
@@ -217,7 +218,7 @@ void RpcServer::HandleRequest(const net::TcpConnectionPtr& conn, const RpcFrame&
         SendError(conn,
                   frame.meta.request_id(),
                   frame.meta.trace_id(),
-                  400,
+                  RpcErrorCode::BadRequest,
                   "request protobuf parse failed");
         return;
     }
@@ -252,7 +253,7 @@ void RpcServer::SendResponse(const net::TcpConnectionPtr& conn,
     std::string payload;
     if (!response.SerializeToString(&payload))
     {
-        SendError(conn, request_id, trace_id, 500, "response protobuf serialization failed");
+        SendError(conn, request_id, trace_id, RpcErrorCode::InternalError, "response protobuf serialization failed");
         return;
     }
 
@@ -263,7 +264,7 @@ void RpcServer::SendResponse(const net::TcpConnectionPtr& conn,
     const std::string bytes = RpcCodec::Encode(std::move(meta), payload);
     if (bytes.empty())
     {
-        SendError(conn, request_id, trace_id, 500, "response frame encoding failed");
+        SendError(conn, request_id, trace_id, RpcErrorCode::InternalError, "response frame encoding failed");
         return;
     }
     conn->Send(bytes);
@@ -272,20 +273,23 @@ void RpcServer::SendResponse(const net::TcpConnectionPtr& conn,
 void RpcServer::SendError(const net::TcpConnectionPtr& conn,
                           std::uint64_t request_id,
                           const std::string& trace_id,
-                          int error_code,
+                          RpcErrorCode error_code,
                           std::string error_text)
 {
+    // 枚举只在本端表达语义，出网前统一落地成 int32（日志同样用整数，避免依赖枚举的格式化器）
+    const auto code = static_cast<std::int32_t>(error_code);
+
     NLOG_WARN("rpc server error request_id={} trace_id={} code={} text={}",
               request_id,
               trace_id,
-              error_code,
+              code,
               error_text);
 
     proto::RpcMeta meta;
     meta.set_type(proto::RpcMeta::ERROR);
     meta.set_request_id(request_id);
     meta.set_trace_id(trace_id);
-    meta.set_error_code(error_code);
+    meta.set_error_code(code);
     meta.set_error_text(std::move(error_text));
     const std::string bytes = RpcCodec::Encode(std::move(meta), {});
     if (!bytes.empty())
