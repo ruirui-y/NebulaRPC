@@ -257,6 +257,7 @@ void RpcChannel::CallMethod(const google::protobuf::MethodDescriptor* method,
         .method = method,
         .deadline = deadline,
         .sent_at = sent_at,
+        .trace_id = trace_id,
         .timeout_timer = {},
         .cancel_token = -1,
         .call = {},
@@ -903,8 +904,9 @@ void RpcChannel::LogCompletion(std::uint64_t request_id,
                                              ? std::string_view(method->name())
                                              : std::string_view{};
 
-    NLOG_DEBUG("rpc call request_id={} outcome={} service={} method={} latency_ms={:.3f} error={}",
+    NLOG_DEBUG("rpc call request_id={} trace_id={} outcome={} service={} method={} latency_ms={:.3f} error={}",
                request_id,
+               pending_call.trace_id,
                outcome,
                service,
                method_name,

@@ -79,6 +79,7 @@ private:
         const google::protobuf::MethodDescriptor* method{};
         std::optional<TimePoint> deadline;
         TimePoint sent_at{};
+        std::string trace_id;                                                           // 完成日志要带上，串成一条链
         net::TimerId timeout_timer;
         int cancel_token{-1};                                                           // 注册在 RpcController 上的取消回调编号，-1 表示未注册
         RpcCall call;                                                                   // 完成权仲裁：response/timeout/cancel/disconnect 只能赢一个
