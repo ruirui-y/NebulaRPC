@@ -191,12 +191,12 @@
     </mxGraphModel>
   </diagram>
   <diagram id="0o2JWASIg_QqTEO33gi8" name="RPC完整流程">
-    <mxGraphModel dx="4831" dy="2611" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="500" pageHeight="500" math="0" shadow="0">
+    <mxGraphModel dx="1595" dy="366" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="500" pageHeight="500" math="0" shadow="0">
       <root>
         <mxCell id="0" />
         <mxCell id="1" parent="0" />
-        <mxCell id="uvScwRuanxFtX1CoU9Pb-1" parent="1" style="swimlane;html=1;startSize=100;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=13;fontStyle=1;verticalAlign=top;align=left;spacingLeft=10;" value="RPC流程&lt;div&gt;一次请求需要完整的记录信息PendingCall&lt;/div&gt;&lt;div&gt;一次请求需要发送，失败，完成等状态进行追踪RpcCallState&lt;/div&gt;" vertex="1">
-          <mxGeometry height="1230" width="3980" x="-460" y="40" as="geometry" />
+        <mxCell id="uvScwRuanxFtX1CoU9Pb-1" parent="1" style="swimlane;html=1;startSize=100;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=13;fontStyle=1;verticalAlign=top;align=left;spacingLeft=10;" value="RPC流程&lt;div&gt;一次请求需要完整的记录信息PendingCall&lt;/div&gt;&lt;div&gt;一次请求需要发送，失败，完成等状态进行追踪RpcCallState&lt;/div&gt;&lt;div&gt;TraceId: 粉红&lt;/div&gt;&lt;div&gt;Metrics: 绿&lt;/div&gt;" vertex="1">
+          <mxGeometry height="1230" width="3980" x="-530" y="50" as="geometry" />
         </mxCell>
         <mxCell id="d33w2TpRMtbWoegV2cC6-2" edge="1" parent="uvScwRuanxFtX1CoU9Pb-1" source="d33w2TpRMtbWoegV2cC6-4" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="d33w2TpRMtbWoegV2cC6-11">
           <mxGeometry relative="1" as="geometry" />
@@ -208,6 +208,9 @@
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
         <mxCell id="d33w2TpRMtbWoegV2cC6-17" edge="1" parent="uvScwRuanxFtX1CoU9Pb-1" source="d33w2TpRMtbWoegV2cC6-4" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="d33w2TpRMtbWoegV2cC6-16">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="mQL7_-Go2DwBEnblX7iP-2" edge="1" parent="uvScwRuanxFtX1CoU9Pb-1" source="d33w2TpRMtbWoegV2cC6-4" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="mQL7_-Go2DwBEnblX7iP-1">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
         <mxCell id="d33w2TpRMtbWoegV2cC6-4" parent="uvScwRuanxFtX1CoU9Pb-1" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;spacingLeft=8;verticalAlign=top;spacingTop=4;fillColor=#dae8fc;strokeColor=#6c8ebf;" value="调用线程&lt;div&gt;CallMethod&lt;span style=&quot;background-color: transparent; color: light-dark(rgb(0, 0, 0), rgb(255, 255, 255));&quot;&gt;&amp;nbsp;&lt;/span&gt;&lt;/div&gt;" vertex="1">
@@ -250,7 +253,7 @@
         <mxCell id="d33w2TpRMtbWoegV2cC6-11" parent="uvScwRuanxFtX1CoU9Pb-1" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;spacingLeft=5;verticalAlign=top;spacingTop=0;fillColor=#ffffff;strokeColor=#999999;spacing=0;" value="判定请求发送的done，method，request，response，是否为空&lt;div&gt;RpcCallState = Invalid&lt;/div&gt;" vertex="1">
           <mxGeometry height="40" width="210" x="200" y="707" as="geometry" />
         </mxCell>
-        <mxCell id="d33w2TpRMtbWoegV2cC6-12" parent="uvScwRuanxFtX1CoU9Pb-1" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;spacingLeft=5;verticalAlign=top;spacingTop=0;fillColor=#ffffff;strokeColor=#999999;spacing=0;" value="生成请求id和唯一TraceId&lt;div&gt;&lt;span style=&quot;background-color: transparent; color: light-dark(rgb(0, 0, 0), rgb(255, 255, 255));&quot;&gt;填充&lt;/span&gt;&lt;span style=&quot;background-color: transparent;&quot;&gt;RpcMeta字段头部信息&lt;/span&gt;&lt;/div&gt;&lt;div&gt;将整个RPC编码成字符串RpcCodec::Encode&lt;/div&gt;" vertex="1">
+        <mxCell id="d33w2TpRMtbWoegV2cC6-12" parent="uvScwRuanxFtX1CoU9Pb-1" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;spacingLeft=5;verticalAlign=top;spacingTop=0;fillColor=#d80073;strokeColor=#A50040;spacing=0;fontColor=#ffffff;" value="生成请求id和唯一TraceId&lt;div&gt;&lt;span style=&quot;background-color: transparent; color: light-dark(rgb(0, 0, 0), rgb(255, 255, 255));&quot;&gt;填充&lt;/span&gt;&lt;span style=&quot;background-color: transparent;&quot;&gt;RpcMeta字段头部信息&lt;/span&gt;&lt;/div&gt;&lt;div&gt;将整个RPC编码成字符串RpcCodec::Encode&lt;/div&gt;" vertex="1">
           <mxGeometry height="40" width="210" x="200" y="814" as="geometry" />
         </mxCell>
         <mxCell id="d33w2TpRMtbWoegV2cC6-29" edge="1" parent="uvScwRuanxFtX1CoU9Pb-1" source="d33w2TpRMtbWoegV2cC6-13" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="d33w2TpRMtbWoegV2cC6-9">
@@ -339,7 +342,7 @@
         <mxCell id="d33w2TpRMtbWoegV2cC6-76" parent="uvScwRuanxFtX1CoU9Pb-1" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;spacingLeft=5;verticalAlign=top;spacingTop=0;fillColor=#ffffff;strokeColor=#999999;spacing=0;" value="请求正常完成&lt;div&gt;CompleteCallWithFrame&lt;/div&gt;" vertex="1">
           <mxGeometry height="40" width="210" x="1160" y="580" as="geometry" />
         </mxCell>
-        <mxCell id="d33w2TpRMtbWoegV2cC6-213" edge="1" parent="uvScwRuanxFtX1CoU9Pb-1" source="d33w2TpRMtbWoegV2cC6-78" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0;entryY=0.5;entryDx=0;entryDy=0;curved=1;" target="d33w2TpRMtbWoegV2cC6-212">
+        <mxCell id="d33w2TpRMtbWoegV2cC6-213" edge="1" parent="uvScwRuanxFtX1CoU9Pb-1" source="d33w2TpRMtbWoegV2cC6-78" style="rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0;entryY=0.5;entryDx=0;entryDy=0;curved=1;" target="d33w2TpRMtbWoegV2cC6-212">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
         <mxCell id="d33w2TpRMtbWoegV2cC6-78" parent="uvScwRuanxFtX1CoU9Pb-1" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;spacingLeft=5;verticalAlign=top;spacingTop=0;fillColor=#ffffff;strokeColor=#999999;spacing=0;" value="请求超时&lt;div&gt;CompleteCallWithFailure&lt;/div&gt;" vertex="1">
@@ -366,26 +369,26 @@
         <mxCell id="d33w2TpRMtbWoegV2cC6-94" edge="1" parent="uvScwRuanxFtX1CoU9Pb-1" source="d33w2TpRMtbWoegV2cC6-84" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="d33w2TpRMtbWoegV2cC6-93">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
+        <mxCell id="mQL7_-Go2DwBEnblX7iP-145" edge="1" parent="uvScwRuanxFtX1CoU9Pb-1" source="d33w2TpRMtbWoegV2cC6-84" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="mQL7_-Go2DwBEnblX7iP-144">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
         <mxCell id="d33w2TpRMtbWoegV2cC6-84" parent="uvScwRuanxFtX1CoU9Pb-1" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;spacingLeft=5;verticalAlign=top;spacingTop=0;fillColor=#dae8fc;strokeColor=#6c8ebf;spacing=0;" value="&lt;div&gt;服务端RPC线程&lt;/div&gt;RpcServer::OnMessage" vertex="1">
           <mxGeometry height="40" width="150" x="1460" y="325" as="geometry" />
         </mxCell>
-        <mxCell id="d33w2TpRMtbWoegV2cC6-96" edge="1" parent="uvScwRuanxFtX1CoU9Pb-1" source="d33w2TpRMtbWoegV2cC6-89" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="d33w2TpRMtbWoegV2cC6-95">
-          <mxGeometry relative="1" as="geometry" />
-        </mxCell>
         <mxCell id="d33w2TpRMtbWoegV2cC6-89" parent="uvScwRuanxFtX1CoU9Pb-1" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;spacingLeft=5;verticalAlign=top;spacingTop=0;fillColor=#ffffff;strokeColor=#999999;spacing=0;" value="反序列化 如果失败&lt;div&gt;服务端::shutdown(fd_, SHUT_WR)&lt;/div&gt;" vertex="1">
-          <mxGeometry height="40" width="210" x="1660" y="270" as="geometry" />
+          <mxGeometry height="40" width="210" x="1650" y="215.75" as="geometry" />
         </mxCell>
-        <mxCell id="d33w2TpRMtbWoegV2cC6-97" edge="1" parent="uvScwRuanxFtX1CoU9Pb-1" source="d33w2TpRMtbWoegV2cC6-91" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="d33w2TpRMtbWoegV2cC6-95">
+        <mxCell id="mQL7_-Go2DwBEnblX7iP-146" edge="1" parent="uvScwRuanxFtX1CoU9Pb-1" source="d33w2TpRMtbWoegV2cC6-91" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="d33w2TpRMtbWoegV2cC6-95">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
-        <mxCell id="d33w2TpRMtbWoegV2cC6-91" parent="uvScwRuanxFtX1CoU9Pb-1" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;spacingLeft=5;verticalAlign=top;spacingTop=0;fillColor=#ffffff;strokeColor=#999999;spacing=0;" value="区分RPC消息类型&lt;div&gt;HEARTBEAT/REQUEST&lt;/div&gt;" vertex="1">
-          <mxGeometry height="40" width="210" x="1660" y="325" as="geometry" />
+        <mxCell id="d33w2TpRMtbWoegV2cC6-91" parent="uvScwRuanxFtX1CoU9Pb-1" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;spacingLeft=5;verticalAlign=top;spacingTop=0;fillColor=#ffffff;strokeColor=#999999;spacing=0;" value="区分RPC消息类型&lt;div&gt;REQUEST&lt;/div&gt;" vertex="1">
+          <mxGeometry height="40" width="210" x="1650" y="270.75" as="geometry" />
         </mxCell>
-        <mxCell id="d33w2TpRMtbWoegV2cC6-98" edge="1" parent="uvScwRuanxFtX1CoU9Pb-1" source="d33w2TpRMtbWoegV2cC6-93" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="d33w2TpRMtbWoegV2cC6-95">
+        <mxCell id="mQL7_-Go2DwBEnblX7iP-291" edge="1" parent="uvScwRuanxFtX1CoU9Pb-1" source="d33w2TpRMtbWoegV2cC6-93" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0;entryY=0.5;entryDx=0;entryDy=0;curved=1;curveGeometry=1;" target="mQL7_-Go2DwBEnblX7iP-290">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
-        <mxCell id="d33w2TpRMtbWoegV2cC6-93" parent="uvScwRuanxFtX1CoU9Pb-1" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;spacingLeft=5;verticalAlign=top;spacingTop=0;fillColor=#ffffff;strokeColor=#999999;spacing=0;" value="如果是REQUEST&lt;div&gt;HandleRequest&lt;/div&gt;" vertex="1">
-          <mxGeometry height="40" width="210" x="1660" y="380" as="geometry" />
+        <mxCell id="d33w2TpRMtbWoegV2cC6-93" parent="uvScwRuanxFtX1CoU9Pb-1" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;spacingLeft=5;verticalAlign=top;spacingTop=0;fillColor=#ffffff;strokeColor=#999999;spacing=0;" value="如果都不是说明请求出现问题" vertex="1">
+          <mxGeometry height="40" width="210" x="1650" y="510" as="geometry" />
         </mxCell>
         <mxCell id="d33w2TpRMtbWoegV2cC6-165" edge="1" parent="uvScwRuanxFtX1CoU9Pb-1" source="d33w2TpRMtbWoegV2cC6-95" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="d33w2TpRMtbWoegV2cC6-99">
           <mxGeometry relative="1" as="geometry" />
@@ -403,37 +406,37 @@
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
         <mxCell id="d33w2TpRMtbWoegV2cC6-95" parent="uvScwRuanxFtX1CoU9Pb-1" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;spacingLeft=5;verticalAlign=top;spacingTop=0;fillColor=#dae8fc;strokeColor=#6c8ebf;spacing=0;" value="HandleRequest" vertex="1">
-          <mxGeometry height="40" width="100" x="1910" y="325" as="geometry" />
+          <mxGeometry height="40" width="100" x="2070" y="270" as="geometry" />
         </mxCell>
         <mxCell id="d33w2TpRMtbWoegV2cC6-173" edge="1" parent="uvScwRuanxFtX1CoU9Pb-1" source="d33w2TpRMtbWoegV2cC6-99" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="d33w2TpRMtbWoegV2cC6-172">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
         <mxCell id="d33w2TpRMtbWoegV2cC6-99" parent="uvScwRuanxFtX1CoU9Pb-1" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;spacingLeft=5;verticalAlign=top;spacingTop=0;fillColor=#ffffff;strokeColor=#999999;spacing=0;" value="获取rpc请求的服务名service_name&lt;div&gt;如果没有该服务返回404以及service not found&lt;/div&gt;" vertex="1">
-          <mxGeometry height="40" width="240" x="2050" y="190" as="geometry" />
+          <mxGeometry height="40" width="240" x="2230" y="190" as="geometry" />
         </mxCell>
         <mxCell id="d33w2TpRMtbWoegV2cC6-174" edge="1" parent="uvScwRuanxFtX1CoU9Pb-1" source="d33w2TpRMtbWoegV2cC6-100" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="d33w2TpRMtbWoegV2cC6-172">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
         <mxCell id="d33w2TpRMtbWoegV2cC6-100" parent="uvScwRuanxFtX1CoU9Pb-1" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;spacingLeft=5;verticalAlign=top;spacingTop=0;fillColor=#ffffff;strokeColor=#999999;spacing=0;" value="获取rpc请求的方法名&lt;div&gt;如果没有该方法返回404以及method not found&lt;/div&gt;" vertex="1">
-          <mxGeometry height="40" width="240" x="2050" y="250" as="geometry" />
+          <mxGeometry height="40" width="240" x="2230" y="250" as="geometry" />
         </mxCell>
         <mxCell id="d33w2TpRMtbWoegV2cC6-175" edge="1" parent="uvScwRuanxFtX1CoU9Pb-1" source="d33w2TpRMtbWoegV2cC6-163" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="d33w2TpRMtbWoegV2cC6-172">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
         <mxCell id="d33w2TpRMtbWoegV2cC6-163" parent="uvScwRuanxFtX1CoU9Pb-1" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;spacingLeft=5;verticalAlign=top;spacingTop=0;fillColor=#ffffff;strokeColor=#999999;spacing=0;" value="获取该方法对应的请求和响应&lt;div&gt;反序列化TCP发来的字符串&lt;/div&gt;&lt;div&gt;request-&amp;gt;ParseFromString&lt;/div&gt;&lt;div&gt;序列化失败返回404以及request protobuf parse failed&lt;/div&gt;" vertex="1">
-          <mxGeometry height="60" width="240" x="2050" y="300" as="geometry" />
+          <mxGeometry height="60" width="240" x="2230" y="300" as="geometry" />
         </mxCell>
         <mxCell id="d33w2TpRMtbWoegV2cC6-176" edge="1" parent="uvScwRuanxFtX1CoU9Pb-1" source="d33w2TpRMtbWoegV2cC6-164" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="d33w2TpRMtbWoegV2cC6-172">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
         <mxCell id="d33w2TpRMtbWoegV2cC6-164" parent="uvScwRuanxFtX1CoU9Pb-1" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;spacingLeft=5;verticalAlign=top;spacingTop=0;fillColor=#d80073;strokeColor=#A50040;spacing=0;fontColor=#ffffff;" value="打印日志，在这里追踪trace_id" vertex="1">
-          <mxGeometry height="23" width="240" x="2050" y="378.5" as="geometry" />
+          <mxGeometry height="23" width="240" x="2230" y="378.5" as="geometry" />
         </mxCell>
         <mxCell id="d33w2TpRMtbWoegV2cC6-177" edge="1" parent="uvScwRuanxFtX1CoU9Pb-1" source="d33w2TpRMtbWoegV2cC6-168" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="d33w2TpRMtbWoegV2cC6-172">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
         <mxCell id="d33w2TpRMtbWoegV2cC6-168" parent="uvScwRuanxFtX1CoU9Pb-1" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;spacingLeft=5;verticalAlign=top;spacingTop=0;fillColor=#ffffff;strokeColor=#999999;spacing=0;" value="设置回调，当服务端方法调用完毕，对响应序列化并返回" vertex="1">
-          <mxGeometry height="40" width="240" x="2050" y="430" as="geometry" />
+          <mxGeometry height="40" width="240" x="2230" y="430" as="geometry" />
         </mxCell>
         <mxCell id="d33w2TpRMtbWoegV2cC6-180" edge="1" parent="uvScwRuanxFtX1CoU9Pb-1" source="d33w2TpRMtbWoegV2cC6-172" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="d33w2TpRMtbWoegV2cC6-178">
           <mxGeometry relative="1" as="geometry" />
@@ -442,25 +445,25 @@
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
         <mxCell id="d33w2TpRMtbWoegV2cC6-172" parent="uvScwRuanxFtX1CoU9Pb-1" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;spacingLeft=5;verticalAlign=top;spacingTop=0;fillColor=#dae8fc;strokeColor=#6c8ebf;spacing=0;" value="RpcChannel::OnMessage" vertex="1">
-          <mxGeometry height="40" width="130" x="2350" y="310" as="geometry" />
+          <mxGeometry height="40" width="130" x="2530" y="310" as="geometry" />
         </mxCell>
         <mxCell id="d33w2TpRMtbWoegV2cC6-185" edge="1" parent="uvScwRuanxFtX1CoU9Pb-1" source="d33w2TpRMtbWoegV2cC6-178" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="d33w2TpRMtbWoegV2cC6-184">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
         <mxCell id="d33w2TpRMtbWoegV2cC6-178" parent="uvScwRuanxFtX1CoU9Pb-1" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;spacingLeft=5;verticalAlign=top;spacingTop=0;fillColor=#ffffff;strokeColor=#999999;spacing=0;" value="反序列化，如果失败&lt;div&gt;设置连接状态为kDisconnected&lt;br&gt;&lt;div&gt;直接断开连接并清理所有请求&lt;/div&gt;&lt;/div&gt;" vertex="1">
-          <mxGeometry height="40" width="210" x="2520" y="241.75" as="geometry" />
+          <mxGeometry height="40" width="210" x="2700" y="241.75" as="geometry" />
         </mxCell>
         <mxCell id="d33w2TpRMtbWoegV2cC6-186" edge="1" parent="uvScwRuanxFtX1CoU9Pb-1" source="d33w2TpRMtbWoegV2cC6-179" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="d33w2TpRMtbWoegV2cC6-184">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
         <mxCell id="d33w2TpRMtbWoegV2cC6-179" parent="uvScwRuanxFtX1CoU9Pb-1" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;spacingLeft=5;verticalAlign=top;spacingTop=0;fillColor=#ffffff;strokeColor=#999999;spacing=0;" value="反序列化成功&lt;div&gt;处理服务端返回的响应HandleFrame&lt;/div&gt;" vertex="1">
-          <mxGeometry height="40" width="210" x="2520" y="310" as="geometry" />
+          <mxGeometry height="40" width="210" x="2700" y="310" as="geometry" />
         </mxCell>
         <mxCell id="d33w2TpRMtbWoegV2cC6-187" edge="1" parent="uvScwRuanxFtX1CoU9Pb-1" source="d33w2TpRMtbWoegV2cC6-182" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="d33w2TpRMtbWoegV2cC6-184">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
         <mxCell id="d33w2TpRMtbWoegV2cC6-182" parent="uvScwRuanxFtX1CoU9Pb-1" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;spacingLeft=5;verticalAlign=top;spacingTop=0;fillColor=#ffffff;strokeColor=#999999;spacing=0;" value="判断响应是否为心跳回包&lt;div&gt;如果是将心跳丢失置为0&lt;/div&gt;&lt;div&gt;heartbeat_missed_ = 0&lt;/div&gt;&lt;div&gt;否则进入响应处理逻辑&lt;/div&gt;" vertex="1">
-          <mxGeometry height="60" width="210" x="2520" y="370" as="geometry" />
+          <mxGeometry height="60" width="210" x="2700" y="370" as="geometry" />
         </mxCell>
         <mxCell id="d33w2TpRMtbWoegV2cC6-183" edge="1" parent="uvScwRuanxFtX1CoU9Pb-1" source="d33w2TpRMtbWoegV2cC6-172" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=-0.003;entryY=0.599;entryDx=0;entryDy=0;entryPerimeter=0;" target="d33w2TpRMtbWoegV2cC6-182">
           <mxGeometry relative="1" as="geometry" />
@@ -478,31 +481,31 @@
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
         <mxCell id="d33w2TpRMtbWoegV2cC6-184" parent="uvScwRuanxFtX1CoU9Pb-1" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;spacingLeft=5;verticalAlign=top;spacingTop=0;fillColor=#dae8fc;strokeColor=#6c8ebf;spacing=0;" value="CompleteCallWithFrame" vertex="1">
-          <mxGeometry height="40" width="130" x="2780" y="310" as="geometry" />
+          <mxGeometry height="40" width="130" x="2960" y="310" as="geometry" />
         </mxCell>
         <mxCell id="d33w2TpRMtbWoegV2cC6-198" edge="1" parent="uvScwRuanxFtX1CoU9Pb-1" source="d33w2TpRMtbWoegV2cC6-188" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="d33w2TpRMtbWoegV2cC6-197">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
         <mxCell id="d33w2TpRMtbWoegV2cC6-188" parent="uvScwRuanxFtX1CoU9Pb-1" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;spacingLeft=5;verticalAlign=top;spacingTop=0;fillColor=#ffffff;strokeColor=#999999;spacing=0;" value="根据请求id获取请求发送时保留的请求信心&lt;div&gt;pending_calls_.find(request_id)&lt;/div&gt;&lt;div&gt;如果获取失败，说明在服务器处理请求并返回响应的期间，请求超时或者取消了&lt;/div&gt;" vertex="1">
-          <mxGeometry height="60" width="210" x="2960" y="121.75" as="geometry" />
+          <mxGeometry height="60" width="210" x="3140" y="121.75" as="geometry" />
         </mxCell>
         <mxCell id="d33w2TpRMtbWoegV2cC6-200" edge="1" parent="uvScwRuanxFtX1CoU9Pb-1" source="d33w2TpRMtbWoegV2cC6-190" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="d33w2TpRMtbWoegV2cC6-197">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
         <mxCell id="d33w2TpRMtbWoegV2cC6-190" parent="uvScwRuanxFtX1CoU9Pb-1" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;spacingLeft=12;verticalAlign=top;spacingTop=0;fillColor=#ffffff;strokeColor=#999999;spacing=0;" value="设置请求的状态为完成&lt;div&gt;TryComplete(RpcCallState::Completed)&lt;/div&gt;&lt;div&gt;此时如果取消，只有一种状态会被记录&lt;/div&gt;&lt;div&gt;&lt;div&gt;&lt;br&gt;&lt;/div&gt;&lt;div&gt;bool RpcCall::TryComplete(RpcCallState state) noexcept&lt;/div&gt;&lt;div&gt;{&lt;/div&gt;&lt;div&gt;&amp;nbsp; &amp;nbsp; RpcCallState expected = RpcCallState::Pending;&lt;/div&gt;&lt;div&gt;&lt;br&gt;&lt;/div&gt;&lt;div&gt;&amp;nbsp; &amp;nbsp; return state_.compare_exchange_strong(&lt;/div&gt;&lt;div&gt;&amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; expected,&lt;/div&gt;&lt;div&gt;&amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; state,&lt;/div&gt;&lt;div&gt;&amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; std::memory_order_acq_rel,&lt;/div&gt;&lt;div&gt;&amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; std::memory_order_acquire);&lt;/div&gt;&lt;div&gt;}&lt;/div&gt;&lt;/div&gt;" vertex="1">
-          <mxGeometry height="190" width="260" x="2960" y="200" as="geometry" />
+          <mxGeometry height="190" width="260" x="3140" y="200" as="geometry" />
         </mxCell>
         <mxCell id="d33w2TpRMtbWoegV2cC6-201" edge="1" parent="uvScwRuanxFtX1CoU9Pb-1" source="d33w2TpRMtbWoegV2cC6-191" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="d33w2TpRMtbWoegV2cC6-197">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
         <mxCell id="d33w2TpRMtbWoegV2cC6-191" parent="uvScwRuanxFtX1CoU9Pb-1" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;spacingLeft=5;verticalAlign=top;spacingTop=0;fillColor=#ffffff;strokeColor=#999999;spacing=0;" value="移除请求队列中保留的请求信息&lt;div&gt;从根源上杜绝其他行为对请求收尾的执行&lt;/div&gt;&lt;div&gt;标志这该请求到此为止结束了&lt;br&gt;&lt;div&gt;TakePendingCall(request_id)&lt;/div&gt;&lt;/div&gt;" vertex="1">
-          <mxGeometry height="60" width="210" x="2960" y="430" as="geometry" />
+          <mxGeometry height="60" width="210" x="3140" y="430" as="geometry" />
         </mxCell>
         <mxCell id="d33w2TpRMtbWoegV2cC6-202" edge="1" parent="uvScwRuanxFtX1CoU9Pb-1" source="d33w2TpRMtbWoegV2cC6-195" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="d33w2TpRMtbWoegV2cC6-197">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
         <mxCell id="d33w2TpRMtbWoegV2cC6-195" parent="uvScwRuanxFtX1CoU9Pb-1" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;spacingLeft=5;verticalAlign=top;spacingTop=0;fillColor=#ffffff;strokeColor=#999999;spacing=0;" value="设置请求的状态为Completed&lt;div&gt;并调用CompleteFrame对响应进行解析&lt;/div&gt;&lt;div&gt;因为&lt;span style=&quot;background-color: transparent; color: light-dark(rgb(0, 0, 0), rgb(255, 255, 255));&quot;&gt;Completed只能说明这一次请求和响应顺利完成了，但是返回的是服务端处理后的响应还是错误不知道&lt;/span&gt;&lt;/div&gt;" vertex="1">
-          <mxGeometry height="70" width="210" x="2960" y="510" as="geometry" />
+          <mxGeometry height="70" width="210" x="3140" y="510" as="geometry" />
         </mxCell>
         <mxCell id="d33w2TpRMtbWoegV2cC6-207" edge="1" parent="uvScwRuanxFtX1CoU9Pb-1" source="d33w2TpRMtbWoegV2cC6-197" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="d33w2TpRMtbWoegV2cC6-203">
           <mxGeometry relative="1" as="geometry" />
@@ -517,19 +520,19 @@
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
         <mxCell id="d33w2TpRMtbWoegV2cC6-197" parent="uvScwRuanxFtX1CoU9Pb-1" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;spacingLeft=5;verticalAlign=top;spacingTop=0;fillColor=#dae8fc;strokeColor=#6c8ebf;spacing=0;" value="CompleteFrame" vertex="1">
-          <mxGeometry height="40" width="80" x="3380" y="275" as="geometry" />
+          <mxGeometry height="40" width="80" x="3560" y="275" as="geometry" />
         </mxCell>
         <mxCell id="d33w2TpRMtbWoegV2cC6-203" parent="uvScwRuanxFtX1CoU9Pb-1" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;spacingLeft=5;verticalAlign=top;spacingTop=0;fillColor=#ffffff;strokeColor=#999999;spacing=0;" value="返回的是错误，往controler中记录错误信息&lt;div&gt;SetControllerFailure&lt;/div&gt;" vertex="1">
-          <mxGeometry height="40" width="210" x="3550" y="181.75" as="geometry" />
+          <mxGeometry height="40" width="210" x="3730" y="181.75" as="geometry" />
         </mxCell>
         <mxCell id="d33w2TpRMtbWoegV2cC6-204" parent="uvScwRuanxFtX1CoU9Pb-1" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;spacingLeft=5;verticalAlign=top;spacingTop=0;fillColor=#ffffff;strokeColor=#999999;spacing=0;" value="返回的不是响应，往controler中记录错误信息&lt;div&gt;SetControllerFailure&lt;/div&gt;" vertex="1">
-          <mxGeometry height="40" width="210" x="3550" y="250" as="geometry" />
+          <mxGeometry height="40" width="210" x="3730" y="250" as="geometry" />
         </mxCell>
         <mxCell id="d33w2TpRMtbWoegV2cC6-205" parent="uvScwRuanxFtX1CoU9Pb-1" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;spacingLeft=5;verticalAlign=top;spacingTop=0;fillColor=#ffffff;strokeColor=#999999;spacing=0;" value="反序列化失败&lt;div&gt;SetControllerFailure&lt;/div&gt;" vertex="1">
-          <mxGeometry height="40" width="210" x="3550" y="310" as="geometry" />
+          <mxGeometry height="40" width="210" x="3730" y="310" as="geometry" />
         </mxCell>
         <mxCell id="d33w2TpRMtbWoegV2cC6-206" parent="uvScwRuanxFtX1CoU9Pb-1" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;spacingLeft=5;verticalAlign=top;spacingTop=0;fillColor=#ffffff;strokeColor=#999999;spacing=0;" value="调用回调&lt;div&gt;done-&amp;gt;Run()&lt;/div&gt;" vertex="1">
-          <mxGeometry height="40" width="210" x="3550" y="370" as="geometry" />
+          <mxGeometry height="40" width="210" x="3730" y="370" as="geometry" />
         </mxCell>
         <mxCell id="d33w2TpRMtbWoegV2cC6-218" edge="1" parent="uvScwRuanxFtX1CoU9Pb-1" source="d33w2TpRMtbWoegV2cC6-212" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="d33w2TpRMtbWoegV2cC6-215">
           <mxGeometry relative="1" as="geometry" />
@@ -538,16 +541,16 @@
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
         <mxCell id="d33w2TpRMtbWoegV2cC6-212" parent="uvScwRuanxFtX1CoU9Pb-1" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;spacingLeft=5;verticalAlign=top;spacingTop=0;fillColor=#dae8fc;strokeColor=#6c8ebf;spacing=0;" value="OnTimeout&lt;div&gt;CompleteCallWithFailure(request_id, &quot;RPC timeout&quot;, RpcCallState::Timeout)&lt;/div&gt;" vertex="1">
-          <mxGeometry height="50" width="180" x="1460" y="567" as="geometry" />
+          <mxGeometry height="50" width="180" x="1460" y="742" as="geometry" />
         </mxCell>
         <mxCell id="d33w2TpRMtbWoegV2cC6-214" parent="uvScwRuanxFtX1CoU9Pb-1" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;spacingLeft=5;verticalAlign=top;spacingTop=0;fillColor=#ffffff;strokeColor=#999999;spacing=0;" value="从请求队列中获取请求信息&lt;div&gt;并修改请求状态为Timeout&lt;/div&gt;&lt;div&gt;最后从请求队列中移除&lt;span style=&quot;background-color: transparent; color: light-dark(rgb(0, 0, 0), rgb(255, 255, 255));&quot;&gt;请求信息&lt;/span&gt;&lt;/div&gt;" vertex="1">
-          <mxGeometry height="40" width="210" x="1690" y="537" as="geometry" />
+          <mxGeometry height="40" width="210" x="1730" y="710" as="geometry" />
         </mxCell>
         <mxCell id="d33w2TpRMtbWoegV2cC6-215" parent="uvScwRuanxFtX1CoU9Pb-1" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;spacingLeft=5;verticalAlign=top;spacingTop=0;fillColor=#ffffff;strokeColor=#999999;spacing=0;" value="Metrics记录此次超时的时间&lt;div&gt;并打印日志&amp;nbsp;&lt;/div&gt;" vertex="1">
-          <mxGeometry height="40" width="210" x="1690" y="597" as="geometry" />
+          <mxGeometry height="40" width="210" x="1730" y="770" as="geometry" />
         </mxCell>
         <mxCell id="d33w2TpRMtbWoegV2cC6-216" parent="uvScwRuanxFtX1CoU9Pb-1" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;spacingLeft=5;verticalAlign=top;spacingTop=0;fillColor=#ffffff;strokeColor=#999999;spacing=0;" value="往controller中填充错误信息&lt;div&gt;并设置请求最终的状态&lt;/div&gt;&lt;div&gt;最后执行done&lt;/div&gt;" vertex="1">
-          <mxGeometry height="40" width="210" x="1690" y="657" as="geometry" />
+          <mxGeometry height="40" width="210" x="1730" y="830" as="geometry" />
         </mxCell>
         <mxCell id="d33w2TpRMtbWoegV2cC6-217" edge="1" parent="uvScwRuanxFtX1CoU9Pb-1" source="d33w2TpRMtbWoegV2cC6-212" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=-0.002;entryY=0.631;entryDx=0;entryDy=0;entryPerimeter=0;" target="d33w2TpRMtbWoegV2cC6-214">
           <mxGeometry relative="1" as="geometry" />
@@ -562,16 +565,16 @@
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
         <mxCell id="d33w2TpRMtbWoegV2cC6-220" parent="uvScwRuanxFtX1CoU9Pb-1" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;spacingLeft=5;verticalAlign=top;spacingTop=0;fillColor=#dae8fc;strokeColor=#6c8ebf;spacing=0;" value="CompleteCallWithCancel" vertex="1">
-          <mxGeometry height="50" width="180" x="1460" y="850" as="geometry" />
+          <mxGeometry height="50" width="180" x="1490" y="977" as="geometry" />
         </mxCell>
         <mxCell id="d33w2TpRMtbWoegV2cC6-222" parent="uvScwRuanxFtX1CoU9Pb-1" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;spacingLeft=5;verticalAlign=top;spacingTop=0;fillColor=#ffffff;strokeColor=#999999;spacing=0;" value="从请求队列中获取请求信息&lt;div&gt;并修改请求状态为Timeout&lt;/div&gt;&lt;div&gt;最后从请求队列中移除&lt;span style=&quot;background-color: transparent; color: light-dark(rgb(0, 0, 0), rgb(255, 255, 255));&quot;&gt;请求信息&lt;/span&gt;&lt;/div&gt;" vertex="1">
-          <mxGeometry height="40" width="210" x="1690" y="795" as="geometry" />
+          <mxGeometry height="40" width="210" x="1720" y="922" as="geometry" />
         </mxCell>
         <mxCell id="d33w2TpRMtbWoegV2cC6-223" parent="uvScwRuanxFtX1CoU9Pb-1" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;spacingLeft=5;verticalAlign=top;spacingTop=0;fillColor=#ffffff;strokeColor=#999999;spacing=0;" value="Metrics记录此次超时的时间&lt;div&gt;并打印日志&amp;nbsp;&lt;/div&gt;" vertex="1">
-          <mxGeometry height="40" width="210" x="1690" y="860" as="geometry" />
+          <mxGeometry height="40" width="210" x="1720" y="987" as="geometry" />
         </mxCell>
         <mxCell id="d33w2TpRMtbWoegV2cC6-226" parent="uvScwRuanxFtX1CoU9Pb-1" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;spacingLeft=5;verticalAlign=top;spacingTop=0;fillColor=#ffffff;strokeColor=#999999;spacing=0;" value="&lt;div&gt;并设置请求最终的状态为Cancelled&lt;/div&gt;&lt;div&gt;最后执行done&lt;/div&gt;" vertex="1">
-          <mxGeometry height="40" width="210" x="1690" y="920" as="geometry" />
+          <mxGeometry height="40" width="210" x="1720" y="1047" as="geometry" />
         </mxCell>
         <mxCell id="d33w2TpRMtbWoegV2cC6-229" edge="1" parent="uvScwRuanxFtX1CoU9Pb-1" source="d33w2TpRMtbWoegV2cC6-79" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=-0.004;entryY=0.606;entryDx=0;entryDy=0;entryPerimeter=0;curved=1;" target="d33w2TpRMtbWoegV2cC6-220">
           <mxGeometry relative="1" as="geometry" />
@@ -580,19 +583,61 @@
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
         <mxCell id="d33w2TpRMtbWoegV2cC6-354" parent="uvScwRuanxFtX1CoU9Pb-1" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;spacingLeft=5;verticalAlign=top;spacingTop=0;fillColor=#dae8fc;strokeColor=#6c8ebf;spacing=0;" value="OnConnection" vertex="1">
-          <mxGeometry height="40" width="80" x="1450" y="1120" as="geometry" />
+          <mxGeometry height="40" width="80" x="1480" y="1247" as="geometry" />
         </mxCell>
         <mxCell id="d33w2TpRMtbWoegV2cC6-358" edge="1" parent="uvScwRuanxFtX1CoU9Pb-1" source="d33w2TpRMtbWoegV2cC6-230" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="d33w2TpRMtbWoegV2cC6-357">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
         <mxCell id="d33w2TpRMtbWoegV2cC6-230" parent="uvScwRuanxFtX1CoU9Pb-1" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;spacingLeft=5;verticalAlign=top;spacingTop=0;fillColor=#dae8fc;strokeColor=#6c8ebf;spacing=0;" value="~RpcChannel" vertex="1">
-          <mxGeometry height="40" width="80" x="1450" y="1030" as="geometry" />
+          <mxGeometry height="40" width="80" x="1480" y="1157" as="geometry" />
         </mxCell>
         <mxCell id="d33w2TpRMtbWoegV2cC6-357" parent="uvScwRuanxFtX1CoU9Pb-1" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;spacingLeft=5;verticalAlign=top;spacingTop=0;fillColor=#ffffff;strokeColor=#999999;spacing=0;" value="清理心跳定时器&lt;div&gt;停止Metrics的记录&lt;/div&gt;&lt;div&gt;清空client的一系列回调&lt;/div&gt;&lt;div&gt;清空conn连接&lt;/div&gt;&lt;div&gt;清空请求队列&lt;/div&gt;" vertex="1">
-          <mxGeometry height="70" width="210" x="1660" y="1015" as="geometry" />
+          <mxGeometry height="70" width="210" x="1700" y="1142" as="geometry" />
         </mxCell>
         <mxCell id="d33w2TpRMtbWoegV2cC6-359" parent="uvScwRuanxFtX1CoU9Pb-1" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;spacingLeft=5;verticalAlign=top;spacingTop=0;fillColor=#ffffff;strokeColor=#999999;spacing=0;" value="如果断开连接&lt;div&gt;清理心跳计时器&lt;/div&gt;&lt;div&gt;清理conn连接&lt;/div&gt;&lt;div&gt;&lt;div&gt;设置连接状态为kConnecting&lt;/div&gt;&lt;div&gt;因为client没有清理所以会自动重连&lt;/div&gt;&lt;div&gt;清空请求队列&lt;/div&gt;&lt;/div&gt;" vertex="1">
-          <mxGeometry height="80" width="210" x="1660" y="1100" as="geometry" />
+          <mxGeometry height="80" width="210" x="1700" y="1227" as="geometry" />
+        </mxCell>
+        <mxCell id="mQL7_-Go2DwBEnblX7iP-3" edge="1" parent="uvScwRuanxFtX1CoU9Pb-1" source="mQL7_-Go2DwBEnblX7iP-1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="d33w2TpRMtbWoegV2cC6-9">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="mQL7_-Go2DwBEnblX7iP-1" parent="uvScwRuanxFtX1CoU9Pb-1" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;spacingLeft=5;verticalAlign=top;spacingTop=0;fillColor=#d80073;strokeColor=#A50040;spacing=0;fontColor=#ffffff;" value="发送请求时 打印trace_id" vertex="1">
+          <mxGeometry height="20" width="210" x="200" y="940" as="geometry" />
+        </mxCell>
+        <mxCell id="mQL7_-Go2DwBEnblX7iP-283" edge="1" parent="uvScwRuanxFtX1CoU9Pb-1" source="mQL7_-Go2DwBEnblX7iP-144" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0;entryY=0.5;entryDx=0;entryDy=0;curved=1;curveGeometry=1;" target="mQL7_-Go2DwBEnblX7iP-282">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="mQL7_-Go2DwBEnblX7iP-144" parent="uvScwRuanxFtX1CoU9Pb-1" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;spacingLeft=5;verticalAlign=top;spacingTop=0;fillColor=#ffffff;strokeColor=#999999;spacing=0;" value="区分RPC消息类型&lt;div&gt;HEARTBEAT&lt;/div&gt;" vertex="1">
+          <mxGeometry height="40" width="210" x="1650" y="420" as="geometry" />
+        </mxCell>
+        <mxCell id="mQL7_-Go2DwBEnblX7iP-285" edge="1" parent="uvScwRuanxFtX1CoU9Pb-1" source="mQL7_-Go2DwBEnblX7iP-282" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="mQL7_-Go2DwBEnblX7iP-284">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="mQL7_-Go2DwBEnblX7iP-282" parent="uvScwRuanxFtX1CoU9Pb-1" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;spacingLeft=8;verticalAlign=top;spacingTop=4;fillColor=#dae8fc;strokeColor=#6c8ebf;" value="&lt;div&gt;&lt;span style=&quot;background-color: transparent;&quot;&gt;SendHeartbeatEcho&lt;font color=&quot;rgba(0, 0, 0, 0)&quot;&gt;&amp;nbsp;&lt;/font&gt;&lt;/span&gt;&lt;/div&gt;" vertex="1">
+          <mxGeometry height="30" width="120" x="2060" y="550" as="geometry" />
+        </mxCell>
+        <mxCell id="mQL7_-Go2DwBEnblX7iP-287" edge="1" parent="uvScwRuanxFtX1CoU9Pb-1" source="mQL7_-Go2DwBEnblX7iP-284" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="mQL7_-Go2DwBEnblX7iP-286">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="mQL7_-Go2DwBEnblX7iP-284" parent="uvScwRuanxFtX1CoU9Pb-1" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;spacingLeft=5;verticalAlign=top;spacingTop=0;fillColor=#ffffff;strokeColor=#999999;spacing=0;" value="组装RpcMeta协议，并Encode成二进制&lt;div&gt;然后发回客户端&amp;nbsp;conn-&amp;gt;Send&lt;/div&gt;" vertex="1">
+          <mxGeometry height="40" width="240" x="2230" y="545" as="geometry" />
+        </mxCell>
+        <mxCell id="mQL7_-Go2DwBEnblX7iP-289" edge="1" parent="uvScwRuanxFtX1CoU9Pb-1" source="mQL7_-Go2DwBEnblX7iP-286" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="mQL7_-Go2DwBEnblX7iP-288">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="mQL7_-Go2DwBEnblX7iP-286" parent="uvScwRuanxFtX1CoU9Pb-1" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;spacingLeft=8;verticalAlign=top;spacingTop=4;fillColor=#dae8fc;strokeColor=#6c8ebf;" value="HandleFrame" vertex="1">
+          <mxGeometry height="40" width="120" x="2530" y="545" as="geometry" />
+        </mxCell>
+        <mxCell id="mQL7_-Go2DwBEnblX7iP-288" parent="uvScwRuanxFtX1CoU9Pb-1" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;spacingLeft=5;verticalAlign=top;spacingTop=0;fillColor=#ffffff;strokeColor=#999999;spacing=0;" value="重置heartbeat_missed_为0&lt;div&gt;心跳包并不会打印和追踪trace_id以及Metrics&lt;/div&gt;" vertex="1">
+          <mxGeometry height="40" width="210" x="2700" y="545" as="geometry" />
+        </mxCell>
+        <mxCell id="mQL7_-Go2DwBEnblX7iP-290" parent="uvScwRuanxFtX1CoU9Pb-1" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;spacingLeft=8;verticalAlign=top;spacingTop=4;fillColor=#dae8fc;strokeColor=#6c8ebf;" value="SendError" vertex="1">
+          <mxGeometry height="30" width="120" x="2060" y="650" as="geometry" />
+        </mxCell>
+        <mxCell id="mQL7_-Go2DwBEnblX7iP-292" parent="uvScwRuanxFtX1CoU9Pb-1" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;spacingLeft=5;verticalAlign=top;spacingTop=0;fillColor=#d80073;strokeColor=#A50040;spacing=0;fontColor=#ffffff;" value="返回BadRequest 并 告知错误原因&lt;div&gt;顺便记录trace_id&lt;/div&gt;" vertex="1">
+          <mxGeometry height="40" width="240" x="2230" y="645" as="geometry" />
+        </mxCell>
+        <mxCell id="mQL7_-Go2DwBEnblX7iP-294" edge="1" parent="uvScwRuanxFtX1CoU9Pb-1" source="mQL7_-Go2DwBEnblX7iP-290" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=-0.011;entryY=0.503;entryDx=0;entryDy=0;entryPerimeter=0;" target="mQL7_-Go2DwBEnblX7iP-292">
+          <mxGeometry relative="1" as="geometry" />
         </mxCell>
       </root>
     </mxGraphModel>
