@@ -191,7 +191,7 @@
     </mxGraphModel>
   </diagram>
   <diagram id="0o2JWASIg_QqTEO33gi8" name="RPC完整流程">
-    <mxGraphModel dx="1595" dy="366" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="500" pageHeight="500" math="0" shadow="0">
+    <mxGraphModel dx="3027" dy="1013" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="500" pageHeight="500" math="0" shadow="0">
       <root>
         <mxCell id="0" />
         <mxCell id="1" parent="0" />
@@ -351,7 +351,7 @@
         <mxCell id="d33w2TpRMtbWoegV2cC6-79" parent="uvScwRuanxFtX1CoU9Pb-1" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;spacingLeft=5;verticalAlign=top;spacingTop=0;fillColor=#ffffff;strokeColor=#999999;spacing=0;" value="请求取消&lt;div&gt;CompleteCallWithCancel&lt;/div&gt;" vertex="1">
           <mxGeometry height="40" width="210" x="1160" y="860" as="geometry" />
         </mxCell>
-        <mxCell id="d33w2TpRMtbWoegV2cC6-355" edge="1" parent="uvScwRuanxFtX1CoU9Pb-1" source="d33w2TpRMtbWoegV2cC6-80" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="d33w2TpRMtbWoegV2cC6-230">
+        <mxCell id="d33w2TpRMtbWoegV2cC6-355" edge="1" parent="uvScwRuanxFtX1CoU9Pb-1" source="d33w2TpRMtbWoegV2cC6-80" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="d33w2TpRMtbWoegV2cC6-230">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
         <mxCell id="d33w2TpRMtbWoegV2cC6-356" edge="1" parent="uvScwRuanxFtX1CoU9Pb-1" source="d33w2TpRMtbWoegV2cC6-80" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="d33w2TpRMtbWoegV2cC6-354">
@@ -583,19 +583,19 @@
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
         <mxCell id="d33w2TpRMtbWoegV2cC6-354" parent="uvScwRuanxFtX1CoU9Pb-1" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;spacingLeft=5;verticalAlign=top;spacingTop=0;fillColor=#dae8fc;strokeColor=#6c8ebf;spacing=0;" value="OnConnection" vertex="1">
-          <mxGeometry height="40" width="80" x="1480" y="1247" as="geometry" />
+          <mxGeometry height="40" width="80" x="1491" y="1282" as="geometry" />
         </mxCell>
         <mxCell id="d33w2TpRMtbWoegV2cC6-358" edge="1" parent="uvScwRuanxFtX1CoU9Pb-1" source="d33w2TpRMtbWoegV2cC6-230" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="d33w2TpRMtbWoegV2cC6-357">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
         <mxCell id="d33w2TpRMtbWoegV2cC6-230" parent="uvScwRuanxFtX1CoU9Pb-1" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;spacingLeft=5;verticalAlign=top;spacingTop=0;fillColor=#dae8fc;strokeColor=#6c8ebf;spacing=0;" value="~RpcChannel" vertex="1">
-          <mxGeometry height="40" width="80" x="1480" y="1157" as="geometry" />
+          <mxGeometry height="40" width="80" x="1491" y="1192" as="geometry" />
         </mxCell>
         <mxCell id="d33w2TpRMtbWoegV2cC6-357" parent="uvScwRuanxFtX1CoU9Pb-1" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;spacingLeft=5;verticalAlign=top;spacingTop=0;fillColor=#ffffff;strokeColor=#999999;spacing=0;" value="清理心跳定时器&lt;div&gt;停止Metrics的记录&lt;/div&gt;&lt;div&gt;清空client的一系列回调&lt;/div&gt;&lt;div&gt;清空conn连接&lt;/div&gt;&lt;div&gt;清空请求队列&lt;/div&gt;" vertex="1">
-          <mxGeometry height="70" width="210" x="1700" y="1142" as="geometry" />
+          <mxGeometry height="70" width="210" x="1711" y="1177" as="geometry" />
         </mxCell>
         <mxCell id="d33w2TpRMtbWoegV2cC6-359" parent="uvScwRuanxFtX1CoU9Pb-1" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;spacingLeft=5;verticalAlign=top;spacingTop=0;fillColor=#ffffff;strokeColor=#999999;spacing=0;" value="如果断开连接&lt;div&gt;清理心跳计时器&lt;/div&gt;&lt;div&gt;清理conn连接&lt;/div&gt;&lt;div&gt;&lt;div&gt;设置连接状态为kConnecting&lt;/div&gt;&lt;div&gt;因为client没有清理所以会自动重连&lt;/div&gt;&lt;div&gt;清空请求队列&lt;/div&gt;&lt;/div&gt;" vertex="1">
-          <mxGeometry height="80" width="210" x="1700" y="1227" as="geometry" />
+          <mxGeometry height="80" width="210" x="1711" y="1262" as="geometry" />
         </mxCell>
         <mxCell id="mQL7_-Go2DwBEnblX7iP-3" edge="1" parent="uvScwRuanxFtX1CoU9Pb-1" source="mQL7_-Go2DwBEnblX7iP-1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="d33w2TpRMtbWoegV2cC6-9">
           <mxGeometry relative="1" as="geometry" />
