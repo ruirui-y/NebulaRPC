@@ -175,13 +175,13 @@ void RpcServer::OnMessage(const net::TcpConnectionPtr& conn, net::Buffer* buffer
         if (frame.meta.type() == proto::RpcMeta::HEARTBEAT)
         {
             SendHeartbeatEcho(conn, frame.meta);
-            return;
+            continue;
         }
 
-        if (frame.meta.type() != proto::RpcMeta::REQUEST)
+        if (frame.meta.type() == proto::RpcMeta::REQUEST)
         {
             HandleRequest(conn, frame);
-            return;
+            continue;
         }
         
         SendError(conn,
