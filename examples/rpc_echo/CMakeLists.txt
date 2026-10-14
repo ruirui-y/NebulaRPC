@@ -36,3 +36,12 @@ target_link_libraries(nebula_rpc_echo_sequence_coroutine_client PRIVATE nebula_r
 add_executable(nebula_rpc_echo_observability_client rpc_echo_observability_client.cpp)
 target_include_directories(nebula_rpc_echo_observability_client PRIVATE ${CMAKE_CURRENT_BINARY_DIR})
 target_link_libraries(nebula_rpc_echo_observability_client PRIVATE nebula_rpc nebula_rpc_echo_proto)
+
+# Append this block to examples/rpc_echo/CMakeLists.txt (or use the supplied patch).
+add_executable(nebula_rpc_echo_benchmark_client rpc_echo_benchmark_client.cpp)
+target_include_directories(nebula_rpc_echo_benchmark_client PRIVATE ${CMAKE_CURRENT_BINARY_DIR})
+target_link_libraries(nebula_rpc_echo_benchmark_client PRIVATE nebula_rpc nebula_rpc_echo_proto)
+
+add_executable(nebula_rpc_echo_benchmark_server rpc_echo_benchmark_server.cpp)
+target_include_directories(nebula_rpc_echo_benchmark_server PRIVATE ${CMAKE_CURRENT_BINARY_DIR})
+target_link_libraries(nebula_rpc_echo_benchmark_server PRIVATE nebula_rpc nebula_rpc_echo_proto)
