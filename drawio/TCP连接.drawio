@@ -1,0 +1,76 @@
+<mxfile host="Electron">
+  <diagram name="TCP连接" id="8NzBNpyTEdvEdhzKCdx8">
+    <mxGraphModel dx="1502" dy="1084" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="500" pageHeight="500" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="SEYsq4R2Bw6VFJs-XGCR-1" parent="1" style="swimlane;html=1;startSize=28;fillColor=#fafafa;strokeColor=#888888;fontSize=13;fontStyle=1;verticalAlign=top;align=left;spacingLeft=10;" value="TCP连接" vertex="1">
+          <mxGeometry height="1210" width="1770" x="-440" y="-360" as="geometry" />
+        </mxCell>
+        <mxCell id="SEYsq4R2Bw6VFJs-XGCR-12" edge="1" parent="SEYsq4R2Bw6VFJs-XGCR-1" source="SEYsq4R2Bw6VFJs-XGCR-2" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="SEYsq4R2Bw6VFJs-XGCR-4">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="SEYsq4R2Bw6VFJs-XGCR-19" edge="1" parent="SEYsq4R2Bw6VFJs-XGCR-1" source="SEYsq4R2Bw6VFJs-XGCR-2" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="SEYsq4R2Bw6VFJs-XGCR-15">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="SEYsq4R2Bw6VFJs-XGCR-20" edge="1" parent="SEYsq4R2Bw6VFJs-XGCR-1" source="SEYsq4R2Bw6VFJs-XGCR-2" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="SEYsq4R2Bw6VFJs-XGCR-18">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="SEYsq4R2Bw6VFJs-XGCR-22" edge="1" parent="SEYsq4R2Bw6VFJs-XGCR-1" source="SEYsq4R2Bw6VFJs-XGCR-2" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="SEYsq4R2Bw6VFJs-XGCR-21">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="SEYsq4R2Bw6VFJs-XGCR-2" parent="SEYsq4R2Bw6VFJs-XGCR-1" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;spacingLeft=8;verticalAlign=top;spacingTop=4;fillColor=#dae8fc;strokeColor=#6c8ebf;" value="TCP连接在物理网线和内核内存扮演的角色" vertex="1">
+          <mxGeometry height="38" width="210" x="70" y="467" as="geometry" />
+        </mxCell>
+        <mxCell id="SEYsq4R2Bw6VFJs-XGCR-9" edge="1" parent="SEYsq4R2Bw6VFJs-XGCR-1" source="SEYsq4R2Bw6VFJs-XGCR-4" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="SEYsq4R2Bw6VFJs-XGCR-8">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="SEYsq4R2Bw6VFJs-XGCR-11" edge="1" parent="SEYsq4R2Bw6VFJs-XGCR-1" source="SEYsq4R2Bw6VFJs-XGCR-4" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="SEYsq4R2Bw6VFJs-XGCR-10">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="SEYsq4R2Bw6VFJs-XGCR-14" edge="1" parent="SEYsq4R2Bw6VFJs-XGCR-1" source="SEYsq4R2Bw6VFJs-XGCR-4" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="SEYsq4R2Bw6VFJs-XGCR-13">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="SEYsq4R2Bw6VFJs-XGCR-4" parent="SEYsq4R2Bw6VFJs-XGCR-1" style="rounded=0;whiteSpace=wrap;html=1;fontSize=10;align=left;spacingLeft=5;verticalAlign=top;spacingTop=0;fillColor=#ffffff;strokeColor=#999999;spacing=0;" value="&lt;div&gt;&lt;b&gt;什么是一条tcp连接？它在传什么？&lt;/b&gt;&lt;/div&gt;" vertex="1">
+          <mxGeometry height="40" width="210" x="390" y="247" as="geometry" />
+        </mxCell>
+        <mxCell id="SEYsq4R2Bw6VFJs-XGCR-8" parent="SEYsq4R2Bw6VFJs-XGCR-1" style="rounded=0;whiteSpace=wrap;html=1;fontSize=10;align=left;spacingLeft=5;verticalAlign=top;spacingTop=0;fillColor=#ffffff;strokeColor=#999999;spacing=0;" value="&lt;b&gt;网线永远只有 1 根&lt;/b&gt;：无论你在代码里建了 1 条 TCP 连接，还是 10,000 条 TCP 连接，你电脑屁股后面插着的那根千兆网线&lt;b&gt;只有 1 根&lt;/b&gt;！所有的数据包，最终都必须在物理网卡门口&lt;b&gt;排成一列单行道&lt;/b&gt;，一个接一个地变成电信号发出去。" vertex="1">
+          <mxGeometry height="40" width="450" x="680" y="130" as="geometry" />
+        </mxCell>
+        <mxCell id="SEYsq4R2Bw6VFJs-XGCR-10" parent="SEYsq4R2Bw6VFJs-XGCR-1" style="rounded=0;whiteSpace=wrap;html=1;fontSize=10;align=left;spacingLeft=5;verticalAlign=top;spacingTop=0;fillColor=#ffffff;strokeColor=#999999;spacing=0;" value="&lt;b&gt;TCP 连接在内核里到底是什么？&lt;/b&gt;&lt;br/&gt;它根本不是什么物理通道，它仅仅是 Linux 内核内存里的 &lt;b&gt;一个结构体（&lt;code&gt;struct sock&lt;/code&gt;）+ 两个 4MB 大小的字节数组（发送缓冲区 &lt;code&gt;Send Buffer&lt;/code&gt; 和接收缓冲区 &lt;code&gt;Recv Buffer&lt;/code&gt;）&lt;/b&gt;" vertex="1">
+          <mxGeometry height="50" width="450" x="680" y="242" as="geometry" />
+        </mxCell>
+        <mxCell id="SEYsq4R2Bw6VFJs-XGCR-13" parent="SEYsq4R2Bw6VFJs-XGCR-1" style="rounded=0;whiteSpace=wrap;html=1;fontSize=10;align=left;spacingLeft=5;verticalAlign=top;spacingTop=0;fillColor=#ffffff;strokeColor=#999999;spacing=0;" value="&lt;div&gt;&lt;b&gt;TCP 真正在传输什么？&lt;/b&gt;&lt;/div&gt;&lt;div&gt;&lt;b&gt;TCP 根本不知道什么是“RPC 请求”，它就是一个无脑搬运字节的传送带。&lt;/b&gt;&lt;/div&gt;&lt;div&gt;&lt;b&gt;&lt;br&gt;&lt;/b&gt;&lt;/div&gt;&lt;div&gt;&lt;b&gt;你调 send()，本质上根本不是“把数据发上网线”，而是把你用户态内存里的字节，memcpy 拷贝进内核的那块 4MB 发送缓冲区里！&lt;/b&gt;&lt;/div&gt;&lt;div&gt;&lt;b&gt;&lt;br&gt;&lt;/b&gt;&lt;/div&gt;&lt;div&gt;&lt;b&gt;只要内核的发送缓冲区里有字节，网卡芯片（通过 DMA 硬件引擎）就会像抽水机一样，以 936 Mbits/sec（每秒 1.17 亿字节） 的物理最高速度，自动把缓冲区里的字节切成 1460 字节一段（MTU），源源不断地抽进网线里！&lt;/b&gt;&lt;/div&gt;" vertex="1">
+          <mxGeometry height="110" width="500" x="680" y="357" as="geometry" />
+        </mxCell>
+        <mxCell id="SEYsq4R2Bw6VFJs-XGCR-24" edge="1" parent="SEYsq4R2Bw6VFJs-XGCR-1" source="SEYsq4R2Bw6VFJs-XGCR-15" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="SEYsq4R2Bw6VFJs-XGCR-23">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="SEYsq4R2Bw6VFJs-XGCR-15" parent="SEYsq4R2Bw6VFJs-XGCR-1" style="rounded=0;whiteSpace=wrap;html=1;fontSize=10;align=left;spacingLeft=5;verticalAlign=top;spacingTop=0;fillColor=#ffffff;strokeColor=#999999;spacing=0;" value="&lt;div&gt;&lt;b&gt;一条tcp连接在满负荷到底能传输多少数据？&lt;/b&gt;&lt;/div&gt;&lt;div&gt;&lt;div style=&quot;&quot;&gt;&lt;b&gt;&lt;br&gt;&lt;/b&gt;&lt;/div&gt;&lt;div style=&quot;&quot;&gt;&lt;b&gt;水管中的数据量 = 传输速率 * 传播时间&lt;/b&gt;&lt;/div&gt;&lt;div style=&quot;&quot;&gt;&lt;b&gt;BDP = 带宽 * RTT&lt;/b&gt;&lt;/div&gt;&lt;/div&gt;&lt;div style=&quot;&quot;&gt;&lt;b&gt;传输速率：117MB/S&amp;nbsp;&lt;/b&gt;&lt;/div&gt;&lt;div style=&quot;&quot;&gt;&lt;b&gt;RTT: 0.2ms&lt;/b&gt;&lt;/div&gt;" vertex="1">
+          <mxGeometry height="80" width="210" x="390" y="542" as="geometry" />
+        </mxCell>
+        <mxCell id="SEYsq4R2Bw6VFJs-XGCR-26" edge="1" parent="SEYsq4R2Bw6VFJs-XGCR-1" source="SEYsq4R2Bw6VFJs-XGCR-18" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="SEYsq4R2Bw6VFJs-XGCR-25">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="SEYsq4R2Bw6VFJs-XGCR-18" parent="SEYsq4R2Bw6VFJs-XGCR-1" style="rounded=0;whiteSpace=wrap;html=1;fontSize=10;align=left;spacingLeft=5;verticalAlign=top;spacingTop=0;fillColor=#ffffff;strokeColor=#999999;spacing=0;" value="&lt;div&gt;&lt;b&gt;接受缓冲区和发送缓冲区大小设置多少合适？&lt;/b&gt;&lt;/div&gt;" vertex="1">
+          <mxGeometry height="30" width="210" x="390" y="762" as="geometry" />
+        </mxCell>
+        <mxCell id="SEYsq4R2Bw6VFJs-XGCR-28" edge="1" parent="SEYsq4R2Bw6VFJs-XGCR-1" source="SEYsq4R2Bw6VFJs-XGCR-21" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="SEYsq4R2Bw6VFJs-XGCR-27">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="SEYsq4R2Bw6VFJs-XGCR-21" parent="SEYsq4R2Bw6VFJs-XGCR-1" style="rounded=0;whiteSpace=wrap;html=1;fontSize=10;align=left;spacingLeft=5;verticalAlign=top;spacingTop=0;fillColor=#ffffff;strokeColor=#999999;spacing=0;" value="&lt;div&gt;&lt;b&gt;什么时候才能用得到多条tcp连接？&lt;/b&gt;&lt;/div&gt;" vertex="1">
+          <mxGeometry height="30" width="210" x="390" y="1027" as="geometry" />
+        </mxCell>
+        <mxCell id="SEYsq4R2Bw6VFJs-XGCR-23" parent="SEYsq4R2Bw6VFJs-XGCR-1" style="rounded=0;whiteSpace=wrap;html=1;fontSize=10;align=left;spacingLeft=5;verticalAlign=top;spacingTop=0;fillColor=#ffffff;strokeColor=#999999;spacing=0;" value="所以一条 TCP 连接在理想情况下的在途量（BDP）就是 24 KB。&lt;br/&gt;只要满足：&lt;br/&gt;1. 发送缓冲区实时提供 24 KB 数据往网线里灌；&lt;br/&gt;2. 接收缓冲区实时通过 readv 腾出 24 KB 空间并回传 ACK；&lt;br/&gt;这 24 KB 的空间在 1 秒内就能循环周转 5,000 次（1s / 0.2ms = 5000），&lt;br/&gt;跑出 24 KB × 5000 = 117 MB/s（936 Mbps）的物理极限！&lt;br/&gt;结论：在物理带宽层面，1 条 TCP 连接就足以把千兆网线 100% 彻底喂饱！" vertex="1">
+          <mxGeometry height="90" width="520" x="680" y="537" as="geometry" />
+        </mxCell>
+        <mxCell id="SEYsq4R2Bw6VFJs-XGCR-25" parent="SEYsq4R2Bw6VFJs-XGCR-1" style="rounded=0;whiteSpace=wrap;html=1;fontSize=10;align=left;spacingLeft=5;verticalAlign=top;spacingTop=0;fillColor=#ffffff;strokeColor=#999999;spacing=0;" value="&lt;div&gt;1. 绝对生死线（下限 ≥ BDP，即 ≥ 24 KB）：&lt;/div&gt;&lt;div&gt;&amp;nbsp; &amp;nbsp;如果缓冲区小于 24 KB（比如只设 12 KB），发完 12 KB 池子就满了，&lt;/div&gt;&lt;div&gt;&amp;nbsp; &amp;nbsp;必须干等 0.1ms 收到对面 ACK 腾出地方才能继续发，网线就会有一半时间空转，吞吐量直接腰斩。&lt;/div&gt;&lt;div&gt;&lt;br&gt;&lt;/div&gt;&lt;div&gt;2. 工程黄金值（2 × BDP ~ 数倍 BDP，应对“应用层卡顿”）：&lt;/div&gt;&lt;div&gt;&amp;nbsp; &amp;nbsp;如果接收端的业务线程正在忙（如反序列化耗时 1ms 没顾上调 readv 抽水），&lt;/div&gt;&lt;div&gt;&amp;nbsp; &amp;nbsp;这 1ms 内网线又涌进来 117 KB 的水。缓冲区必须留有余量把这 117 KB 暂存住，&lt;/div&gt;&lt;div&gt;&amp;nbsp; &amp;nbsp;否则接收池子一满，就会通知发送端“零窗口（Zero Window）”强行停发。&lt;/div&gt;&lt;div&gt;&lt;br&gt;&lt;/div&gt;&lt;div&gt;3. 实战结论（直接用 Linux 内核默认值 + 应用层高水位背压）：&lt;/div&gt;&lt;div&gt;&amp;nbsp; &amp;nbsp;• 内核层：Linux 默认将单连接缓冲区动态设为 87KB ~ 4MB（远大于 24KB），局域网无需手动修改。&lt;/div&gt;&lt;div&gt;&amp;nbsp; &amp;nbsp;• 应用层（RPC 框架层）：必须设置 max_output_buffer（如 4MB~16MB 高水位回调），&lt;/div&gt;&lt;div&gt;&amp;nbsp; &amp;nbsp; &amp;nbsp;防止对端死机不收水时，本端用户态 Buffer 无限膨胀撑爆内存。&lt;/div&gt;" vertex="1">
+          <mxGeometry height="170" width="550" x="680" y="692" as="geometry" />
+        </mxCell>
+        <mxCell id="SEYsq4R2Bw6VFJs-XGCR-27" parent="SEYsq4R2Bw6VFJs-XGCR-1" style="rounded=0;whiteSpace=wrap;html=1;fontSize=10;align=left;spacingLeft=5;verticalAlign=top;spacingTop=0;fillColor=#ffffff;strokeColor=#999999;spacing=0;" value="&lt;div&gt;核心原则：1 条连接已经能喂饱网线，开多条连接是为了解决【CPU 单核瓶颈】或【协议阻塞】！&lt;/div&gt;&lt;div&gt;&lt;br&gt;&lt;/div&gt;&lt;div&gt;1. 为了吃满多核 CPU（适配 One Loop Per Thread 架构）：&lt;/div&gt;&lt;div&gt;&amp;nbsp; &amp;nbsp;在 NebulaRPC / Muduo 模型中，1 条 TCP 连接固定归属于 1 个 EventLoop 线程（1 个 CPU 核）。&lt;/div&gt;&lt;div&gt;&amp;nbsp; &amp;nbsp;如果只开 1 条连接，服务端只有 1 个核累死，另外 3 个核完全闲置！&lt;/div&gt;&lt;div&gt;&amp;nbsp; &amp;nbsp;👉 最佳实践：连接数 = 服务端 IO 线程数（CPU 核数，如 4 或 8 条），目的是把算力均摊到多核，而不是拓宽网线。&lt;/div&gt;&lt;div&gt;&lt;br&gt;&lt;/div&gt;&lt;div&gt;2. 被迫弥补“一问一答（window = 1）”的等待空隙：&lt;/div&gt;&lt;div&gt;&amp;nbsp; &amp;nbsp;如果客户端写死了同步调用（发 1 个 128B 的包必须傻等 0.2ms 回包才发下一个），&lt;/div&gt;&lt;div&gt;&amp;nbsp; &amp;nbsp;单连接在途数据只有 0.12 KB（远不满 24 KB），网线 99% 是空的。&lt;/div&gt;&lt;div&gt;&amp;nbsp; &amp;nbsp;此时只能被迫开几十条连接，靠多条连接凑够在途数据量。&lt;/div&gt;&lt;div&gt;&lt;br&gt;&lt;/div&gt;&lt;div&gt;3. 抵抗弱网丢包导致的“TCP 队头阻塞（HOL Blocking）”：&lt;/div&gt;&lt;div&gt;&amp;nbsp; &amp;nbsp;跨机房/公网存在丢包时，单连接一旦丢 1 个包，后面已收到的几百个 RPC 包全会被内核卡住等重传；&lt;/div&gt;&lt;div&gt;&amp;nbsp; &amp;nbsp;多开 2~4 条连接可以隔离风险，避免一条连接丢包卡死所有请求。&lt;/div&gt;&lt;div&gt;&lt;br&gt;&lt;/div&gt;&lt;div&gt;4. 万兆/百兆级网卡（10G/40G+）突破单核软中断上限：&lt;/div&gt;&lt;div&gt;&amp;nbsp; &amp;nbsp;物理网卡按 TCP 四元组哈希分配 CPU 核处理内核软中断（RSS）。&lt;/div&gt;&lt;div&gt;&amp;nbsp; &amp;nbsp;单连接只能打在 1 个核上，超高速网卡必须靠多连接把软中断分摊到多个 CPU 核心。&lt;/div&gt;" vertex="1">
+          <mxGeometry height="240" width="570" x="680" y="922" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>
