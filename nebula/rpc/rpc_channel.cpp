@@ -415,7 +415,7 @@ void RpcChannel::RegisterAndSend(std::uint64_t request_id,
         return;
     }
 
-    connection_->Send(std::move(bytes));
+    connection_->Write(std::move(bytes));
 }
 
 void RpcChannel::OnConnection(const net::TcpConnectionPtr& conn)
@@ -464,8 +464,6 @@ void RpcChannel::OnMessage(const net::TcpConnectionPtr& conn,
                            net::Buffer* buffer)
 {
     loop_->AssertInLoopThread();
-    (void)conn;                                         // 一个 channel 只挂一条连接，帧不必区分来源
-
     while (true)
     {
         RpcFrame frame;
@@ -474,6 +472,12 @@ void RpcChannel::OnMessage(const net::TcpConnectionPtr& conn,
 
         if (result == RpcCodec::DecodeResult::kNeedMore)
         {
+            // HandleFrame 完成回调会把协程 resume 投递到 pending functors。
+            // Flush 排在这些 resume 之后，使本批响应唤醒出的下一批请求先全部 Write，再统一发送。
+            loop_->QueueInLoop([conn]
+                {
+                    conn->Flush();
+                });
             return;
         }
 
@@ -601,7 +605,8 @@ void RpcChannel::SendHeartbeatInLoop()
 
     if (!bytes.empty())
     {
-        connection_->Send(bytes);
+        connection_->Write(bytes);
+        connection_->Flush();
     }
 }
 
@@ -962,6 +967,36 @@ void RpcChannel::FailAllPendingNow(const std::string& reason)
                             RpcCallState::Failed);
         }
     }
+}
+
+void RpcChannel::Flush()
+{
+    if (loop_->IsInLoopThread())
+    {
+        if (connection_ != nullptr)
+        {
+            connection_->Flush();
+        }
+        return;
+    }
+
+    const std::weak_ptr<AliveGuard> weak_guard = alive_guard_;
+    loop_->QueueInLoop([weak_guard]
+        {
+            auto guard = weak_guard.lock();
+            if (guard == nullptr)
+            {
+                return;
+            }
+
+            RpcChannel* channel = guard->Acquire();
+            if (channel == nullptr || channel->connection_ == nullptr)
+            {
+                return;
+            }
+
+            channel->connection_->Flush();
+        });
 }
 
 void RpcChannel::SetMaxPendingCalls(std::size_t max_pending_calls) noexcept

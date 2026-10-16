@@ -99,6 +99,7 @@ public:
                     });
             });
 
+        // CallMethod 只入连接发送缓冲；批次何时 Flush 由外层调度者决定。
         channel_->CallMethod(method_, &controller_, &request_, &response_, done);
     }
 

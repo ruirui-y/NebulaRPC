@@ -50,6 +50,9 @@ public:
                     google::protobuf::Message* response,
                     google::protobuf::Closure* done) override;
 
+    // CallMethod 只把帧写入连接缓冲；由调用方在批次结束时显式 Flush。
+    void Flush();
+
     // 过载闸门，0 表示不限制
     void SetMaxPendingCalls(std::size_t max_pending_calls) noexcept;
 
