@@ -55,24 +55,28 @@ public:
 
 private:
     struct ServerCall;
+    struct ResponseBatch;
 
     void OnMessage(const net::TcpConnectionPtr& conn, net::Buffer* buffer);
-    void HandleRequest(const net::TcpConnectionPtr& conn, const RpcFrame& frame);
-    void SendResponse(const net::TcpConnectionPtr& conn,
-                      std::uint64_t request_id,
+    void HandleRequest(const net::TcpConnectionPtr& conn,
+                       const RpcFrame& frame,
+                       const std::shared_ptr<ResponseBatch>& batch);
+    void SendResponse(std::uint64_t request_id,
                       const std::string& trace_id,
-                      const google::protobuf::Message& response);
-    void SendError(const net::TcpConnectionPtr& conn,
-                   std::uint64_t request_id,
+                      const google::protobuf::Message& response,
+                      const std::shared_ptr<ResponseBatch>& batch);
+    void SendError(std::uint64_t request_id,
                    const std::string& trace_id,
                    RpcErrorCode error_code,
-                   std::string error_text);
-    void SendHeartbeatEcho(const net::TcpConnectionPtr& conn, const proto::RpcMeta& request_meta);
+                   std::string error_text,
+                   const std::shared_ptr<ResponseBatch>& batch);
+    void SendHeartbeatEcho(const proto::RpcMeta& request_meta,
+                           const std::shared_ptr<ResponseBatch>& batch);
 
     void StopInLoop();
     void CloseConnectionsInLoop();
     void FinishShutdownInLoop(std::string_view reason);
-    void OnCallFinished();
+    void OnCallsFinished(std::uint64_t count);
 
     net::EventLoop* loop_;
     net::TcpServer server_;
