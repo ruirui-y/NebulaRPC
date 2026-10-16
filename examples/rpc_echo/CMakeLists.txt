@@ -3,6 +3,7 @@ find_package(Protobuf REQUIRED)
 set(ECHO_PROTO ${CMAKE_CURRENT_SOURCE_DIR}/echo.proto)
 protobuf_generate_cpp(ECHO_PROTO_SRCS ECHO_PROTO_HDRS ${ECHO_PROTO})
 
+# Echo protobuf 生成代码。
 add_library(nebula_rpc_echo_proto STATIC
     ${ECHO_PROTO_SRCS}
     ${ECHO_PROTO_HDRS}
@@ -11,19 +12,22 @@ add_library(nebula_rpc_echo_proto STATIC
 target_include_directories(nebula_rpc_echo_proto PUBLIC ${CMAKE_CURRENT_BINARY_DIR})
 target_link_libraries(nebula_rpc_echo_proto PUBLIC protobuf::libprotobuf)
 
+# 基础 RPC Server。
 add_executable(nebula_rpc_echo_server rpc_echo_server.cpp)
 target_include_directories(nebula_rpc_echo_server PRIVATE ${CMAKE_CURRENT_BINARY_DIR})
 target_link_libraries(nebula_rpc_echo_server PRIVATE nebula_rpc nebula_rpc_echo_proto)
 
+# 基础回调 RPC Client。
 add_executable(nebula_rpc_echo_client rpc_echo_client.cpp)
 target_include_directories(nebula_rpc_echo_client PRIVATE ${CMAKE_CURRENT_BINARY_DIR})
 target_link_libraries(nebula_rpc_echo_client PRIVATE nebula_rpc nebula_rpc_echo_proto)
 
+# 基础协程 RPC Client。
 add_executable(nebula_rpc_echo_coroutine_client rpc_echo_coroutine_client.cpp)
 target_include_directories(nebula_rpc_echo_coroutine_client PRIVATE ${CMAKE_CURRENT_BINARY_DIR})
 target_link_libraries(nebula_rpc_echo_coroutine_client PRIVATE nebula_rpc nebula_rpc_echo_proto)
 
-# 同一任务的两种写法对照：顺序发 3 个请求，回调版 vs 协程版
+# 同一任务的两种写法：顺序发 3 个请求，回调版 vs 协程版。
 add_executable(nebula_rpc_echo_sequence_client rpc_echo_sequence_client.cpp)
 target_include_directories(nebula_rpc_echo_sequence_client PRIVATE ${CMAKE_CURRENT_BINARY_DIR})
 target_link_libraries(nebula_rpc_echo_sequence_client PRIVATE nebula_rpc nebula_rpc_echo_proto)
@@ -32,16 +36,22 @@ add_executable(nebula_rpc_echo_sequence_coroutine_client rpc_echo_sequence_corou
 target_include_directories(nebula_rpc_echo_sequence_coroutine_client PRIVATE ${CMAKE_CURRENT_BINARY_DIR})
 target_link_libraries(nebula_rpc_echo_sequence_coroutine_client PRIVATE nebula_rpc nebula_rpc_echo_proto)
 
-# 可观测性演示：持续打流 + 周期输出 QPS/分位数，配合 server 验证结构日志与优雅关闭
+# 可观测性演示：持续打流并周期输出 QPS / 分位数。
 add_executable(nebula_rpc_echo_observability_client rpc_echo_observability_client.cpp)
 target_include_directories(nebula_rpc_echo_observability_client PRIVATE ${CMAKE_CURRENT_BINARY_DIR})
 target_link_libraries(nebula_rpc_echo_observability_client PRIVATE nebula_rpc nebula_rpc_echo_proto)
 
-# Append this block to examples/rpc_echo/CMakeLists.txt (or use the supplied patch).
+# 原始异步回调压测客户端：每个 Worker 一个线程 / EventLoop / RpcChannel。
 add_executable(nebula_rpc_echo_benchmark_client rpc_echo_benchmark_client.cpp)
 target_include_directories(nebula_rpc_echo_benchmark_client PRIVATE ${CMAKE_CURRENT_BINARY_DIR})
 target_link_libraries(nebula_rpc_echo_benchmark_client PRIVATE nebula_rpc nebula_rpc_echo_proto)
 
+# 压测专用 Server。
 add_executable(nebula_rpc_echo_benchmark_server rpc_echo_benchmark_server.cpp)
 target_include_directories(nebula_rpc_echo_benchmark_server PRIVATE ${CMAKE_CURRENT_BINARY_DIR})
 target_link_libraries(nebula_rpc_echo_benchmark_server PRIVATE nebula_rpc nebula_rpc_echo_proto)
+
+# 协程多路复用压测客户端：每个 Worker 一条长连接，window 个协程共享该连接。
+add_executable(nebula_rpc_echo_coroutine_benchmark_client rpc_echo_coroutine_benchmark_client.cpp)
+target_include_directories(nebula_rpc_echo_coroutine_benchmark_client PRIVATE ${CMAKE_CURRENT_BINARY_DIR})
+target_link_libraries(nebula_rpc_echo_coroutine_benchmark_client PRIVATE nebula_rpc nebula_rpc_echo_proto)
