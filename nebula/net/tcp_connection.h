@@ -19,7 +19,8 @@ class Channel;
 class EventLoop;
 
 class TcpConnection final : public std::enable_shared_from_this<TcpConnection>,
-                            private base::Noncopyable {
+                            private base::Noncopyable
+{
 public:
     TcpConnection(EventLoop* loop, int socket_fd, std::string name);
     ~TcpConnection();
@@ -28,27 +29,34 @@ public:
     {
         return loop_;
     }
+
     [[nodiscard]] const std::string& Name() const noexcept
     {
         return name_;
     }
+
     [[nodiscard]] bool Connected() const noexcept;
 
-    void Send(std::string_view data);
+    // Write 只入待发缓冲；Flush 由上层决定批次边界并主动提交。
+    void Write(std::string data);
+    void Flush();
     void Shutdown();
 
     void SetConnectionCallback(ConnectionCallback cb)
     {
         connection_callback_ = std::move(cb);
     }
+
     void SetMessageCallback(MessageCallback cb)
     {
         message_callback_ = std::move(cb);
     }
+
     void SetWriteCompleteCallback(WriteCompleteCallback cb)
     {
         write_complete_callback_ = std::move(cb);
     }
+
     void SetCloseCallback(CloseCallback cb)
     {
         close_callback_ = std::move(cb);
@@ -84,11 +92,16 @@ private:
     {
         state_.store(state);
     }
+
     void HandleRead();
     void HandleWrite();
     void HandleClose();
     void HandleError();
-    void SendInLoop(std::string data);
+
+    void WriteInLoop(std::string data);
+    void FlushInLoop();
+    void WriteOutputBufferInLoop();
+
     void ShutdownInLoop();
     void ForceCloseInLoop();
     void NotifyHighWatermark(std::size_t before, std::size_t after);

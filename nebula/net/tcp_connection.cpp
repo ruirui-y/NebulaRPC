@@ -100,24 +100,43 @@ void TcpConnection::ForceClose()
         });
 }
 
-void TcpConnection::Send(std::string_view data)
+void TcpConnection::Write(std::string data)
+{
+    if (!Connected() || data.empty())
+    {
+        return;
+    }
+
+    if (loop_->IsInLoopThread())
+    {
+        WriteInLoop(std::move(data));
+        return;
+    }
+
+    auto self = shared_from_this();
+    loop_->QueueInLoop([self, data = std::move(data)]() mutable
+        {
+            self->WriteInLoop(std::move(data));
+        });
+}
+
+void TcpConnection::Flush()
 {
     if (!Connected())
     {
         return;
     }
 
-    std::string owned_data(data);
     if (loop_->IsInLoopThread())
     {
-        SendInLoop(std::move(owned_data));
+        FlushInLoop();
         return;
     }
 
     auto self = shared_from_this();
-    loop_->RunInLoop([self, data = std::move(owned_data)]() mutable
+    loop_->QueueInLoop([self]
         {
-            self->SendInLoop(std::move(data));
+            self->FlushInLoop();
         });
 }
 
@@ -198,32 +217,7 @@ void TcpConnection::HandleWrite()
         return;
     }
 
-    // MSG_NOSIGNAL：裸 write 遇对端 RST 会发 SIGPIPE 杀进程，下面的错误分支永远到不了
-    const ssize_t n = ::send(socket_.Fd(), output_buffer_.Peek(), output_buffer_.ReadableBytes(), MSG_NOSIGNAL);
-    if (n > 0)
-    {
-        output_buffer_.Retrieve(static_cast<std::size_t>(n));
-        if (output_buffer_.ReadableBytes() == 0U)
-        {
-            channel_->DisableWriting();
-            if (write_complete_callback_)
-            {
-                auto self = shared_from_this();
-                loop_->QueueInLoop([self, cb = write_complete_callback_]
-                    {
-                        cb(self);
-                    });
-            }
-            if (state_.load() == State::kDisconnecting)
-            {
-                ShutdownInLoop();
-            }
-        }
-    }
-    else if (n < 0 && errno != EWOULDBLOCK && errno != EAGAIN)
-    {
-        HandleError();
-    }
+    WriteOutputBufferInLoop();
 }
 
 void TcpConnection::HandleClose()
@@ -262,25 +256,76 @@ void TcpConnection::HandleError()
     ForceCloseInLoop();
 }
 
-void TcpConnection::SendInLoop(std::string data)
+void TcpConnection::WriteInLoop(std::string data)
 {
     loop_->AssertInLoopThread();
-    if (state_.load() == State::kDisconnected)
+    if (state_.load() == State::kDisconnected || data.empty())
     {
         return;
     }
 
-    std::size_t remaining = data.size();
-    ssize_t written = 0;
+    const std::size_t before = output_buffer_.ReadableBytes();
+    const std::size_t pending = before + data.size();
 
-    if (!channel_->IsWriting() && output_buffer_.ReadableBytes() == 0U)
+    // 硬上限在真正入队前检查；Write 本身绝不触发 send。
+    if (max_output_buffer_bytes_ > 0U && pending > max_output_buffer_bytes_)
     {
-        // MSG_NOSIGNAL：裸 write 遇对端 RST 会发 SIGPIPE 杀进程，下面的错误分支永远到不了
-        written = ::send(socket_.Fd(), data.data(), data.size(), MSG_NOSIGNAL);
-        if (written >= 0)
+        overload_close_count_.fetch_add(1);
+        ForceCloseInLoop();
+        return;
+    }
+
+    NotifyHighWatermark(before, pending);
+    output_buffer_.Append(data.data(), data.size());
+}
+
+void TcpConnection::FlushInLoop()
+{
+    loop_->AssertInLoopThread();
+    if (state_.load() == State::kDisconnected || output_buffer_.ReadableBytes() == 0U)
+    {
+        return;
+    }
+
+    // 已经因为 partial write / EAGAIN 监听 EPOLLOUT 时，不主动重复 send。
+    if (channel_->IsWriting())
+    {
+        return;
+    }
+
+    WriteOutputBufferInLoop();
+}
+
+void TcpConnection::WriteOutputBufferInLoop()
+{
+    loop_->AssertInLoopThread();
+    if (output_buffer_.ReadableBytes() == 0U)
+    {
+        if (channel_->IsWriting())
         {
-            remaining -= static_cast<std::size_t>(written);
-            if (remaining == 0U && write_complete_callback_)
+            channel_->DisableWriting();
+        }
+        return;
+    }
+
+    // Flush 与 EPOLLOUT 续写共用同一条真正的 syscall 路径。
+    const ssize_t n = ::send(socket_.Fd(),
+                             output_buffer_.Peek(),
+                             output_buffer_.ReadableBytes(),
+                             MSG_NOSIGNAL);
+
+    if (n > 0)
+    {
+        output_buffer_.Retrieve(static_cast<std::size_t>(n));
+
+        if (output_buffer_.ReadableBytes() == 0U)
+        {
+            if (channel_->IsWriting())
+            {
+                channel_->DisableWriting();
+            }
+
+            if (write_complete_callback_)
             {
                 auto self = shared_from_this();
                 loop_->QueueInLoop([self, cb = write_complete_callback_]
@@ -288,44 +333,49 @@ void TcpConnection::SendInLoop(std::string data)
                         cb(self);
                     });
             }
-        }
-        else
-        {
-            written = 0;
-            if (errno != EWOULDBLOCK && errno != EAGAIN)
+
+            if (state_.load() == State::kDisconnecting)
             {
-                HandleError();
-                return;
+                ShutdownInLoop();
             }
-        }
-    }
-
-    if (remaining > 0U)
-    {
-        const std::size_t pending = output_buffer_.ReadableBytes() + remaining;
-
-        // 硬上限先判：慢消费者已经不读了，入队只会继续吃内存
-        if (max_output_buffer_bytes_ > 0U && pending > max_output_buffer_bytes_)
-        {
-            overload_close_count_.fetch_add(1);
-            ForceCloseInLoop();
             return;
         }
 
-        // 刚好越过水位线 通知一次
-        NotifyHighWatermark(output_buffer_.ReadableBytes(), pending);
-
-        output_buffer_.Append(data.data() + written, remaining);
         if (!channel_->IsWriting())
         {
             channel_->EnableWriting();
         }
+        return;
+    }
+
+    if (n < 0 && errno != EWOULDBLOCK && errno != EAGAIN)
+    {
+        HandleError();
+        return;
+    }
+
+    // EAGAIN：留在 output_buffer_，之后只靠 EPOLLOUT 继续排空。
+    if (!channel_->IsWriting())
+    {
+        channel_->EnableWriting();
     }
 }
 
 void TcpConnection::ShutdownInLoop()
 {
     loop_->AssertInLoopThread();
+
+    // 显式 Flush 尚未发生时也不能让优雅关闭丢掉已入队数据。
+    // 有待发数据就交给 Flush / EPOLLOUT；真正清空后由写路径再次进入这里发送 FIN。
+    if (output_buffer_.ReadableBytes() > 0U)
+    {
+        if (!channel_->IsWriting())
+        {
+            FlushInLoop();
+        }
+        return;
+    }
+
     if (!channel_->IsWriting())
     {
         socket_.ShutdownWrite();
