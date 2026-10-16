@@ -19,4 +19,14 @@ compile_commands.json
 
 # drawio 保存时自动生成的备份（形如 .$流程梳理.drawio.bkp），不入库
 *.drawio.bkp
+
 /brpc_code
+
+# perf 原始采样与中间分析产物不入库，只保留最终 SVG 火焰图
+/perf-profiles/**/*.perf.data
+/perf-profiles/**/*.perf.script
+/perf-profiles/**/*.folded
+/perf-profiles/**/*.perf-report.txt
+/perf-profiles/**/*.pidstat.txt
+/perf-profiles/**/*.threads.txt
+/perf-profiles/**/*.meta.txt
