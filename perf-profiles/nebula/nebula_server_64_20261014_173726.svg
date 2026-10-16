@@ -1,0 +1,2878 @@
+<?xml version="1.0" standalone="no"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<svg version="1.1" width="1200" height="1046" onload="init(evt)" viewBox="0 0 1200 1046" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+<!-- Flame graph stack visualization. See https://github.com/brendangregg/FlameGraph for latest version, and http://www.brendangregg.com/flamegraphs.html for examples. -->
+<!-- NOTES:  -->
+<defs>
+	<linearGradient id="background" y1="0" y2="1" x1="0" x2="0" >
+		<stop stop-color="#eeeeee" offset="5%" />
+		<stop stop-color="#eeeeb0" offset="95%" />
+	</linearGradient>
+</defs>
+<style type="text/css">
+	text { font-family:Verdana; font-size:12px; fill:rgb(0,0,0); }
+	#search, #ignorecase { opacity:0.1; cursor:pointer; }
+	#search:hover, #search.show, #ignorecase:hover, #ignorecase.show { opacity:1; }
+	#subtitle { text-anchor:middle; font-color:rgb(160,160,160); }
+	#title { text-anchor:middle; font-size:17px}
+	#unzoom { cursor:pointer; }
+	#frames > *:hover { stroke:black; stroke-width:0.5; cursor:pointer; }
+	.hide { display:none; }
+	.parent { opacity:0.5; }
+</style>
+<script type="text/ecmascript">
+<![CDATA[
+	"use strict";
+	var details, searchbtn, unzoombtn, matchedtxt, svg, searching, currentSearchTerm, ignorecase, ignorecaseBtn;
+	function init(evt) {
+		details = document.getElementById("details").firstChild;
+		searchbtn = document.getElementById("search");
+		ignorecaseBtn = document.getElementById("ignorecase");
+		unzoombtn = document.getElementById("unzoom");
+		matchedtxt = document.getElementById("matched");
+		svg = document.getElementsByTagName("svg")[0];
+		searching = 0;
+		currentSearchTerm = null;
+
+		// use GET parameters to restore a flamegraphs state.
+		var params = get_params();
+		if (params.x && params.y)
+			zoom(find_group(document.querySelector('[x="' + params.x + '"][y="' + params.y + '"]')));
+                if (params.s) search(params.s);
+	}
+
+	// event listeners
+	window.addEventListener("click", function(e) {
+		var target = find_group(e.target);
+		if (target) {
+			if (target.nodeName == "a") {
+				if (e.ctrlKey === false) return;
+				e.preventDefault();
+			}
+			if (target.classList.contains("parent")) unzoom(true);
+			zoom(target);
+			if (!document.querySelector('.parent')) {
+				// we have basically done a clearzoom so clear the url
+				var params = get_params();
+				if (params.x) delete params.x;
+				if (params.y) delete params.y;
+				history.replaceState(null, null, parse_params(params));
+				unzoombtn.classList.add("hide");
+				return;
+			}
+
+			// set parameters for zoom state
+			var el = target.querySelector("rect");
+			if (el && el.attributes && el.attributes.y && el.attributes._orig_x) {
+				var params = get_params()
+				params.x = el.attributes._orig_x.value;
+				params.y = el.attributes.y.value;
+				history.replaceState(null, null, parse_params(params));
+			}
+		}
+		else if (e.target.id == "unzoom") clearzoom();
+		else if (e.target.id == "search") search_prompt();
+		else if (e.target.id == "ignorecase") toggle_ignorecase();
+	}, false)
+
+	// mouse-over for info
+	// show
+	window.addEventListener("mouseover", function(e) {
+		var target = find_group(e.target);
+		if (target) details.nodeValue = "Function: " + g_to_text(target);
+	}, false)
+
+	// clear
+	window.addEventListener("mouseout", function(e) {
+		var target = find_group(e.target);
+		if (target) details.nodeValue = ' ';
+	}, false)
+
+	// ctrl-F for search
+	// ctrl-I to toggle case-sensitive search
+	window.addEventListener("keydown",function (e) {
+		if (e.keyCode === 114 || (e.ctrlKey && e.keyCode === 70)) {
+			e.preventDefault();
+			search_prompt();
+		}
+		else if (e.ctrlKey && e.keyCode === 73) {
+			e.preventDefault();
+			toggle_ignorecase();
+		}
+	}, false)
+
+	// functions
+	function get_params() {
+		var params = {};
+		var paramsarr = window.location.search.substr(1).split('&');
+		for (var i = 0; i < paramsarr.length; ++i) {
+			var tmp = paramsarr[i].split("=");
+			if (!tmp[0] || !tmp[1]) continue;
+			params[tmp[0]]  = decodeURIComponent(tmp[1]);
+		}
+		return params;
+	}
+	function parse_params(params) {
+		var uri = "?";
+		for (var key in params) {
+			uri += key + '=' + encodeURIComponent(params[key]) + '&';
+		}
+		if (uri.slice(-1) == "&")
+			uri = uri.substring(0, uri.length - 1);
+		if (uri == '?')
+			uri = window.location.href.split('?')[0];
+		return uri;
+	}
+	function find_child(node, selector) {
+		var children = node.querySelectorAll(selector);
+		if (children.length) return children[0];
+	}
+	function find_group(node) {
+		var parent = node.parentElement;
+		if (!parent) return;
+		if (parent.id == "frames") return node;
+		return find_group(parent);
+	}
+	function orig_save(e, attr, val) {
+		if (e.attributes["_orig_" + attr] != undefined) return;
+		if (e.attributes[attr] == undefined) return;
+		if (val == undefined) val = e.attributes[attr].value;
+		e.setAttribute("_orig_" + attr, val);
+	}
+	function orig_load(e, attr) {
+		if (e.attributes["_orig_"+attr] == undefined) return;
+		e.attributes[attr].value = e.attributes["_orig_" + attr].value;
+		e.removeAttribute("_orig_"+attr);
+	}
+	function g_to_text(e) {
+		var text = find_child(e, "title").firstChild.nodeValue;
+		return (text)
+	}
+	function g_to_func(e) {
+		var func = g_to_text(e);
+		// if there's any manipulation we want to do to the function
+		// name before it's searched, do it here before returning.
+		return (func);
+	}
+	function update_text(e) {
+		var r = find_child(e, "rect");
+		var t = find_child(e, "text");
+		var w = parseFloat(r.attributes.width.value) -3;
+		var txt = find_child(e, "title").textContent.replace(/\([^(]*\)$/,"");
+		t.attributes.x.value = parseFloat(r.attributes.x.value) + 3;
+
+		// Smaller than this size won't fit anything
+		if (w < 2 * 12 * 0.59) {
+			t.textContent = "";
+			return;
+		}
+
+		t.textContent = txt;
+		var sl = t.getSubStringLength(0, txt.length);
+		// check if only whitespace or if we can fit the entire string into width w
+		if (/^ *$/.test(txt) || sl < w)
+			return;
+
+		// this isn't perfect, but gives a good starting point
+		// and avoids calling getSubStringLength too often
+		var start = Math.floor((w/sl) * txt.length);
+		for (var x = start; x > 0; x = x-2) {
+			if (t.getSubStringLength(0, x + 2) <= w) {
+				t.textContent = txt.substring(0, x) + "..";
+				return;
+			}
+		}
+		t.textContent = "";
+	}
+
+	// zoom
+	function zoom_reset(e) {
+		if (e.attributes != undefined) {
+			orig_load(e, "x");
+			orig_load(e, "width");
+		}
+		if (e.childNodes == undefined) return;
+		for (var i = 0, c = e.childNodes; i < c.length; i++) {
+			zoom_reset(c[i]);
+		}
+	}
+	function zoom_child(e, x, ratio) {
+		if (e.attributes != undefined) {
+			if (e.attributes.x != undefined) {
+				orig_save(e, "x");
+				e.attributes.x.value = (parseFloat(e.attributes.x.value) - x - 10) * ratio + 10;
+				if (e.tagName == "text")
+					e.attributes.x.value = find_child(e.parentNode, "rect[x]").attributes.x.value + 3;
+			}
+			if (e.attributes.width != undefined) {
+				orig_save(e, "width");
+				e.attributes.width.value = parseFloat(e.attributes.width.value) * ratio;
+			}
+		}
+
+		if (e.childNodes == undefined) return;
+		for (var i = 0, c = e.childNodes; i < c.length; i++) {
+			zoom_child(c[i], x - 10, ratio);
+		}
+	}
+	function zoom_parent(e) {
+		if (e.attributes) {
+			if (e.attributes.x != undefined) {
+				orig_save(e, "x");
+				e.attributes.x.value = 10;
+			}
+			if (e.attributes.width != undefined) {
+				orig_save(e, "width");
+				e.attributes.width.value = parseInt(svg.width.baseVal.value) - (10 * 2);
+			}
+		}
+		if (e.childNodes == undefined) return;
+		for (var i = 0, c = e.childNodes; i < c.length; i++) {
+			zoom_parent(c[i]);
+		}
+	}
+	function zoom(node) {
+		var attr = find_child(node, "rect").attributes;
+		var width = parseFloat(attr.width.value);
+		var xmin = parseFloat(attr.x.value);
+		var xmax = parseFloat(xmin + width);
+		var ymin = parseFloat(attr.y.value);
+		var ratio = (svg.width.baseVal.value - 2 * 10) / width;
+
+		// XXX: Workaround for JavaScript float issues (fix me)
+		var fudge = 0.0001;
+
+		unzoombtn.classList.remove("hide");
+
+		var el = document.getElementById("frames").children;
+		for (var i = 0; i < el.length; i++) {
+			var e = el[i];
+			var a = find_child(e, "rect").attributes;
+			var ex = parseFloat(a.x.value);
+			var ew = parseFloat(a.width.value);
+			var upstack;
+			// Is it an ancestor
+			if (0 == 0) {
+				upstack = parseFloat(a.y.value) > ymin;
+			} else {
+				upstack = parseFloat(a.y.value) < ymin;
+			}
+			if (upstack) {
+				// Direct ancestor
+				if (ex <= xmin && (ex+ew+fudge) >= xmax) {
+					e.classList.add("parent");
+					zoom_parent(e);
+					update_text(e);
+				}
+				// not in current path
+				else
+					e.classList.add("hide");
+			}
+			// Children maybe
+			else {
+				// no common path
+				if (ex < xmin || ex + fudge >= xmax) {
+					e.classList.add("hide");
+				}
+				else {
+					zoom_child(e, xmin, ratio);
+					update_text(e);
+				}
+			}
+		}
+		search();
+	}
+	function unzoom(dont_update_text) {
+		unzoombtn.classList.add("hide");
+		var el = document.getElementById("frames").children;
+		for(var i = 0; i < el.length; i++) {
+			el[i].classList.remove("parent");
+			el[i].classList.remove("hide");
+			zoom_reset(el[i]);
+			if(!dont_update_text) update_text(el[i]);
+		}
+		search();
+	}
+	function clearzoom() {
+		unzoom();
+
+		// remove zoom state
+		var params = get_params();
+		if (params.x) delete params.x;
+		if (params.y) delete params.y;
+		history.replaceState(null, null, parse_params(params));
+	}
+
+	// search
+	function toggle_ignorecase() {
+		ignorecase = !ignorecase;
+		if (ignorecase) {
+			ignorecaseBtn.classList.add("show");
+		} else {
+			ignorecaseBtn.classList.remove("show");
+		}
+		reset_search();
+		search();
+	}
+	function reset_search() {
+		var el = document.querySelectorAll("#frames rect");
+		for (var i = 0; i < el.length; i++) {
+			orig_load(el[i], "fill")
+		}
+		var params = get_params();
+		delete params.s;
+		history.replaceState(null, null, parse_params(params));
+	}
+	function search_prompt() {
+		if (!searching) {
+			var term = prompt("Enter a search term (regexp " +
+			    "allowed, eg: ^ext4_)"
+			    + (ignorecase ? ", ignoring case" : "")
+			    + "\nPress Ctrl-i to toggle case sensitivity", "");
+			if (term != null) search(term);
+		} else {
+			reset_search();
+			searching = 0;
+			currentSearchTerm = null;
+			searchbtn.classList.remove("show");
+			searchbtn.firstChild.nodeValue = "Search"
+			matchedtxt.classList.add("hide");
+			matchedtxt.firstChild.nodeValue = ""
+		}
+	}
+	function search(term) {
+		if (term) currentSearchTerm = term;
+		if (currentSearchTerm === null) return;
+
+		var re = new RegExp(currentSearchTerm, ignorecase ? 'i' : '');
+		var el = document.getElementById("frames").children;
+		var matches = new Object();
+		var maxwidth = 0;
+		for (var i = 0; i < el.length; i++) {
+			var e = el[i];
+			var func = g_to_func(e);
+			var rect = find_child(e, "rect");
+			if (func == null || rect == null)
+				continue;
+
+			// Save max width. Only works as we have a root frame
+			var w = parseFloat(rect.attributes.width.value);
+			if (w > maxwidth)
+				maxwidth = w;
+
+			if (func.match(re)) {
+				// highlight
+				var x = parseFloat(rect.attributes.x.value);
+				orig_save(rect, "fill");
+				rect.attributes.fill.value = "rgb(230,0,230)";
+
+				// remember matches
+				if (matches[x] == undefined) {
+					matches[x] = w;
+				} else {
+					if (w > matches[x]) {
+						// overwrite with parent
+						matches[x] = w;
+					}
+				}
+				searching = 1;
+			}
+		}
+		if (!searching)
+			return;
+		var params = get_params();
+		params.s = currentSearchTerm;
+		history.replaceState(null, null, parse_params(params));
+
+		searchbtn.classList.add("show");
+		searchbtn.firstChild.nodeValue = "Reset Search";
+
+		// calculate percent matched, excluding vertical overlap
+		var count = 0;
+		var lastx = -1;
+		var lastw = 0;
+		var keys = Array();
+		for (k in matches) {
+			if (matches.hasOwnProperty(k))
+				keys.push(k);
+		}
+		// sort the matched frames by their x location
+		// ascending, then width descending
+		keys.sort(function(a, b){
+			return a - b;
+		});
+		// Step through frames saving only the biggest bottom-up frames
+		// thanks to the sort order. This relies on the tree property
+		// where children are always smaller than their parents.
+		var fudge = 0.0001;	// JavaScript floating point
+		for (var k in keys) {
+			var x = parseFloat(keys[k]);
+			var w = matches[keys[k]];
+			if (x >= lastx + lastw - fudge) {
+				count += w;
+				lastx = x;
+				lastw = w;
+			}
+		}
+		// display matched percent
+		matchedtxt.classList.remove("hide");
+		var pct = 100 * count / maxwidth;
+		if (pct != 100) pct = pct.toFixed(1)
+		matchedtxt.firstChild.nodeValue = "Matched: " + pct + "%";
+	}
+]]>
+</script>
+<rect x="0.0" y="0" width="1200.0" height="1046.0" fill="url(#background)"  />
+<text id="title" x="600.00" y="24" >nebula_server_64 CPU-on profile</text>
+<text id="details" x="10.00" y="1029" > </text>
+<text id="unzoom" x="10.00" y="24" class="hide">Reset Zoom</text>
+<text id="search" x="1090.00" y="24" >Search</text>
+<text id="ignorecase" x="1174.00" y="24" >ic</text>
+<text id="matched" x="1090.00" y="1029" > </text>
+<g id="frames">
+<g >
+<title>nebula::example::EchoRequest* google::protobuf::Arena::CreateMaybeMessage&lt;nebula::example::EchoRequest&gt; (20,202,020 samples, 0.11%)</title><rect x="193.0" y="805" width="1.4" height="15.0" fill="rgb(238,155,37)" rx="2" ry="2" />
+<text  x="196.05" y="815.5" ></text>
+</g>
+<g >
+<title>sock_rfree (20,202,020 samples, 0.11%)</title><rect x="44.0" y="741" width="1.3" height="15.0" fill="rgb(222,80,19)" rx="2" ry="2" />
+<text  x="46.99" y="751.5" ></text>
+</g>
+<g >
+<title>std::__cxx11::basic_string&lt;char, std::char_traits&lt;char&gt;, std::allocator&lt;char&gt; &gt;::_M_data (20,202,020 samples, 0.11%)</title><rect x="225.1" y="709" width="1.3" height="15.0" fill="rgb(206,6,1)" rx="2" ry="2" />
+<text  x="228.08" y="719.5" ></text>
+</g>
+<g >
+<title>apparmor_socket_recvmsg (60,606,060 samples, 0.33%)</title><rect x="32.9" y="773" width="3.9" height="15.0" fill="rgb(246,190,45)" rx="2" ry="2" />
+<text  x="35.88" y="783.5" ></text>
+</g>
+<g >
+<title>tcp_ack (464,646,460 samples, 2.55%)</title><rect x="443.4" y="117" width="30.1" height="15.0" fill="rgb(230,115,27)" rx="2" ry="2" />
+<text  x="446.43" y="127.5" >tc..</text>
+</g>
+<g >
+<title>__gnu_cxx::new_allocator&lt;char&gt;::deallocate (10,101,010 samples, 0.06%)</title><rect x="195.7" y="709" width="0.6" height="15.0" fill="rgb(230,118,28)" rx="2" ry="2" />
+<text  x="198.66" y="719.5" ></text>
+</g>
+<g >
+<title>security_file_permission (70,707,070 samples, 0.39%)</title><rect x="97.6" y="805" width="4.6" height="15.0" fill="rgb(225,96,23)" rx="2" ry="2" />
+<text  x="100.60" y="815.5" ></text>
+</g>
+<g >
+<title>__GI___libc_free (10,101,010 samples, 0.06%)</title><rect x="1180.2" y="677" width="0.6" height="15.0" fill="rgb(252,218,52)" rx="2" ry="2" />
+<text  x="1183.19" y="687.5" ></text>
+</g>
+<g >
+<title>google::protobuf::io::EpsCopyOutputStream::WriteRaw (10,101,010 samples, 0.06%)</title><rect x="223.1" y="677" width="0.7" height="15.0" fill="rgb(244,182,43)" rx="2" ry="2" />
+<text  x="226.12" y="687.5" ></text>
+</g>
+<g >
+<title>[unknown] (1,484,848,470 samples, 8.14%)</title><rect x="10.0" y="965" width="96.1" height="15.0" fill="rgb(210,24,5)" rx="2" ry="2" />
+<text  x="13.00" y="975.5" >[unknown]</text>
+</g>
+<g >
+<title>tcp_recvmsg_locked (575,757,570 samples, 3.16%)</title><rect x="45.3" y="741" width="37.3" height="15.0" fill="rgb(226,100,24)" rx="2" ry="2" />
+<text  x="48.30" y="751.5" >tcp..</text>
+</g>
+<g >
+<title>__GI___libc_malloc (10,101,010 samples, 0.06%)</title><rect x="191.1" y="677" width="0.6" height="15.0" fill="rgb(219,68,16)" rx="2" ry="2" />
+<text  x="194.09" y="687.5" ></text>
+</g>
+<g >
+<title>mod_timer (121,212,120 samples, 0.66%)</title><rect x="433.0" y="69" width="7.8" height="15.0" fill="rgb(212,32,7)" rx="2" ry="2" />
+<text  x="435.97" y="79.5" ></text>
+</g>
+<g >
+<title>std::__cxx11::basic_string&lt;char, std::char_traits&lt;char&gt;, std::allocator&lt;char&gt; &gt;::_M_is_local (10,101,010 samples, 0.06%)</title><rect x="1184.8" y="757" width="0.6" height="15.0" fill="rgb(241,168,40)" rx="2" ry="2" />
+<text  x="1187.77" y="767.5" ></text>
+</g>
+<g >
+<title>__netif_receive_skb (10,191,919,090 samples, 55.90%)</title><rect x="379.4" y="261" width="659.6" height="15.0" fill="rgb(218,60,14)" rx="2" ry="2" />
+<text  x="382.36" y="271.5" >__netif_receive_skb</text>
+</g>
+<g >
+<title>tcp_sendmsg (30,303,030 samples, 0.17%)</title><rect x="1154.7" y="629" width="2.0" height="15.0" fill="rgb(223,83,19)" rx="2" ry="2" />
+<text  x="1157.70" y="639.5" ></text>
+</g>
+<g >
+<title>std::__cxx11::basic_string&lt;char, std::char_traits&lt;char&gt;, std::allocator&lt;char&gt; &gt;::reserve (10,101,010 samples, 0.06%)</title><rect x="1165.8" y="709" width="0.7" height="15.0" fill="rgb(244,181,43)" rx="2" ry="2" />
+<text  x="1168.81" y="719.5" ></text>
+</g>
+<g >
+<title>timespec64_add_safe (10,101,010 samples, 0.06%)</title><rect x="1189.3" y="805" width="0.7" height="15.0" fill="rgb(209,20,4)" rx="2" ry="2" />
+<text  x="1192.35" y="815.5" ></text>
+</g>
+<g >
+<title>x64_sys_call (1,282,828,270 samples, 7.04%)</title><rect x="22.4" y="885" width="83.0" height="15.0" fill="rgb(247,194,46)" rx="2" ry="2" />
+<text  x="25.42" y="895.5" >x64_sys_c..</text>
+</g>
+<g >
+<title>tcp_mstamp_refresh (50,505,050 samples, 0.28%)</title><rect x="79.3" y="709" width="3.3" height="15.0" fill="rgb(221,77,18)" rx="2" ry="2" />
+<text  x="82.30" y="719.5" ></text>
+</g>
+<g >
+<title>std::__cxx11::basic_string&lt;char, std::char_traits&lt;char&gt;, std::allocator&lt;char&gt; &gt;::resize (10,101,010 samples, 0.06%)</title><rect x="217.9" y="693" width="0.6" height="15.0" fill="rgb(229,111,26)" rx="2" ry="2" />
+<text  x="220.89" y="703.5" ></text>
+</g>
+<g >
+<title>rw_verify_area (111,111,110 samples, 0.61%)</title><rect x="95.0" y="821" width="7.2" height="15.0" fill="rgb(218,64,15)" rx="2" ry="2" />
+<text  x="97.99" y="831.5" ></text>
+</g>
+<g >
+<title>tcp_sendmsg_locked (20,202,020 samples, 0.11%)</title><rect x="1149.5" y="613" width="1.3" height="15.0" fill="rgb(215,48,11)" rx="2" ry="2" />
+<text  x="1152.47" y="623.5" ></text>
+</g>
+<g >
+<title>srso_alias_safe_ret (10,101,010 samples, 0.06%)</title><rect x="1035.1" y="213" width="0.6" height="15.0" fill="rgb(242,170,40)" rx="2" ry="2" />
+<text  x="1038.06" y="223.5" ></text>
+</g>
+<g >
+<title>main (16,747,474,580 samples, 91.86%)</title><rect x="106.1" y="917" width="1083.9" height="15.0" fill="rgb(243,179,42)" rx="2" ry="2" />
+<text  x="109.10" y="927.5" >main</text>
+</g>
+<g >
+<title>nf_nat_ipv4_out (20,202,020 samples, 0.11%)</title><rect x="1083.4" y="453" width="1.3" height="15.0" fill="rgb(244,180,43)" rx="2" ry="2" />
+<text  x="1086.44" y="463.5" ></text>
+</g>
+<g >
+<title>mod_timer (30,303,030 samples, 0.17%)</title><rect x="1103.1" y="469" width="1.9" height="15.0" fill="rgb(212,32,7)" rx="2" ry="2" />
+<text  x="1106.05" y="479.5" ></text>
+</g>
+<g >
+<title>bpf_skops_write_hdr_opt.isra.0 (20,202,020 samples, 0.11%)</title><rect x="303.5" y="517" width="1.3" height="15.0" fill="rgb(207,12,3)" rx="2" ry="2" />
+<text  x="306.53" y="527.5" ></text>
+</g>
+<g >
+<title>ip_send_check (10,101,010 samples, 0.06%)</title><rect x="316.6" y="453" width="0.7" height="15.0" fill="rgb(237,151,36)" rx="2" ry="2" />
+<text  x="319.60" y="463.5" ></text>
+</g>
+<g >
+<title>nebula::example::EchoRequest::New (10,101,010 samples, 0.06%)</title><rect x="194.4" y="805" width="0.6" height="15.0" fill="rgb(245,186,44)" rx="2" ry="2" />
+<text  x="197.35" y="815.5" ></text>
+</g>
+<g >
+<title>bool google::protobuf::MessageLite::ParseFrom&lt; (30,303,030 samples, 0.17%)</title><rect x="155.8" y="773" width="1.9" height="15.0" fill="rgb(214,42,10)" rx="2" ry="2" />
+<text  x="158.78" y="783.5" ></text>
+</g>
+<g >
+<title>void std::__cxx11::basic_string&lt;char, std::char_traits&lt;char&gt;, std::allocator&lt;char&gt; &gt;::_M_construct&lt;char*&gt; (40,404,040 samples, 0.22%)</title><rect x="190.4" y="741" width="2.6" height="15.0" fill="rgb(220,70,16)" rx="2" ry="2" />
+<text  x="193.43" y="751.5" ></text>
+</g>
+<g >
+<title>nf_nat_ipv4_local_fn (10,101,010 samples, 0.06%)</title><rect x="354.5" y="453" width="0.7" height="15.0" fill="rgb(254,228,54)" rx="2" ry="2" />
+<text  x="357.52" y="463.5" ></text>
+</g>
+<g >
+<title>ip_protocol_deliver_rcu (20,202,020 samples, 0.11%)</title><rect x="1022.6" y="197" width="1.4" height="15.0" fill="rgb(215,49,11)" rx="2" ry="2" />
+<text  x="1025.64" y="207.5" ></text>
+</g>
+<g >
+<title>__local_bh_enable_ip (10,535,353,430 samples, 57.78%)</title><rect x="370.2" y="373" width="681.9" height="15.0" fill="rgb(237,147,35)" rx="2" ry="2" />
+<text  x="373.21" y="383.5" >__local_bh_enable_ip</text>
+</g>
+<g >
+<title>ipv4_conntrack_local (434,343,430 samples, 2.38%)</title><rect x="322.5" y="437" width="28.1" height="15.0" fill="rgb(236,146,34)" rx="2" ry="2" />
+<text  x="325.49" y="447.5" >i..</text>
+</g>
+<g >
+<title>_raw_spin_unlock (10,101,010 samples, 0.06%)</title><rect x="402.2" y="149" width="0.7" height="15.0" fill="rgb(223,85,20)" rx="2" ry="2" />
+<text  x="405.24" y="159.5" ></text>
+</g>
+<g >
+<title>skb_do_copy_data_nocache (151,515,150 samples, 0.83%)</title><rect x="274.1" y="581" width="9.8" height="15.0" fill="rgb(210,26,6)" rx="2" ry="2" />
+<text  x="277.11" y="591.5" ></text>
+</g>
+<g >
+<title>kfree_skbmem (20,202,020 samples, 0.11%)</title><rect x="460.4" y="69" width="1.3" height="15.0" fill="rgb(230,117,28)" rx="2" ry="2" />
+<text  x="463.43" y="79.5" ></text>
+</g>
+<g >
+<title>google::protobuf::io::EpsCopyOutputStream::WriteStringMaybeAliasedOutline (30,303,030 samples, 0.17%)</title><rect x="221.8" y="709" width="2.0" height="15.0" fill="rgb(234,134,32)" rx="2" ry="2" />
+<text  x="224.81" y="719.5" ></text>
+</g>
+<g >
+<title>nf_nat_inet_fn (10,101,010 samples, 0.06%)</title><rect x="1033.8" y="181" width="0.6" height="15.0" fill="rgb(206,5,1)" rx="2" ry="2" />
+<text  x="1036.76" y="191.5" ></text>
+</g>
+<g >
+<title>rb_next (10,101,010 samples, 0.06%)</title><rect x="453.9" y="101" width="0.6" height="15.0" fill="rgb(242,173,41)" rx="2" ry="2" />
+<text  x="456.89" y="111.5" ></text>
+</g>
+<g >
+<title>_raw_spin_unlock_irqrestore (90,909,090 samples, 0.50%)</title><rect x="1058.6" y="293" width="5.9" height="15.0" fill="rgb(228,106,25)" rx="2" ry="2" />
+<text  x="1061.60" y="303.5" ></text>
+</g>
+<g >
+<title>nebula::rpc::RpcClosure::Run (14,979,797,830 samples, 82.16%)</title><rect x="204.2" y="805" width="969.5" height="15.0" fill="rgb(215,50,11)" rx="2" ry="2" />
+<text  x="207.16" y="815.5" >nebula::rpc::RpcClosure::Run</text>
+</g>
+<g >
+<title>std::__cxx11::basic_string&lt;char, std::char_traits&lt;char&gt;, std::allocator&lt;char&gt; &gt;::basic_string (40,404,040 samples, 0.22%)</title><rect x="190.4" y="757" width="2.6" height="15.0" fill="rgb(212,35,8)" rx="2" ry="2" />
+<text  x="193.43" y="767.5" ></text>
+</g>
+<g >
+<title>std::__cxx11::basic_string&lt;char, std::char_traits&lt;char&gt;, std::allocator&lt;char&gt; &gt;::_M_destroy (10,101,010 samples, 0.06%)</title><rect x="195.7" y="741" width="0.6" height="15.0" fill="rgb(229,111,26)" rx="2" ry="2" />
+<text  x="198.66" y="751.5" ></text>
+</g>
+<g >
+<title>nebula::example::EchoRequest::~EchoRequest (20,202,020 samples, 0.11%)</title><rect x="195.0" y="805" width="1.3" height="15.0" fill="rgb(219,68,16)" rx="2" ry="2" />
+<text  x="198.01" y="815.5" ></text>
+</g>
+<g >
+<title>operator delete (50,505,050 samples, 0.28%)</title><rect x="1158.0" y="741" width="3.2" height="15.0" fill="rgb(247,196,46)" rx="2" ry="2" />
+<text  x="1160.97" y="751.5" ></text>
+</g>
+<g >
+<title>net_rx_action (10,464,646,360 samples, 57.40%)</title><rect x="373.5" y="309" width="677.3" height="15.0" fill="rgb(240,164,39)" rx="2" ry="2" />
+<text  x="376.48" y="319.5" >net_rx_action</text>
+</g>
+<g >
+<title>__GI___libc_free (30,303,030 samples, 0.17%)</title><rect x="172.8" y="805" width="1.9" height="15.0" fill="rgb(252,218,52)" rx="2" ry="2" />
+<text  x="175.78" y="815.5" ></text>
+</g>
+<g >
+<title>tcp_send_delayed_ack (171,717,170 samples, 0.94%)</title><rect x="430.4" y="101" width="11.1" height="15.0" fill="rgb(248,197,47)" rx="2" ry="2" />
+<text  x="433.35" y="111.5" ></text>
+</g>
+<g >
+<title>__kfree_skb (60,606,060 samples, 0.33%)</title><rect x="460.4" y="85" width="3.9" height="15.0" fill="rgb(213,40,9)" rx="2" ry="2" />
+<text  x="463.43" y="95.5" ></text>
+</g>
+<g >
+<title>__nf_conntrack_find_get (40,404,040 samples, 0.22%)</title><rect x="344.1" y="389" width="2.6" height="15.0" fill="rgb(243,178,42)" rx="2" ry="2" />
+<text  x="347.06" y="399.5" ></text>
+</g>
+<g >
+<title>__wake_up_sync_key (8,313,131,230 samples, 45.60%)</title><rect x="474.8" y="85" width="538.0" height="15.0" fill="rgb(226,100,24)" rx="2" ry="2" />
+<text  x="477.81" y="95.5" >__wake_up_sync_key</text>
+</g>
+<g >
+<title>__check_object_size (10,101,010 samples, 0.06%)</title><rect x="57.1" y="693" width="0.6" height="15.0" fill="rgb(226,98,23)" rx="2" ry="2" />
+<text  x="60.07" y="703.5" ></text>
+</g>
+<g >
+<title>srso_alias_safe_ret (20,202,020 samples, 0.11%)</title><rect x="442.1" y="117" width="1.3" height="15.0" fill="rgb(242,170,40)" rx="2" ry="2" />
+<text  x="445.12" y="127.5" ></text>
+</g>
+<g >
+<title>_int_free (10,101,010 samples, 0.06%)</title><rect x="1183.5" y="789" width="0.6" height="15.0" fill="rgb(247,196,46)" rx="2" ry="2" />
+<text  x="1186.46" y="799.5" ></text>
+</g>
+<g >
+<title>hystart_update (20,202,020 samples, 0.11%)</title><rect x="465.0" y="69" width="1.3" height="15.0" fill="rgb(238,152,36)" rx="2" ry="2" />
+<text  x="468.00" y="79.5" ></text>
+</g>
+<g >
+<title>tcp_check_space (50,505,050 samples, 0.28%)</title><rect x="417.3" y="133" width="3.2" height="15.0" fill="rgb(244,180,43)" rx="2" ry="2" />
+<text  x="420.28" y="143.5" ></text>
+</g>
+<g >
+<title>process_backlog (10,252,525,150 samples, 56.23%)</title><rect x="378.1" y="277" width="663.5" height="15.0" fill="rgb(224,90,21)" rx="2" ry="2" />
+<text  x="381.06" y="287.5" >process_backlog</text>
+</g>
+<g >
+<title>tcp_skb_entail (60,606,060 samples, 0.33%)</title><rect x="1120.7" y="581" width="3.9" height="15.0" fill="rgb(241,168,40)" rx="2" ry="2" />
+<text  x="1123.70" y="591.5" ></text>
+</g>
+<g >
+<title>process_backlog (10,101,010 samples, 0.06%)</title><rect x="1050.1" y="293" width="0.7" height="15.0" fill="rgb(224,90,21)" rx="2" ry="2" />
+<text  x="1053.10" y="303.5" ></text>
+</g>
+<g >
+<title>nebula::net::Channel::HandleEventWithGuard (16,585,858,420 samples, 90.97%)</title><rect x="112.0" y="869" width="1073.4" height="15.0" fill="rgb(220,71,17)" rx="2" ry="2" />
+<text  x="114.98" y="879.5" >nebula::net::Channel::HandleEventWithGuard</text>
+</g>
+<g >
+<title>tcp_schedule_loss_probe.part.0 (60,606,060 samples, 0.33%)</title><rect x="1107.0" y="533" width="3.9" height="15.0" fill="rgb(248,198,47)" rx="2" ry="2" />
+<text  x="1109.98" y="543.5" ></text>
+</g>
+<g >
+<title>_raw_spin_unlock (10,101,010 samples, 0.06%)</title><rect x="391.8" y="165" width="0.6" height="15.0" fill="rgb(223,85,20)" rx="2" ry="2" />
+<text  x="394.78" y="175.5" ></text>
+</g>
+<g >
+<title>_copy_from_iter (30,303,030 samples, 0.17%)</title><rect x="282.0" y="565" width="1.9" height="15.0" fill="rgb(227,104,24)" rx="2" ry="2" />
+<text  x="284.96" y="575.5" ></text>
+</g>
+<g >
+<title>_int_free (10,101,010 samples, 0.06%)</title><rect x="1162.5" y="725" width="0.7" height="15.0" fill="rgb(247,196,46)" rx="2" ry="2" />
+<text  x="1165.54" y="735.5" ></text>
+</g>
+<g >
+<title>simple_copy_to_iter (161,616,160 samples, 0.89%)</title><rect x="58.4" y="693" width="10.4" height="15.0" fill="rgb(228,110,26)" rx="2" ry="2" />
+<text  x="61.38" y="703.5" ></text>
+</g>
+<g >
+<title>nf_hook_slow (525,252,520 samples, 2.88%)</title><rect x="320.5" y="453" width="34.0" height="15.0" fill="rgb(243,175,42)" rx="2" ry="2" />
+<text  x="323.53" y="463.5" >nf..</text>
+</g>
+<g >
+<title>tcp_sendmsg_locked (13,686,868,550 samples, 75.07%)</title><rect x="261.7" y="597" width="885.8" height="15.0" fill="rgb(215,48,11)" rx="2" ry="2" />
+<text  x="264.69" y="607.5" >tcp_sendmsg_locked</text>
+</g>
+<g >
+<title>void std::__cxx11::basic_string&lt;char, std::char_traits&lt;char&gt;, std::allocator&lt;char&gt; &gt;::_M_construct_aux&lt;char*&gt; (40,404,040 samples, 0.22%)</title><rect x="190.4" y="725" width="2.6" height="15.0" fill="rgb(249,202,48)" rx="2" ry="2" />
+<text  x="193.43" y="735.5" ></text>
+</g>
+<g >
+<title>tcp_ack_tstamp (10,101,010 samples, 0.06%)</title><rect x="454.5" y="101" width="0.7" height="15.0" fill="rgb(220,71,17)" rx="2" ry="2" />
+<text  x="457.54" y="111.5" ></text>
+</g>
+<g >
+<title>__tcp_select_window (20,202,020 samples, 0.11%)</title><rect x="302.2" y="517" width="1.3" height="15.0" fill="rgb(222,81,19)" rx="2" ry="2" />
+<text  x="305.22" y="527.5" ></text>
+</g>
+<g >
+<title>__mod_timer (121,212,120 samples, 0.66%)</title><rect x="433.0" y="53" width="7.8" height="15.0" fill="rgb(234,136,32)" rx="2" ry="2" />
+<text  x="435.97" y="63.5" ></text>
+</g>
+<g >
+<title>std::__cxx11::basic_string&lt;char, std::char_traits&lt;char&gt;, std::allocator&lt;char&gt; &gt;::_M_dispose (20,202,020 samples, 0.11%)</title><rect x="1184.1" y="773" width="1.3" height="15.0" fill="rgb(251,215,51)" rx="2" ry="2" />
+<text  x="1187.12" y="783.5" ></text>
+</g>
+<g >
+<title>do_syscall_64 (70,707,070 samples, 0.39%)</title><rect x="1185.4" y="837" width="4.6" height="15.0" fill="rgb(209,20,4)" rx="2" ry="2" />
+<text  x="1188.42" y="847.5" ></text>
+</g>
+<g >
+<title>operator new (40,404,040 samples, 0.22%)</title><rect x="127.7" y="693" width="2.6" height="15.0" fill="rgb(216,51,12)" rx="2" ry="2" />
+<text  x="130.67" y="703.5" ></text>
+</g>
+<g >
+<title>tcp_rate_skb_sent (10,101,010 samples, 0.06%)</title><rect x="1090.6" y="517" width="0.7" height="15.0" fill="rgb(222,82,19)" rx="2" ry="2" />
+<text  x="1093.63" y="527.5" ></text>
+</g>
+<g >
+<title>checked_request2size (10,101,010 samples, 0.06%)</title><rect x="1174.3" y="773" width="0.7" height="15.0" fill="rgb(252,219,52)" rx="2" ry="2" />
+<text  x="1177.31" y="783.5" ></text>
+</g>
+<g >
+<title>__GI___libc_malloc (60,606,060 samples, 0.33%)</title><rect x="158.4" y="789" width="3.9" height="15.0" fill="rgb(219,68,16)" rx="2" ry="2" />
+<text  x="161.40" y="799.5" ></text>
+</g>
+<g >
+<title>__ip_local_out (616,161,610 samples, 3.38%)</title><rect x="315.3" y="469" width="39.9" height="15.0" fill="rgb(206,5,1)" rx="2" ry="2" />
+<text  x="318.30" y="479.5" >__i..</text>
+</g>
+<g >
+<title>nebula::net::TcpConnection::SendInLoop (14,323,232,180 samples, 78.56%)</title><rect x="231.0" y="741" width="927.0" height="15.0" fill="rgb(227,101,24)" rx="2" ry="2" />
+<text  x="233.96" y="751.5" >nebula::net::TcpConnection::SendInLoop</text>
+</g>
+<g >
+<title>neigh_hh_output (10,999,999,890 samples, 60.33%)</title><rect x="365.0" y="405" width="711.9" height="15.0" fill="rgb(213,37,8)" rx="2" ry="2" />
+<text  x="367.98" y="415.5" >neigh_hh_output</text>
+</g>
+<g >
+<title>__memcpy_avx_unaligned_erms (10,101,010 samples, 0.06%)</title><rect x="223.1" y="645" width="0.7" height="15.0" fill="rgb(246,190,45)" rx="2" ry="2" />
+<text  x="226.12" y="655.5" ></text>
+</g>
+<g >
+<title>tcp_rcv_established (9,202,020,110 samples, 50.47%)</title><rect x="423.8" y="133" width="595.6" height="15.0" fill="rgb(242,170,40)" rx="2" ry="2" />
+<text  x="426.82" y="143.5" >tcp_rcv_established</text>
+</g>
+<g >
+<title>tcp_rack_update_reo_wnd (10,101,010 samples, 0.06%)</title><rect x="1016.8" y="117" width="0.6" height="15.0" fill="rgb(217,58,13)" rx="2" ry="2" />
+<text  x="1019.76" y="127.5" ></text>
+</g>
+<g >
+<title>tcp_do_parse_auth_options (20,202,020 samples, 0.11%)</title><rect x="411.4" y="133" width="1.3" height="15.0" fill="rgb(209,19,4)" rx="2" ry="2" />
+<text  x="414.40" y="143.5" ></text>
+</g>
+<g >
+<title>std::_Function_handler&lt;void  (16,555,555,390 samples, 90.80%)</title><rect x="113.9" y="853" width="1071.5" height="15.0" fill="rgb(245,187,44)" rx="2" ry="2" />
+<text  x="116.94" y="863.5" >std::_Function_handler&lt;void </text>
+</g>
+<g >
+<title>tcp_options_write (10,101,010 samples, 0.06%)</title><rect x="1105.0" y="533" width="0.7" height="15.0" fill="rgb(249,206,49)" rx="2" ry="2" />
+<text  x="1108.01" y="543.5" ></text>
+</g>
+<g >
+<title>aa_inet_msg_perm (20,202,020 samples, 0.11%)</title><rect x="1152.1" y="597" width="1.3" height="15.0" fill="rgb(249,205,49)" rx="2" ry="2" />
+<text  x="1155.08" y="607.5" ></text>
+</g>
+<g >
+<title>__x64_sys_readv (30,303,030 samples, 0.17%)</title><rect x="20.5" y="885" width="1.9" height="15.0" fill="rgb(207,12,2)" rx="2" ry="2" />
+<text  x="23.46" y="895.5" ></text>
+</g>
+<g >
+<title>ip_rcv_core (10,101,010 samples, 0.06%)</title><rect x="1027.2" y="213" width="0.7" height="15.0" fill="rgb(250,210,50)" rx="2" ry="2" />
+<text  x="1030.22" y="223.5" ></text>
+</g>
+<g >
+<title>ip_local_deliver (9,888,888,790 samples, 54.24%)</title><rect x="387.2" y="213" width="640.0" height="15.0" fill="rgb(230,116,27)" rx="2" ry="2" />
+<text  x="390.21" y="223.5" >ip_local_deliver</text>
+</g>
+<g >
+<title>std::__cxx11::basic_string&lt;char, std::char_traits&lt;char&gt;, std::allocator&lt;char&gt; &gt;* google::protobuf::Arena::Create&lt;std::__cxx11::basic_string&lt;char, std::char_traits&lt;char&gt;, std::allocator&lt;char&gt; &gt;, std::__cxx11::basic_string&lt;char, std::char_traits&lt;char&gt;, std::allocator&lt;char&gt; &gt; const&amp;&gt; (40,404,040 samples, 0.22%)</title><rect x="190.4" y="789" width="2.6" height="15.0" fill="rgb(241,167,40)" rx="2" ry="2" />
+<text  x="193.43" y="799.5" ></text>
+</g>
+<g >
+<title>tcp_ack_update_rtt (10,101,010 samples, 0.06%)</title><rect x="467.6" y="85" width="0.7" height="15.0" fill="rgb(213,41,9)" rx="2" ry="2" />
+<text  x="470.62" y="95.5" ></text>
+</g>
+<g >
+<title>tcp_push (12,858,585,730 samples, 70.53%)</title><rect x="285.2" y="581" width="832.2" height="15.0" fill="rgb(243,176,42)" rx="2" ry="2" />
+<text  x="288.22" y="591.5" >tcp_push</text>
+</g>
+<g >
+<title>google::protobuf::internal::IsStructurallyValidUTF8 (121,212,120 samples, 0.66%)</title><rect x="147.9" y="741" width="7.9" height="15.0" fill="rgb(210,26,6)" rx="2" ry="2" />
+<text  x="150.94" y="751.5" ></text>
+</g>
+<g >
+<title>google::protobuf::internal::ArenaStringPtr::Set (60,606,060 samples, 0.33%)</title><rect x="189.1" y="805" width="3.9" height="15.0" fill="rgb(235,139,33)" rx="2" ry="2" />
+<text  x="192.12" y="815.5" ></text>
+</g>
+<g >
+<title>nebula::net::Buffer::ReadFd (10,101,010 samples, 0.06%)</title><rect x="118.5" y="837" width="0.7" height="15.0" fill="rgb(235,138,33)" rx="2" ry="2" />
+<text  x="121.52" y="847.5" ></text>
+</g>
+<g >
+<title>handle_softirqs (10,505,050,400 samples, 57.62%)</title><rect x="370.9" y="325" width="679.9" height="15.0" fill="rgb(238,156,37)" rx="2" ry="2" />
+<text  x="373.86" y="335.5" >handle_softirqs</text>
+</g>
+<g >
+<title>ip_rcv_finish_core.constprop.0 (30,303,030 samples, 0.17%)</title><rect x="1027.9" y="213" width="1.9" height="15.0" fill="rgb(231,123,29)" rx="2" ry="2" />
+<text  x="1030.87" y="223.5" ></text>
+</g>
+<g >
+<title>tcp_filter (10,101,010 samples, 0.06%)</title><rect x="393.1" y="165" width="0.6" height="15.0" fill="rgb(214,43,10)" rx="2" ry="2" />
+<text  x="396.09" y="175.5" ></text>
+</g>
+<g >
+<title>std::__cxx11::basic_string&lt;char, std::char_traits&lt;char&gt;, std::allocator&lt;char&gt; &gt;::_M_local_data (10,101,010 samples, 0.06%)</title><rect x="1184.8" y="741" width="0.6" height="15.0" fill="rgb(214,42,10)" rx="2" ry="2" />
+<text  x="1187.77" y="751.5" ></text>
+</g>
+<g >
+<title>google::protobuf::internal::EpsCopyInputStream::ReadString (10,101,010 samples, 0.06%)</title><rect x="178.7" y="757" width="0.6" height="15.0" fill="rgb(234,133,31)" rx="2" ry="2" />
+<text  x="181.66" y="767.5" ></text>
+</g>
+<g >
+<title>ip_rcv (10,050,504,950 samples, 55.12%)</title><rect x="385.2" y="229" width="650.5" height="15.0" fill="rgb(209,22,5)" rx="2" ry="2" />
+<text  x="388.25" y="239.5" >ip_rcv</text>
+</g>
+<g >
+<title>tcp_rate_check_app_limited (20,202,020 samples, 0.11%)</title><rect x="260.4" y="597" width="1.3" height="15.0" fill="rgb(207,10,2)" rx="2" ry="2" />
+<text  x="263.38" y="607.5" ></text>
+</g>
+<g >
+<title>std::__cxx11::basic_string&lt;char, std::char_traits&lt;char&gt;, std::allocator&lt;char&gt; &gt;::_M_dispose (20,202,020 samples, 0.11%)</title><rect x="1180.2" y="741" width="1.3" height="15.0" fill="rgb(251,215,51)" rx="2" ry="2" />
+<text  x="1183.19" y="751.5" ></text>
+</g>
+<g >
+<title>tcp_rack_advance (10,101,010 samples, 0.06%)</title><rect x="468.9" y="85" width="0.7" height="15.0" fill="rgb(215,50,12)" rx="2" ry="2" />
+<text  x="471.93" y="95.5" ></text>
+</g>
+<g >
+<title>tcp_cwnd_validate (20,202,020 samples, 0.11%)</title><rect x="1099.8" y="533" width="1.3" height="15.0" fill="rgb(219,67,16)" rx="2" ry="2" />
+<text  x="1102.78" y="543.5" ></text>
+</g>
+<g >
+<title>nebula::rpc::RpcCodec::Decode (636,363,630 samples, 3.49%)</title><rect x="121.1" y="821" width="41.2" height="15.0" fill="rgb(212,34,8)" rx="2" ry="2" />
+<text  x="124.14" y="831.5" >neb..</text>
+</g>
+<g >
+<title>_raw_spin_unlock (10,101,010 samples, 0.06%)</title><rect x="1042.3" y="293" width="0.6" height="15.0" fill="rgb(223,85,20)" rx="2" ry="2" />
+<text  x="1045.25" y="303.5" ></text>
+</g>
+<g >
+<title>std::__cxx11::basic_string&lt;char, std::char_traits&lt;char&gt;, std::allocator&lt;char&gt; &gt;::_S_copy (10,101,010 samples, 0.06%)</title><rect x="192.4" y="677" width="0.6" height="15.0" fill="rgb(254,227,54)" rx="2" ry="2" />
+<text  x="195.39" y="687.5" ></text>
+</g>
+<g >
+<title>resolve_normal_ct (171,717,170 samples, 0.94%)</title><rect x="339.5" y="405" width="11.1" height="15.0" fill="rgb(243,177,42)" rx="2" ry="2" />
+<text  x="342.48" y="415.5" ></text>
+</g>
+<g >
+<title>tcp_measure_rcv_mss (10,101,010 samples, 0.06%)</title><rect x="1014.1" y="117" width="0.7" height="15.0" fill="rgb(211,28,6)" rx="2" ry="2" />
+<text  x="1017.14" y="127.5" ></text>
+</g>
+<g >
+<title>tcp_chrono_stop (10,101,010 samples, 0.06%)</title><rect x="468.3" y="85" width="0.6" height="15.0" fill="rgb(248,200,47)" rx="2" ry="2" />
+<text  x="471.27" y="95.5" ></text>
+</g>
+<g >
+<title>__tcp_cleanup_rbuf (10,101,010 samples, 0.06%)</title><rect x="47.9" y="725" width="0.7" height="15.0" fill="rgb(206,4,1)" rx="2" ry="2" />
+<text  x="50.92" y="735.5" ></text>
+</g>
+<g >
+<title>nf_conntrack_in (20,202,020 samples, 0.11%)</title><rect x="1032.4" y="181" width="1.4" height="15.0" fill="rgb(206,8,2)" rx="2" ry="2" />
+<text  x="1035.45" y="191.5" ></text>
+</g>
+<g >
+<title>ip_finish_output (11,121,212,010 samples, 61.00%)</title><rect x="359.1" y="453" width="719.8" height="15.0" fill="rgb(242,173,41)" rx="2" ry="2" />
+<text  x="362.10" y="463.5" >ip_finish_output</text>
+</g>
+<g >
+<title>nebula::example::EchoResponse::_InternalSerialize (40,404,040 samples, 0.22%)</title><rect x="221.2" y="725" width="2.6" height="15.0" fill="rgb(246,189,45)" rx="2" ry="2" />
+<text  x="224.16" y="735.5" ></text>
+</g>
+<g >
+<title>nf_conntrack_handle_packet (171,717,170 samples, 0.94%)</title><rect x="327.7" y="405" width="11.1" height="15.0" fill="rgb(244,180,43)" rx="2" ry="2" />
+<text  x="330.72" y="415.5" ></text>
+</g>
+<g >
+<title>ip_queue_xmit (20,202,020 samples, 0.11%)</title><rect x="1093.9" y="533" width="1.3" height="15.0" fill="rgb(230,119,28)" rx="2" ry="2" />
+<text  x="1096.90" y="543.5" ></text>
+</g>
+<g >
+<title>nebula::rpc::RpcServer::SendResponse (14,898,989,750 samples, 81.72%)</title><rect x="208.7" y="773" width="964.3" height="15.0" fill="rgb(254,226,54)" rx="2" ry="2" />
+<text  x="211.74" y="783.5" >nebula::rpc::RpcServer::SendResponse</text>
+</g>
+<g >
+<title>google::protobuf::internal::ArenaStringPtr::ClearToEmpty (20,202,020 samples, 0.11%)</title><rect x="156.4" y="741" width="1.3" height="15.0" fill="rgb(213,38,9)" rx="2" ry="2" />
+<text  x="159.44" y="751.5" ></text>
+</g>
+<g >
+<title>sockfd_lookup_light (10,101,010 samples, 0.06%)</title><rect x="1156.7" y="645" width="0.6" height="15.0" fill="rgb(225,95,22)" rx="2" ry="2" />
+<text  x="1159.66" y="655.5" ></text>
+</g>
+<g >
+<title>apparmor_ip_postroute (10,101,010 samples, 0.06%)</title><rect x="358.4" y="453" width="0.7" height="15.0" fill="rgb(246,189,45)" rx="2" ry="2" />
+<text  x="361.44" y="463.5" ></text>
+</g>
+<g >
+<title>__libc_start_main_impl (16,747,474,580 samples, 91.86%)</title><rect x="106.1" y="949" width="1083.9" height="15.0" fill="rgb(218,63,15)" rx="2" ry="2" />
+<text  x="109.10" y="959.5" >__libc_start_main_impl</text>
+</g>
+<g >
+<title>google::protobuf::internal::InlineGreedyStringParser (10,101,010 samples, 0.06%)</title><rect x="178.7" y="773" width="0.6" height="15.0" fill="rgb(210,27,6)" rx="2" ry="2" />
+<text  x="181.66" y="783.5" ></text>
+</g>
+<g >
+<title>tcp_stream_memory_free (20,202,020 samples, 0.11%)</title><rect x="1148.2" y="597" width="1.3" height="15.0" fill="rgb(252,217,51)" rx="2" ry="2" />
+<text  x="1151.16" y="607.5" ></text>
+</g>
+<g >
+<title>read_tsc (50,505,050 samples, 0.28%)</title><rect x="1095.9" y="533" width="3.2" height="15.0" fill="rgb(206,7,1)" rx="2" ry="2" />
+<text  x="1098.86" y="543.5" ></text>
+</g>
+<g >
+<title>tcache_get (20,202,020 samples, 0.11%)</title><rect x="144.7" y="645" width="1.3" height="15.0" fill="rgb(253,222,53)" rx="2" ry="2" />
+<text  x="147.67" y="655.5" ></text>
+</g>
+<g >
+<title>do_syscall_64 (14,252,525,110 samples, 78.17%)</title><rect x="234.9" y="693" width="922.4" height="15.0" fill="rgb(209,20,4)" rx="2" ry="2" />
+<text  x="237.89" y="703.5" >do_syscall_64</text>
+</g>
+<g >
+<title>std::__cxx11::basic_string&lt;char, std::char_traits&lt;char&gt;, std::allocator&lt;char&gt; &gt;::_M_set_length (20,202,020 samples, 0.11%)</title><rect x="225.1" y="725" width="1.3" height="15.0" fill="rgb(249,204,48)" rx="2" ry="2" />
+<text  x="228.08" y="735.5" ></text>
+</g>
+<g >
+<title>is_vmalloc_addr (40,404,040 samples, 0.22%)</title><rect x="63.0" y="645" width="2.6" height="15.0" fill="rgb(215,46,11)" rx="2" ry="2" />
+<text  x="65.95" y="655.5" ></text>
+</g>
+<g >
+<title>tcp_write_xmit (12,797,979,670 samples, 70.19%)</title><rect x="287.2" y="549" width="828.3" height="15.0" fill="rgb(231,122,29)" rx="2" ry="2" />
+<text  x="290.19" y="559.5" >tcp_write_xmit</text>
+</g>
+<g >
+<title>___pthread_once (30,303,030 samples, 0.17%)</title><rect x="200.9" y="741" width="2.0" height="15.0" fill="rgb(233,128,30)" rx="2" ry="2" />
+<text  x="203.89" y="751.5" ></text>
+</g>
+<g >
+<title>consume_stock (20,202,020 samples, 0.11%)</title><rect x="1144.9" y="517" width="1.3" height="15.0" fill="rgb(237,149,35)" rx="2" ry="2" />
+<text  x="1147.89" y="527.5" ></text>
+</g>
+<g >
+<title>security_file_permission (10,101,010 samples, 0.06%)</title><rect x="102.2" y="821" width="0.6" height="15.0" fill="rgb(225,96,23)" rx="2" ry="2" />
+<text  x="105.18" y="831.5" ></text>
+</g>
+<g >
+<title>skb_do_copy_data_nocache (10,101,010 samples, 0.06%)</title><rect x="259.1" y="597" width="0.6" height="15.0" fill="rgb(210,26,6)" rx="2" ry="2" />
+<text  x="262.07" y="607.5" ></text>
+</g>
+<g >
+<title>skb_push (20,202,020 samples, 0.11%)</title><rect x="1087.4" y="501" width="1.3" height="15.0" fill="rgb(238,154,37)" rx="2" ry="2" />
+<text  x="1090.36" y="511.5" ></text>
+</g>
+<g >
+<title>apparmor_socket_sock_rcv_skb (20,202,020 samples, 0.11%)</title><rect x="408.1" y="101" width="1.3" height="15.0" fill="rgb(226,96,23)" rx="2" ry="2" />
+<text  x="411.13" y="111.5" ></text>
+</g>
+<g >
+<title>epi_fget.isra.0 (20,202,020 samples, 0.11%)</title><rect x="1185.4" y="725" width="1.3" height="15.0" fill="rgb(230,119,28)" rx="2" ry="2" />
+<text  x="1188.42" y="735.5" ></text>
+</g>
+<g >
+<title>nebula::example::EchoResponse::~EchoResponse (30,303,030 samples, 0.17%)</title><rect x="1179.5" y="789" width="2.0" height="15.0" fill="rgb(252,216,51)" rx="2" ry="2" />
+<text  x="1182.54" y="799.5" ></text>
+</g>
+<g >
+<title>std::char_traits&lt;char&gt;::copy (10,101,010 samples, 0.06%)</title><rect x="192.4" y="645" width="0.6" height="15.0" fill="rgb(231,121,29)" rx="2" ry="2" />
+<text  x="195.39" y="655.5" ></text>
+</g>
+<g >
+<title>tcp_chrono_stop (10,101,010 samples, 0.06%)</title><rect x="285.9" y="549" width="0.6" height="15.0" fill="rgb(248,200,47)" rx="2" ry="2" />
+<text  x="288.88" y="559.5" ></text>
+</g>
+<g >
+<title>__netif_receive_skb_one_core (10,171,717,070 samples, 55.79%)</title><rect x="380.0" y="245" width="658.3" height="15.0" fill="rgb(215,47,11)" rx="2" ry="2" />
+<text  x="383.02" y="255.5" >__netif_receive_skb_one_core</text>
+</g>
+<g >
+<title>ep_send_events (60,606,060 samples, 0.33%)</title><rect x="1185.4" y="757" width="3.9" height="15.0" fill="rgb(238,153,36)" rx="2" ry="2" />
+<text  x="1188.42" y="767.5" ></text>
+</g>
+<g >
+<title>nf_ct_acct_add (10,101,010 samples, 0.06%)</title><rect x="333.6" y="373" width="0.7" height="15.0" fill="rgb(240,163,39)" rx="2" ry="2" />
+<text  x="336.60" y="383.5" ></text>
+</g>
+<g >
+<title>tcp_mstamp_refresh (20,202,020 samples, 0.11%)</title><rect x="76.0" y="725" width="1.3" height="15.0" fill="rgb(221,77,18)" rx="2" ry="2" />
+<text  x="79.03" y="735.5" ></text>
+</g>
+<g >
+<title>all (18,232,323,050 samples, 100%)</title><rect x="10.0" y="997" width="1180.0" height="15.0" fill="rgb(213,39,9)" rx="2" ry="2" />
+<text  x="13.00" y="1007.5" ></text>
+</g>
+<g >
+<title>nebula::net::Buffer::ReadFd (1,484,848,470 samples, 8.14%)</title><rect x="10.0" y="949" width="96.1" height="15.0" fill="rgb(235,138,33)" rx="2" ry="2" />
+<text  x="13.00" y="959.5" >nebula::net..</text>
+</g>
+<g >
+<title>operator delete (10,101,010 samples, 0.06%)</title><rect x="1181.5" y="789" width="0.7" height="15.0" fill="rgb(247,196,46)" rx="2" ry="2" />
+<text  x="1184.50" y="799.5" ></text>
+</g>
+<g >
+<title>__check_object_size (121,212,120 samples, 0.66%)</title><rect x="274.1" y="565" width="7.9" height="15.0" fill="rgb(226,98,23)" rx="2" ry="2" />
+<text  x="277.11" y="575.5" ></text>
+</g>
+<g >
+<title>google::protobuf::internal::IsStructurallyValidUTF8 (121,212,120 samples, 0.66%)</title><rect x="147.9" y="725" width="7.9" height="15.0" fill="rgb(210,26,6)" rx="2" ry="2" />
+<text  x="150.94" y="735.5" ></text>
+</g>
+<g >
+<title>enqueue_to_backlog (10,101,010 samples, 0.06%)</title><rect x="1057.9" y="325" width="0.7" height="15.0" fill="rgb(239,159,38)" rx="2" ry="2" />
+<text  x="1060.94" y="335.5" ></text>
+</g>
+<g >
+<title>__x64_sys_epoll_wait (60,606,060 samples, 0.33%)</title><rect x="1185.4" y="805" width="3.9" height="15.0" fill="rgb(206,6,1)" rx="2" ry="2" />
+<text  x="1188.42" y="815.5" ></text>
+</g>
+<g >
+<title>__virt_addr_valid (10,101,010 samples, 0.06%)</title><rect x="62.3" y="629" width="0.7" height="15.0" fill="rgb(216,53,12)" rx="2" ry="2" />
+<text  x="65.30" y="639.5" ></text>
+</g>
+<g >
+<title>nf_nat_ipv4_local_fn (40,404,040 samples, 0.22%)</title><rect x="351.9" y="437" width="2.6" height="15.0" fill="rgb(254,228,54)" rx="2" ry="2" />
+<text  x="354.91" y="447.5" ></text>
+</g>
+<g >
+<title>nf_hook_slow (50,505,050 samples, 0.28%)</title><rect x="1031.1" y="213" width="3.3" height="15.0" fill="rgb(243,175,42)" rx="2" ry="2" />
+<text  x="1034.14" y="223.5" ></text>
+</g>
+<g >
+<title>tcp_chrono_start (10,101,010 samples, 0.06%)</title><rect x="1124.0" y="565" width="0.6" height="15.0" fill="rgb(226,99,23)" rx="2" ry="2" />
+<text  x="1126.97" y="575.5" ></text>
+</g>
+<g >
+<title>__check_object_size (80,808,080 samples, 0.44%)</title><rect x="60.3" y="677" width="5.3" height="15.0" fill="rgb(226,98,23)" rx="2" ry="2" />
+<text  x="63.34" y="687.5" ></text>
+</g>
+<g >
+<title>tcp_mstamp_refresh (30,303,030 samples, 0.17%)</title><rect x="1014.8" y="117" width="2.0" height="15.0" fill="rgb(221,77,18)" rx="2" ry="2" />
+<text  x="1017.80" y="127.5" ></text>
+</g>
+<g >
+<title>inet_sendmsg (13,929,292,790 samples, 76.40%)</title><rect x="249.3" y="629" width="901.5" height="15.0" fill="rgb(244,183,43)" rx="2" ry="2" />
+<text  x="252.27" y="639.5" >inet_sendmsg</text>
+</g>
+<g >
+<title>sk_forced_mem_schedule (20,202,020 samples, 0.11%)</title><rect x="272.1" y="581" width="1.4" height="15.0" fill="rgb(218,63,15)" rx="2" ry="2" />
+<text  x="275.15" y="591.5" ></text>
+</g>
+<g >
+<title>google::protobuf::Message::MaybeComputeUnknownFieldsSize (20,202,020 samples, 0.11%)</title><rect x="214.0" y="741" width="1.3" height="15.0" fill="rgb(220,72,17)" rx="2" ry="2" />
+<text  x="216.97" y="751.5" ></text>
+</g>
+<g >
+<title>loopback_xmit (191,919,190 samples, 1.05%)</title><rect x="1055.3" y="357" width="12.5" height="15.0" fill="rgb(247,194,46)" rx="2" ry="2" />
+<text  x="1058.33" y="367.5" ></text>
+</g>
+<g >
+<title>google::protobuf::internal::ArenaStringPtr::IsDefault (20,202,020 samples, 0.11%)</title><rect x="156.4" y="725" width="1.3" height="15.0" fill="rgb(228,109,26)" rx="2" ry="2" />
+<text  x="159.44" y="735.5" ></text>
+</g>
+<g >
+<title>std::_Hashtable&lt;google::protobuf::Symbol, google::protobuf::Symbol, std::allocator&lt;google::protobuf::Symbol&gt;, std::__detail::_Identity, google::protobuf::(anonymous namespace)::SymbolByParentEq, google::protobuf::(anonymous namespace)::SymbolByParentHash, std::__detail::_Mod_range_hashing, std::__detail::_Default_ranged_hash, std::__detail::_Prime_rehash_policy, std::__detail::_Hashtable_traits&lt;true, true, true&gt; &gt;::_M_find_before_node (70,707,070 samples, 0.39%)</title><rect x="184.5" y="789" width="4.6" height="15.0" fill="rgb(219,64,15)" rx="2" ry="2" />
+<text  x="187.55" y="799.5" ></text>
+</g>
+<g >
+<title>sock_poll (40,404,040 samples, 0.22%)</title><rect x="1186.7" y="725" width="2.6" height="15.0" fill="rgb(223,84,20)" rx="2" ry="2" />
+<text  x="1189.73" y="735.5" ></text>
+</g>
+<g >
+<title>nf_ct_get_tuple (10,101,010 samples, 0.06%)</title><rect x="349.9" y="389" width="0.7" height="15.0" fill="rgb(218,60,14)" rx="2" ry="2" />
+<text  x="352.94" y="399.5" ></text>
+</g>
+<g >
+<title>operator new (10,101,010 samples, 0.06%)</title><rect x="1165.8" y="693" width="0.7" height="15.0" fill="rgb(216,51,12)" rx="2" ry="2" />
+<text  x="1168.81" y="703.5" ></text>
+</g>
+<g >
+<title>apparmor_socket_sendmsg (50,505,050 samples, 0.28%)</title><rect x="246.0" y="629" width="3.3" height="15.0" fill="rgb(235,138,33)" rx="2" ry="2" />
+<text  x="249.00" y="639.5" ></text>
+</g>
+<g >
+<title>nebula::example::EchoRequest::_InternalParse (30,303,030 samples, 0.17%)</title><rect x="177.4" y="789" width="1.9" height="15.0" fill="rgb(226,98,23)" rx="2" ry="2" />
+<text  x="180.36" y="799.5" ></text>
+</g>
+<g >
+<title>google::protobuf::MessageLite::AppendPartialToString (212,121,210 samples, 1.16%)</title><rect x="211.4" y="757" width="13.7" height="15.0" fill="rgb(214,44,10)" rx="2" ry="2" />
+<text  x="214.35" y="767.5" ></text>
+</g>
+<g >
+<title>srso_alias_safe_ret (10,101,010 samples, 0.06%)</title><rect x="259.7" y="597" width="0.7" height="15.0" fill="rgb(242,170,40)" rx="2" ry="2" />
+<text  x="262.73" y="607.5" ></text>
+</g>
+<g >
+<title>sock_read_iter (969,696,960 samples, 5.32%)</title><rect x="27.7" y="805" width="62.7" height="15.0" fill="rgb(217,57,13)" rx="2" ry="2" />
+<text  x="30.65" y="815.5" >sock_r..</text>
+</g>
+<g >
+<title>nf_nat_ipv4_local_in (20,202,020 samples, 0.11%)</title><rect x="1024.6" y="181" width="1.3" height="15.0" fill="rgb(235,139,33)" rx="2" ry="2" />
+<text  x="1027.60" y="191.5" ></text>
+</g>
+<g >
+<title>security_socket_sendmsg (40,404,040 samples, 0.22%)</title><rect x="1150.8" y="629" width="2.6" height="15.0" fill="rgb(243,174,41)" rx="2" ry="2" />
+<text  x="1153.78" y="639.5" ></text>
+</g>
+<g >
+<title>__GI___libc_free (10,101,010 samples, 0.06%)</title><rect x="1183.5" y="805" width="0.6" height="15.0" fill="rgb(252,218,52)" rx="2" ry="2" />
+<text  x="1186.46" y="815.5" ></text>
+</g>
+<g >
+<title>check_heap_object (40,404,040 samples, 0.22%)</title><rect x="276.7" y="533" width="2.6" height="15.0" fill="rgb(241,165,39)" rx="2" ry="2" />
+<text  x="279.73" y="543.5" ></text>
+</g>
+<g >
+<title>void std::__cxx11::basic_string&lt;char, std::char_traits&lt;char&gt;, std::allocator&lt;char&gt; &gt;::_M_construct&lt;char*&gt; (40,404,040 samples, 0.22%)</title><rect x="190.4" y="709" width="2.6" height="15.0" fill="rgb(220,70,16)" rx="2" ry="2" />
+<text  x="193.43" y="719.5" ></text>
+</g>
+<g >
+<title>operator delete (10,101,010 samples, 0.06%)</title><rect x="1180.8" y="677" width="0.7" height="15.0" fill="rgb(247,196,46)" rx="2" ry="2" />
+<text  x="1183.85" y="687.5" ></text>
+</g>
+<g >
+<title>skb_clone_tx_timestamp (10,101,010 samples, 0.06%)</title><rect x="1067.8" y="357" width="0.6" height="15.0" fill="rgb(232,127,30)" rx="2" ry="2" />
+<text  x="1070.75" y="367.5" ></text>
+</g>
+<g >
+<title>alloc_pages (10,101,010 samples, 0.06%)</title><rect x="273.5" y="549" width="0.6" height="15.0" fill="rgb(210,25,6)" rx="2" ry="2" />
+<text  x="276.46" y="559.5" ></text>
+</g>
+<g >
+<title>__tcp_transmit_skb (12,343,434,220 samples, 67.70%)</title><rect x="293.1" y="533" width="798.8" height="15.0" fill="rgb(231,122,29)" rx="2" ry="2" />
+<text  x="296.07" y="543.5" >__tcp_transmit_skb</text>
+</g>
+<g >
+<title>do_softirq.part.0 (10,525,252,420 samples, 57.73%)</title><rect x="370.9" y="357" width="681.2" height="15.0" fill="rgb(233,131,31)" rx="2" ry="2" />
+<text  x="373.86" y="367.5" >do_softirq.part.0</text>
+</g>
+<g >
+<title>__check_object_size.part.0 (10,101,010 samples, 0.06%)</title><rect x="59.7" y="677" width="0.6" height="15.0" fill="rgb(236,142,34)" rx="2" ry="2" />
+<text  x="62.68" y="687.5" ></text>
+</g>
+<g >
+<title>kfree (30,303,030 samples, 0.17%)</title><rect x="1048.1" y="245" width="2.0" height="15.0" fill="rgb(222,78,18)" rx="2" ry="2" />
+<text  x="1051.14" y="255.5" ></text>
+</g>
+<g >
+<title>__memcpy_avx_unaligned_erms (20,202,020 samples, 0.11%)</title><rect x="136.2" y="693" width="1.3" height="15.0" fill="rgb(246,190,45)" rx="2" ry="2" />
+<text  x="139.17" y="703.5" ></text>
+</g>
+<g >
+<title>tcp_stream_memory_free (10,101,010 samples, 0.06%)</title><rect x="1188.7" y="693" width="0.6" height="15.0" fill="rgb(252,217,51)" rx="2" ry="2" />
+<text  x="1191.69" y="703.5" ></text>
+</g>
+<g >
+<title>tcp_filter (60,606,060 samples, 0.33%)</title><rect x="405.5" y="149" width="3.9" height="15.0" fill="rgb(214,43,10)" rx="2" ry="2" />
+<text  x="408.51" y="159.5" ></text>
+</g>
+<g >
+<title>import_iovec (70,707,070 samples, 0.39%)</title><rect x="90.4" y="821" width="4.6" height="15.0" fill="rgb(241,168,40)" rx="2" ry="2" />
+<text  x="93.41" y="831.5" ></text>
+</g>
+<g >
+<title>__memcmp_avx2_movbe (20,202,020 samples, 0.11%)</title><rect x="174.7" y="805" width="1.3" height="15.0" fill="rgb(224,91,21)" rx="2" ry="2" />
+<text  x="177.74" y="815.5" ></text>
+</g>
+<g >
+<title>google::protobuf::internal::VerifyUTF8 (131,313,130 samples, 0.72%)</title><rect x="147.3" y="757" width="8.5" height="15.0" fill="rgb(228,108,25)" rx="2" ry="2" />
+<text  x="150.29" y="767.5" ></text>
+</g>
+<g >
+<title>__sys_sendto (10,101,010 samples, 0.06%)</title><rect x="243.4" y="661" width="0.6" height="15.0" fill="rgb(236,146,34)" rx="2" ry="2" />
+<text  x="246.39" y="671.5" ></text>
+</g>
+<g >
+<title>tcp_delack_max (10,101,010 samples, 0.06%)</title><rect x="440.8" y="85" width="0.7" height="15.0" fill="rgb(214,43,10)" rx="2" ry="2" />
+<text  x="443.81" y="95.5" ></text>
+</g>
+<g >
+<title>google::protobuf::io::EpsCopyOutputStream::WriteLengthDelim (10,101,010 samples, 0.06%)</title><rect x="222.5" y="693" width="0.6" height="15.0" fill="rgb(207,11,2)" rx="2" ry="2" />
+<text  x="225.47" y="703.5" ></text>
+</g>
+<g >
+<title>google::protobuf::internal::UTF8GenericScan (20,202,020 samples, 0.11%)</title><rect x="154.5" y="693" width="1.3" height="15.0" fill="rgb(250,209,50)" rx="2" ry="2" />
+<text  x="157.48" y="703.5" ></text>
+</g>
+<g >
+<title>tcp_rearm_rto (40,404,040 samples, 0.22%)</title><rect x="1102.4" y="517" width="2.6" height="15.0" fill="rgb(214,45,10)" rx="2" ry="2" />
+<text  x="1105.40" y="527.5" ></text>
+</g>
+<g >
+<title>__virt_addr_valid (20,202,020 samples, 0.11%)</title><rect x="275.4" y="533" width="1.3" height="15.0" fill="rgb(216,53,12)" rx="2" ry="2" />
+<text  x="278.42" y="543.5" ></text>
+</g>
+<g >
+<title>cubictcp_acked (30,303,030 samples, 0.17%)</title><rect x="451.3" y="101" width="1.9" height="15.0" fill="rgb(235,140,33)" rx="2" ry="2" />
+<text  x="454.27" y="111.5" ></text>
+</g>
+<g >
+<title>google::protobuf::STLStringResizeUninitializedAmortized (90,909,090 samples, 0.50%)</title><rect x="215.3" y="741" width="5.9" height="15.0" fill="rgb(233,131,31)" rx="2" ry="2" />
+<text  x="218.27" y="751.5" ></text>
+</g>
+<g >
+<title>srso_alias_return_thunk (10,101,010 samples, 0.06%)</title><rect x="1077.6" y="421" width="0.6" height="15.0" fill="rgb(241,167,39)" rx="2" ry="2" />
+<text  x="1080.56" y="431.5" ></text>
+</g>
+<g >
+<title>std::allocator_traits&lt;std::allocator&lt;char&gt; &gt;::deallocate (10,101,010 samples, 0.06%)</title><rect x="1184.1" y="741" width="0.7" height="15.0" fill="rgb(213,40,9)" rx="2" ry="2" />
+<text  x="1187.12" y="751.5" ></text>
+</g>
+<g >
+<title>sk_filter_trim_cap (20,202,020 samples, 0.11%)</title><rect x="403.6" y="149" width="1.3" height="15.0" fill="rgb(207,11,2)" rx="2" ry="2" />
+<text  x="406.55" y="159.5" ></text>
+</g>
+<g >
+<title>check_heap_object (20,202,020 samples, 0.11%)</title><rect x="61.6" y="645" width="1.4" height="15.0" fill="rgb(241,165,39)" rx="2" ry="2" />
+<text  x="64.65" y="655.5" ></text>
+</g>
+<g >
+<title>__memcpy_avx_unaligned_erms (10,101,010 samples, 0.06%)</title><rect x="192.4" y="629" width="0.6" height="15.0" fill="rgb(246,190,45)" rx="2" ry="2" />
+<text  x="195.39" y="639.5" ></text>
+</g>
+<g >
+<title>nf_conntrack_tcp_packet (151,515,150 samples, 0.83%)</title><rect x="329.0" y="389" width="9.8" height="15.0" fill="rgb(237,147,35)" rx="2" ry="2" />
+<text  x="332.02" y="399.5" ></text>
+</g>
+<g >
+<title>tcp_v4_fill_cb (30,303,030 samples, 0.17%)</title><rect x="1019.4" y="149" width="1.9" height="15.0" fill="rgb(206,8,1)" rx="2" ry="2" />
+<text  x="1022.37" y="159.5" ></text>
+</g>
+<g >
+<title>apparmor_file_permission (20,202,020 samples, 0.11%)</title><rect x="96.3" y="805" width="1.3" height="15.0" fill="rgb(218,60,14)" rx="2" ry="2" />
+<text  x="99.29" y="815.5" ></text>
+</g>
+<g >
+<title>tcp_recvmsg_locked (20,202,020 samples, 0.11%)</title><rect x="83.9" y="757" width="1.3" height="15.0" fill="rgb(226,100,24)" rx="2" ry="2" />
+<text  x="86.87" y="767.5" ></text>
+</g>
+<g >
+<title>sock_read_iter (10,101,010 samples, 0.06%)</title><rect x="102.8" y="821" width="0.7" height="15.0" fill="rgb(217,57,13)" rx="2" ry="2" />
+<text  x="105.83" y="831.5" ></text>
+</g>
+<g >
+<title>__memcpy_avx_unaligned_erms (10,101,010 samples, 0.06%)</title><rect x="143.4" y="677" width="0.6" height="15.0" fill="rgb(246,190,45)" rx="2" ry="2" />
+<text  x="146.36" y="687.5" ></text>
+</g>
+<g >
+<title>_raw_spin_lock_bh (10,101,010 samples, 0.06%)</title><rect x="41.4" y="741" width="0.6" height="15.0" fill="rgb(221,75,18)" rx="2" ry="2" />
+<text  x="44.38" y="751.5" ></text>
+</g>
+<g >
+<title>google::protobuf::internal::AssignDescriptors (40,404,040 samples, 0.22%)</title><rect x="200.2" y="757" width="2.7" height="15.0" fill="rgb(229,112,26)" rx="2" ry="2" />
+<text  x="203.24" y="767.5" ></text>
+</g>
+<g >
+<title>ip_rcv (10,101,010 samples, 0.06%)</title><rect x="1038.3" y="245" width="0.7" height="15.0" fill="rgb(209,22,5)" rx="2" ry="2" />
+<text  x="1041.33" y="255.5" ></text>
+</g>
+<g >
+<title>google::protobuf::internal::TaggedPtr&lt;std::__cxx11::basic_string&lt;char, std::char_traits&lt;char&gt;, std::allocator&lt;char&gt; &gt; &gt;::UnsafeGet (20,202,020 samples, 0.11%)</title><rect x="156.4" y="709" width="1.3" height="15.0" fill="rgb(216,54,13)" rx="2" ry="2" />
+<text  x="159.44" y="719.5" ></text>
+</g>
+<g >
+<title>google::protobuf::internal::InlineGreedyStringParser (242,424,240 samples, 1.33%)</title><rect x="130.3" y="757" width="15.7" height="15.0" fill="rgb(210,27,6)" rx="2" ry="2" />
+<text  x="133.29" y="767.5" ></text>
+</g>
+<g >
+<title>__GI___libc_free (20,202,020 samples, 0.11%)</title><rect x="210.0" y="757" width="1.4" height="15.0" fill="rgb(252,218,52)" rx="2" ry="2" />
+<text  x="213.04" y="767.5" ></text>
+</g>
+<g >
+<title>tcp_v4_send_check (40,404,040 samples, 0.22%)</title><rect x="1112.9" y="533" width="2.6" height="15.0" fill="rgb(215,48,11)" rx="2" ry="2" />
+<text  x="1115.86" y="543.5" ></text>
+</g>
+<g >
+<title>should_failslab.constprop.0 (30,303,030 samples, 0.17%)</title><rect x="1136.4" y="549" width="2.0" height="15.0" fill="rgb(242,173,41)" rx="2" ry="2" />
+<text  x="1139.39" y="559.5" ></text>
+</g>
+<g >
+<title>malloc@plt (10,101,010 samples, 0.06%)</title><rect x="1170.4" y="725" width="0.6" height="15.0" fill="rgb(246,192,46)" rx="2" ry="2" />
+<text  x="1173.39" y="735.5" ></text>
+</g>
+<g >
+<title>read_tsc (20,202,020 samples, 0.11%)</title><rect x="1015.5" y="101" width="1.3" height="15.0" fill="rgb(206,7,1)" rx="2" ry="2" />
+<text  x="1018.45" y="111.5" ></text>
+</g>
+<g >
+<title>tcp_xmit_recovery (10,101,010 samples, 0.06%)</title><rect x="1018.7" y="117" width="0.7" height="15.0" fill="rgb(238,154,36)" rx="2" ry="2" />
+<text  x="1021.72" y="127.5" ></text>
+</g>
+<g >
+<title>std::__cxx11::basic_string&lt;char, std::char_traits&lt;char&gt;, std::allocator&lt;char&gt; &gt;::_S_copy_chars (10,101,010 samples, 0.06%)</title><rect x="192.4" y="693" width="0.6" height="15.0" fill="rgb(223,85,20)" rx="2" ry="2" />
+<text  x="195.39" y="703.5" ></text>
+</g>
+<g >
+<title>__local_bh_enable_ip (20,202,020 samples, 0.11%)</title><rect x="256.5" y="581" width="1.3" height="15.0" fill="rgb(237,147,35)" rx="2" ry="2" />
+<text  x="259.46" y="591.5" ></text>
+</g>
+<g >
+<title>nf_conntrack_tcp_packet (10,101,010 samples, 0.06%)</title><rect x="338.8" y="405" width="0.7" height="15.0" fill="rgb(237,147,35)" rx="2" ry="2" />
+<text  x="341.83" y="415.5" ></text>
+</g>
+<g >
+<title>hash_conntrack_raw (50,505,050 samples, 0.28%)</title><rect x="346.7" y="389" width="3.2" height="15.0" fill="rgb(220,70,16)" rx="2" ry="2" />
+<text  x="349.68" y="399.5" ></text>
+</g>
+<g >
+<title>tcp_current_mss (40,404,040 samples, 0.22%)</title><rect x="1117.4" y="565" width="2.6" height="15.0" fill="rgb(253,222,53)" rx="2" ry="2" />
+<text  x="1120.43" y="575.5" ></text>
+</g>
+<g >
+<title>kmem_cache_alloc_node (30,303,030 samples, 0.17%)</title><rect x="1133.8" y="533" width="1.9" height="15.0" fill="rgb(236,142,34)" rx="2" ry="2" />
+<text  x="1136.78" y="543.5" ></text>
+</g>
+<g >
+<title>__import_iovec (60,606,060 samples, 0.33%)</title><rect x="91.1" y="805" width="3.9" height="15.0" fill="rgb(214,42,10)" rx="2" ry="2" />
+<text  x="94.06" y="815.5" ></text>
+</g>
+<g >
+<title>tcp_v4_send_check (10,101,010 samples, 0.06%)</title><rect x="1091.3" y="517" width="0.6" height="15.0" fill="rgb(215,48,11)" rx="2" ry="2" />
+<text  x="1094.29" y="527.5" ></text>
+</g>
+<g >
+<title>skb_copy_datagram_iter (20,202,020 samples, 0.11%)</title><rect x="42.7" y="741" width="1.3" height="15.0" fill="rgb(245,188,45)" rx="2" ry="2" />
+<text  x="45.69" y="751.5" ></text>
+</g>
+<g >
+<title>mod_timer (20,202,020 samples, 0.11%)</title><rect x="1109.6" y="501" width="1.3" height="15.0" fill="rgb(212,32,7)" rx="2" ry="2" />
+<text  x="1112.59" y="511.5" ></text>
+</g>
+<g >
+<title>ipv4_dst_check (20,202,020 samples, 0.11%)</title><rect x="313.3" y="469" width="1.3" height="15.0" fill="rgb(253,222,53)" rx="2" ry="2" />
+<text  x="316.34" y="479.5" ></text>
+</g>
+<g >
+<title>__cond_resched (10,101,010 samples, 0.06%)</title><rect x="253.8" y="597" width="0.7" height="15.0" fill="rgb(217,58,14)" rx="2" ry="2" />
+<text  x="256.84" y="607.5" ></text>
+</g>
+<g >
+<title>nebula::example::EchoResponse* google::protobuf::Arena::CreateMaybeMessage&lt;nebula::example::EchoResponse&gt; (10,101,010 samples, 0.06%)</title><rect x="196.3" y="805" width="0.7" height="15.0" fill="rgb(220,73,17)" rx="2" ry="2" />
+<text  x="199.32" y="815.5" ></text>
+</g>
+<g >
+<title>tcp_small_queue_check.isra.0 (20,202,020 samples, 0.11%)</title><rect x="1110.9" y="533" width="1.3" height="15.0" fill="rgb(211,30,7)" rx="2" ry="2" />
+<text  x="1113.90" y="543.5" ></text>
+</g>
+<g >
+<title>apparmor_socket_recvmsg (40,404,040 samples, 0.22%)</title><rect x="87.1" y="757" width="2.7" height="15.0" fill="rgb(246,190,45)" rx="2" ry="2" />
+<text  x="90.14" y="767.5" ></text>
+</g>
+<g >
+<title>__siphash_unaligned (30,303,030 samples, 0.17%)</title><rect x="348.0" y="373" width="1.9" height="15.0" fill="rgb(221,74,17)" rx="2" ry="2" />
+<text  x="350.98" y="383.5" ></text>
+</g>
+<g >
+<title>__memcpy_avx_unaligned_erms (10,101,010 samples, 0.06%)</title><rect x="157.7" y="773" width="0.7" height="15.0" fill="rgb(246,190,45)" rx="2" ry="2" />
+<text  x="160.75" y="783.5" ></text>
+</g>
+<g >
+<title>__dev_queue_xmit (10,969,696,860 samples, 60.17%)</title><rect x="366.3" y="389" width="709.9" height="15.0" fill="rgb(244,182,43)" rx="2" ry="2" />
+<text  x="369.29" y="399.5" >__dev_queue_xmit</text>
+</g>
+<g >
+<title>tcache_get (20,202,020 samples, 0.11%)</title><rect x="129.0" y="661" width="1.3" height="15.0" fill="rgb(253,222,53)" rx="2" ry="2" />
+<text  x="131.98" y="671.5" ></text>
+</g>
+<g >
+<title>ip_local_out (20,202,020 samples, 0.11%)</title><rect x="1086.1" y="501" width="1.3" height="15.0" fill="rgb(233,131,31)" rx="2" ry="2" />
+<text  x="1089.06" y="511.5" ></text>
+</g>
+<g >
+<title>tcp_inbound_hash.constprop.0 (50,505,050 samples, 0.28%)</title><rect x="409.4" y="149" width="3.3" height="15.0" fill="rgb(244,183,43)" rx="2" ry="2" />
+<text  x="412.43" y="159.5" ></text>
+</g>
+<g >
+<title>std::__cxx11::basic_string&lt;char, std::char_traits&lt;char&gt;, std::allocator&lt;char&gt; &gt;::_M_destroy (10,101,010 samples, 0.06%)</title><rect x="1184.1" y="757" width="0.7" height="15.0" fill="rgb(229,111,26)" rx="2" ry="2" />
+<text  x="1187.12" y="767.5" ></text>
+</g>
+<g >
+<title>syscall_exit_to_user_mode (10,101,010 samples, 0.06%)</title><rect x="105.4" y="901" width="0.7" height="15.0" fill="rgb(251,211,50)" rx="2" ry="2" />
+<text  x="108.45" y="911.5" ></text>
+</g>
+<g >
+<title>tcp_data_ready (10,101,010 samples, 0.06%)</title><rect x="420.5" y="133" width="0.7" height="15.0" fill="rgb(232,124,29)" rx="2" ry="2" />
+<text  x="423.55" y="143.5" ></text>
+</g>
+<g >
+<title>ipv4_conntrack_in (20,202,020 samples, 0.11%)</title><rect x="1032.4" y="197" width="1.4" height="15.0" fill="rgb(226,98,23)" rx="2" ry="2" />
+<text  x="1035.45" y="207.5" ></text>
+</g>
+<g >
+<title>nebula::rpc::proto::RpcMeta::_InternalParse (474,747,470 samples, 2.60%)</title><rect x="125.1" y="773" width="30.7" height="15.0" fill="rgb(234,135,32)" rx="2" ry="2" />
+<text  x="128.06" y="783.5" >ne..</text>
+</g>
+<g >
+<title>CheckFieldPresence (10,101,010 samples, 0.06%)</title><rect x="122.4" y="773" width="0.7" height="15.0" fill="rgb(245,186,44)" rx="2" ry="2" />
+<text  x="125.44" y="783.5" ></text>
+</g>
+<g >
+<title>__check_object_size.part.0 (80,808,080 samples, 0.44%)</title><rect x="60.3" y="661" width="5.3" height="15.0" fill="rgb(236,142,34)" rx="2" ry="2" />
+<text  x="63.34" y="671.5" ></text>
+</g>
+<g >
+<title>cubictcp_cong_avoid (10,101,010 samples, 0.06%)</title><rect x="441.5" y="117" width="0.6" height="15.0" fill="rgb(214,45,10)" rx="2" ry="2" />
+<text  x="444.47" y="127.5" ></text>
+</g>
+<g >
+<title>skb_attempt_defer_free (30,303,030 samples, 0.17%)</title><rect x="49.2" y="725" width="2.0" height="15.0" fill="rgb(254,225,54)" rx="2" ry="2" />
+<text  x="52.22" y="735.5" ></text>
+</g>
+<g >
+<title>skb_clone (10,101,010 samples, 0.06%)</title><rect x="1099.1" y="533" width="0.7" height="15.0" fill="rgb(215,47,11)" rx="2" ry="2" />
+<text  x="1102.13" y="543.5" ></text>
+</g>
+<g >
+<title>jiffies_to_usecs (10,101,010 samples, 0.06%)</title><rect x="1095.2" y="533" width="0.7" height="15.0" fill="rgb(231,122,29)" rx="2" ry="2" />
+<text  x="1098.21" y="543.5" ></text>
+</g>
+<g >
+<title>nf_nat_inet_fn (10,101,010 samples, 0.06%)</title><rect x="1025.3" y="149" width="0.6" height="15.0" fill="rgb(206,5,1)" rx="2" ry="2" />
+<text  x="1028.26" y="159.5" ></text>
+</g>
+<g >
+<title>nebula::rpc::proto::RpcMeta::RpcMeta (10,101,010 samples, 0.06%)</title><rect x="1182.2" y="821" width="0.6" height="15.0" fill="rgb(210,23,5)" rx="2" ry="2" />
+<text  x="1185.16" y="831.5" ></text>
+</g>
+<g >
+<title>std::__cxx11::basic_string&lt;char, std::char_traits&lt;char&gt;, std::allocator&lt;char&gt; &gt;::assign (10,101,010 samples, 0.06%)</title><rect x="178.7" y="741" width="0.6" height="15.0" fill="rgb(213,37,8)" rx="2" ry="2" />
+<text  x="181.66" y="751.5" ></text>
+</g>
+<g >
+<title>x64_sys_call (70,707,070 samples, 0.39%)</title><rect x="1185.4" y="821" width="4.6" height="15.0" fill="rgb(247,194,46)" rx="2" ry="2" />
+<text  x="1188.42" y="831.5" ></text>
+</g>
+<g >
+<title>tcp_ack (20,202,020 samples, 0.11%)</title><rect x="416.0" y="133" width="1.3" height="15.0" fill="rgb(230,115,27)" rx="2" ry="2" />
+<text  x="418.97" y="143.5" ></text>
+</g>
+<g >
+<title>bool google::protobuf::MessageLite::ParseFrom&lt; (10,101,010 samples, 0.06%)</title><rect x="180.0" y="789" width="0.6" height="15.0" fill="rgb(214,42,10)" rx="2" ry="2" />
+<text  x="182.97" y="799.5" ></text>
+</g>
+<g >
+<title>sock_def_readable (8,313,131,230 samples, 45.60%)</title><rect x="474.8" y="101" width="538.0" height="15.0" fill="rgb(216,54,13)" rx="2" ry="2" />
+<text  x="477.81" y="111.5" >sock_def_readable</text>
+</g>
+<g >
+<title>google::protobuf::internal::UTF8GenericScanFastAscii (60,606,060 samples, 0.33%)</title><rect x="151.9" y="709" width="3.9" height="15.0" fill="rgb(220,71,17)" rx="2" ry="2" />
+<text  x="154.86" y="719.5" ></text>
+</g>
+<g >
+<title>skb_clone_tx_timestamp (10,101,010 samples, 0.06%)</title><rect x="1067.1" y="341" width="0.7" height="15.0" fill="rgb(232,127,30)" rx="2" ry="2" />
+<text  x="1070.10" y="351.5" ></text>
+</g>
+<g >
+<title>sk_page_frag_refill (10,101,010 samples, 0.06%)</title><rect x="273.5" y="581" width="0.6" height="15.0" fill="rgb(211,30,7)" rx="2" ry="2" />
+<text  x="276.46" y="591.5" ></text>
+</g>
+<g >
+<title>operator new (60,606,060 samples, 0.33%)</title><rect x="158.4" y="805" width="3.9" height="15.0" fill="rgb(216,51,12)" rx="2" ry="2" />
+<text  x="161.40" y="815.5" ></text>
+</g>
+<g >
+<title>security_sock_rcv_skb (40,404,040 samples, 0.22%)</title><rect x="406.8" y="117" width="2.6" height="15.0" fill="rgb(240,161,38)" rx="2" ry="2" />
+<text  x="409.82" y="127.5" ></text>
+</g>
+<g >
+<title>std::__cxx11::basic_string&lt;char, std::char_traits&lt;char&gt;, std::allocator&lt;char&gt; &gt;* google::protobuf::internal::ArenaStringPtr::MutableSlow&lt;&gt; (40,404,040 samples, 0.22%)</title><rect x="127.7" y="741" width="2.6" height="15.0" fill="rgb(240,164,39)" rx="2" ry="2" />
+<text  x="130.67" y="751.5" ></text>
+</g>
+<g >
+<title>__xfrm_policy_check2.constprop.0 (30,303,030 samples, 0.17%)</title><rect x="400.3" y="149" width="1.9" height="15.0" fill="rgb(214,44,10)" rx="2" ry="2" />
+<text  x="403.28" y="159.5" ></text>
+</g>
+<g >
+<title>std::__cxx11::basic_string&lt;char, std::char_traits&lt;char&gt;, std::allocator&lt;char&gt; &gt;::_M_replace (222,222,220 samples, 1.22%)</title><rect x="131.6" y="709" width="14.4" height="15.0" fill="rgb(226,98,23)" rx="2" ry="2" />
+<text  x="134.60" y="719.5" ></text>
+</g>
+<g >
+<title>__nf_conntrack_find_get (10,101,010 samples, 0.06%)</title><rect x="326.4" y="405" width="0.7" height="15.0" fill="rgb(243,178,42)" rx="2" ry="2" />
+<text  x="329.41" y="415.5" ></text>
+</g>
+<g >
+<title>ipv4_conntrack_defrag (10,101,010 samples, 0.06%)</title><rect x="317.3" y="453" width="0.6" height="15.0" fill="rgb(229,113,27)" rx="2" ry="2" />
+<text  x="320.26" y="463.5" ></text>
+</g>
+<g >
+<title>do_syscall_64 (1,343,434,330 samples, 7.37%)</title><rect x="18.5" y="901" width="86.9" height="15.0" fill="rgb(209,20,4)" rx="2" ry="2" />
+<text  x="21.50" y="911.5" >do_syscall..</text>
+</g>
+<g >
+<title>tcp_rate_skb_delivered (20,202,020 samples, 0.11%)</title><rect x="472.2" y="101" width="1.3" height="15.0" fill="rgb(254,225,54)" rx="2" ry="2" />
+<text  x="475.19" y="111.5" ></text>
+</g>
+<g >
+<title>srso_alias_safe_ret (10,101,010 samples, 0.06%)</title><rect x="1026.6" y="197" width="0.6" height="15.0" fill="rgb(242,170,40)" rx="2" ry="2" />
+<text  x="1029.57" y="207.5" ></text>
+</g>
+<g >
+<title>dst_release (10,101,010 samples, 0.06%)</title><rect x="415.3" y="133" width="0.7" height="15.0" fill="rgb(250,210,50)" rx="2" ry="2" />
+<text  x="418.32" y="143.5" ></text>
+</g>
+<g >
+<title>__alloc_pages (10,101,010 samples, 0.06%)</title><rect x="273.5" y="517" width="0.6" height="15.0" fill="rgb(233,129,30)" rx="2" ry="2" />
+<text  x="276.46" y="527.5" ></text>
+</g>
+<g >
+<title>nf_conntrack_handle_packet (20,202,020 samples, 0.11%)</title><rect x="323.1" y="421" width="1.3" height="15.0" fill="rgb(244,180,43)" rx="2" ry="2" />
+<text  x="326.14" y="431.5" ></text>
+</g>
+<g >
+<title>apparmor_socket_sendmsg (20,202,020 samples, 0.11%)</title><rect x="1152.1" y="613" width="1.3" height="15.0" fill="rgb(235,138,33)" rx="2" ry="2" />
+<text  x="1155.08" y="623.5" ></text>
+</g>
+<g >
+<title>__local_bh_enable_ip (10,101,010 samples, 0.06%)</title><rect x="1076.2" y="389" width="0.7" height="15.0" fill="rgb(237,147,35)" rx="2" ry="2" />
+<text  x="1079.25" y="399.5" ></text>
+</g>
+<g >
+<title>__sys_sendto (14,101,009,960 samples, 77.34%)</title><rect x="244.0" y="645" width="912.7" height="15.0" fill="rgb(236,146,34)" rx="2" ry="2" />
+<text  x="247.04" y="655.5" >__sys_sendto</text>
+</g>
+<g >
+<title>_int_free (10,101,010 samples, 0.06%)</title><rect x="195.7" y="677" width="0.6" height="15.0" fill="rgb(247,196,46)" rx="2" ry="2" />
+<text  x="198.66" y="687.5" ></text>
+</g>
+<g >
+<title>__memset (30,303,030 samples, 0.17%)</title><rect x="1131.8" y="533" width="2.0" height="15.0" fill="rgb(230,118,28)" rx="2" ry="2" />
+<text  x="1134.82" y="543.5" ></text>
+</g>
+<g >
+<title>ip_output (11,232,323,120 samples, 61.61%)</title><rect x="357.8" y="469" width="726.9" height="15.0" fill="rgb(247,194,46)" rx="2" ry="2" />
+<text  x="360.79" y="479.5" >ip_output</text>
+</g>
+<g >
+<title>__virt_addr_valid (20,202,020 samples, 0.11%)</title><rect x="60.3" y="645" width="1.3" height="15.0" fill="rgb(216,53,12)" rx="2" ry="2" />
+<text  x="63.34" y="655.5" ></text>
+</g>
+<g >
+<title>alloc_perturb (10,101,010 samples, 0.06%)</title><rect x="196.3" y="741" width="0.7" height="15.0" fill="rgb(234,134,32)" rx="2" ry="2" />
+<text  x="199.32" y="751.5" ></text>
+</g>
+<g >
+<title>_copy_to_iter (10,101,010 samples, 0.06%)</title><rect x="57.7" y="693" width="0.7" height="15.0" fill="rgb(227,105,25)" rx="2" ry="2" />
+<text  x="60.72" y="703.5" ></text>
+</g>
+<g >
+<title>__inet_lookup_established (20,202,020 samples, 0.11%)</title><rect x="399.0" y="133" width="1.3" height="15.0" fill="rgb(222,79,19)" rx="2" ry="2" />
+<text  x="401.98" y="143.5" ></text>
+</g>
+<g >
+<title>google::protobuf::internal::ArenaStringPtr::DestroyNoArenaSlowPath (30,303,030 samples, 0.17%)</title><rect x="1179.5" y="773" width="2.0" height="15.0" fill="rgb(253,221,53)" rx="2" ry="2" />
+<text  x="1182.54" y="783.5" ></text>
+</g>
+<g >
+<title>google::protobuf::internal::ArenaStringPtr::DestroyNoArenaSlowPath (10,101,010 samples, 0.06%)</title><rect x="195.7" y="789" width="0.6" height="15.0" fill="rgb(253,221,53)" rx="2" ry="2" />
+<text  x="198.66" y="799.5" ></text>
+</g>
+<g >
+<title>tcp_rate_gen (10,101,010 samples, 0.06%)</title><rect x="471.5" y="101" width="0.7" height="15.0" fill="rgb(230,117,28)" rx="2" ry="2" />
+<text  x="474.54" y="111.5" ></text>
+</g>
+<g >
+<title>__alloc_skb (10,101,010 samples, 0.06%)</title><rect x="270.2" y="581" width="0.6" height="15.0" fill="rgb(226,100,23)" rx="2" ry="2" />
+<text  x="273.19" y="591.5" ></text>
+</g>
+<g >
+<title>apparmor_ip_postroute (10,101,010 samples, 0.06%)</title><rect x="1082.1" y="437" width="0.7" height="15.0" fill="rgb(246,189,45)" rx="2" ry="2" />
+<text  x="1085.13" y="447.5" ></text>
+</g>
+<g >
+<title>nf_conntrack_in (404,040,400 samples, 2.22%)</title><rect x="324.4" y="421" width="26.2" height="15.0" fill="rgb(206,8,2)" rx="2" ry="2" />
+<text  x="327.45" y="431.5" >n..</text>
+</g>
+<g >
+<title>__sk_mem_reduce_allocated (101,010,100 samples, 0.55%)</title><rect x="68.8" y="709" width="6.6" height="15.0" fill="rgb(214,44,10)" rx="2" ry="2" />
+<text  x="71.84" y="719.5" ></text>
+</g>
+<g >
+<title>nf_nat_ipv4_fn (20,202,020 samples, 0.11%)</title><rect x="1024.6" y="165" width="1.3" height="15.0" fill="rgb(246,193,46)" rx="2" ry="2" />
+<text  x="1027.60" y="175.5" ></text>
+</g>
+<g >
+<title>nebula::rpc::proto::RpcMeta::Clear (20,202,020 samples, 0.11%)</title><rect x="156.4" y="757" width="1.3" height="15.0" fill="rgb(232,126,30)" rx="2" ry="2" />
+<text  x="159.44" y="767.5" ></text>
+</g>
+<g >
+<title>tcp_event_new_data_sent (60,606,060 samples, 0.33%)</title><rect x="1101.1" y="533" width="3.9" height="15.0" fill="rgb(233,132,31)" rx="2" ry="2" />
+<text  x="1104.09" y="543.5" ></text>
+</g>
+<g >
+<title>__ip_finish_output (11,090,908,980 samples, 60.83%)</title><rect x="360.4" y="437" width="717.8" height="15.0" fill="rgb(215,47,11)" rx="2" ry="2" />
+<text  x="363.40" y="447.5" >__ip_finish_output</text>
+</g>
+<g >
+<title>__GI___libc_free (10,101,010 samples, 0.06%)</title><rect x="1162.5" y="741" width="0.7" height="15.0" fill="rgb(252,218,52)" rx="2" ry="2" />
+<text  x="1165.54" y="751.5" ></text>
+</g>
+<g >
+<title>__GI___libc_free (10,101,010 samples, 0.06%)</title><rect x="1178.9" y="789" width="0.6" height="15.0" fill="rgb(252,218,52)" rx="2" ry="2" />
+<text  x="1181.89" y="799.5" ></text>
+</g>
+<g >
+<title>__netif_rx (101,010,100 samples, 0.55%)</title><rect x="1057.9" y="341" width="6.6" height="15.0" fill="rgb(211,28,6)" rx="2" ry="2" />
+<text  x="1060.94" y="351.5" ></text>
+</g>
+<g >
+<title>sk_reset_timer (131,313,130 samples, 0.72%)</title><rect x="432.3" y="85" width="8.5" height="15.0" fill="rgb(247,197,47)" rx="2" ry="2" />
+<text  x="435.32" y="95.5" ></text>
+</g>
+<g >
+<title>skb_release_data (60,606,060 samples, 0.33%)</title><rect x="1046.2" y="277" width="3.9" height="15.0" fill="rgb(209,20,4)" rx="2" ry="2" />
+<text  x="1049.18" y="287.5" ></text>
+</g>
+<g >
+<title>validate_xmit_skb (70,707,070 samples, 0.39%)</title><rect x="1071.0" y="373" width="4.6" height="15.0" fill="rgb(222,82,19)" rx="2" ry="2" />
+<text  x="1074.02" y="383.5" ></text>
+</g>
+<g >
+<title>kmem_cache_free (10,101,010 samples, 0.06%)</title><rect x="1045.5" y="261" width="0.7" height="15.0" fill="rgb(254,225,53)" rx="2" ry="2" />
+<text  x="1048.52" y="271.5" ></text>
+</g>
+<g >
+<title>tcp_recvmsg (696,969,690 samples, 3.82%)</title><rect x="38.8" y="757" width="45.1" height="15.0" fill="rgb(234,135,32)" rx="2" ry="2" />
+<text  x="41.76" y="767.5" >tcp_..</text>
+</g>
+<g >
+<title>__GI___libc_malloc (10,101,010 samples, 0.06%)</title><rect x="1174.3" y="789" width="0.7" height="15.0" fill="rgb(219,68,16)" rx="2" ry="2" />
+<text  x="1177.31" y="799.5" ></text>
+</g>
+<g >
+<title>alloc_pages_mpol (10,101,010 samples, 0.06%)</title><rect x="273.5" y="533" width="0.6" height="15.0" fill="rgb(254,227,54)" rx="2" ry="2" />
+<text  x="276.46" y="543.5" ></text>
+</g>
+<g >
+<title>apparmor_file_permission (40,404,040 samples, 0.22%)</title><rect x="99.6" y="789" width="2.6" height="15.0" fill="rgb(218,60,14)" rx="2" ry="2" />
+<text  x="102.56" y="799.5" ></text>
+</g>
+<g >
+<title>hash_conntrack_raw (10,101,010 samples, 0.06%)</title><rect x="327.1" y="405" width="0.6" height="15.0" fill="rgb(220,70,16)" rx="2" ry="2" />
+<text  x="330.06" y="415.5" ></text>
+</g>
+<g >
+<title>std::__cxx11::basic_string&lt;char, std::char_traits&lt;char&gt;, std::allocator&lt;char&gt; &gt;::_M_create (20,202,020 samples, 0.11%)</title><rect x="219.9" y="709" width="1.3" height="15.0" fill="rgb(248,198,47)" rx="2" ry="2" />
+<text  x="222.85" y="719.5" ></text>
+</g>
+<g >
+<title>_raw_spin_lock_bh (10,101,010 samples, 0.06%)</title><rect x="48.6" y="725" width="0.6" height="15.0" fill="rgb(221,75,18)" rx="2" ry="2" />
+<text  x="51.57" y="735.5" ></text>
+</g>
+<g >
+<title>__GI___libc_malloc (10,101,010 samples, 0.06%)</title><rect x="196.3" y="773" width="0.7" height="15.0" fill="rgb(219,68,16)" rx="2" ry="2" />
+<text  x="199.32" y="783.5" ></text>
+</g>
+<g >
+<title>__memcmp_avx2_movbe (10,101,010 samples, 0.06%)</title><rect x="187.2" y="773" width="0.6" height="15.0" fill="rgb(224,91,21)" rx="2" ry="2" />
+<text  x="190.16" y="783.5" ></text>
+</g>
+<g >
+<title>std::_Function_handler&lt;void  (14,939,393,790 samples, 81.94%)</title><rect x="206.8" y="789" width="966.9" height="15.0" fill="rgb(245,187,44)" rx="2" ry="2" />
+<text  x="209.78" y="799.5" >std::_Function_handler&lt;void </text>
+</g>
+<g >
+<title>operator new (10,101,010 samples, 0.06%)</title><rect x="1174.3" y="805" width="0.7" height="15.0" fill="rgb(216,51,12)" rx="2" ry="2" />
+<text  x="1177.31" y="815.5" ></text>
+</g>
+<g >
+<title>do_readv (1,272,727,260 samples, 6.98%)</title><rect x="22.4" y="853" width="82.4" height="15.0" fill="rgb(213,37,8)" rx="2" ry="2" />
+<text  x="25.42" y="863.5" >do_readv</text>
+</g>
+<g >
+<title>__fdget_pos (40,404,040 samples, 0.22%)</title><rect x="22.4" y="837" width="2.6" height="15.0" fill="rgb(216,55,13)" rx="2" ry="2" />
+<text  x="25.42" y="847.5" ></text>
+</g>
+<g >
+<title>std::_Sp_counted_base&lt; (10,101,010 samples, 0.06%)</title><rect x="1173.0" y="773" width="0.7" height="15.0" fill="rgb(211,31,7)" rx="2" ry="2" />
+<text  x="1176.00" y="783.5" ></text>
+</g>
+<g >
+<title>__nf_ct_refresh_acct (10,101,010 samples, 0.06%)</title><rect x="328.4" y="389" width="0.6" height="15.0" fill="rgb(230,116,27)" rx="2" ry="2" />
+<text  x="331.37" y="399.5" ></text>
+</g>
+<g >
+<title>std::__cxx11::basic_string&lt;char, std::char_traits&lt;char&gt;, std::allocator&lt;char&gt; &gt;::_M_create (10,101,010 samples, 0.06%)</title><rect x="191.7" y="693" width="0.7" height="15.0" fill="rgb(248,198,47)" rx="2" ry="2" />
+<text  x="194.74" y="703.5" ></text>
+</g>
+<g >
+<title>sock_put (10,101,010 samples, 0.06%)</title><rect x="392.4" y="165" width="0.7" height="15.0" fill="rgb(230,117,28)" rx="2" ry="2" />
+<text  x="395.44" y="175.5" ></text>
+</g>
+<g >
+<title>std::_Sp_counted_ptr_inplace&lt;nebula::rpc::RpcServer::ServerCall, std::allocator&lt;nebula::rpc::RpcServer::ServerCall&gt;,  (90,909,090 samples, 0.50%)</title><rect x="1176.3" y="805" width="5.9" height="15.0" fill="rgb(252,219,52)" rx="2" ry="2" />
+<text  x="1179.27" y="815.5" ></text>
+</g>
+<g >
+<title>std::__cxx11::basic_string&lt;char, std::char_traits&lt;char&gt;, std::allocator&lt;char&gt; &gt;::assign (222,222,220 samples, 1.22%)</title><rect x="131.6" y="725" width="14.4" height="15.0" fill="rgb(213,37,8)" rx="2" ry="2" />
+<text  x="134.60" y="735.5" ></text>
+</g>
+<g >
+<title>__do_softirq (10,525,252,420 samples, 57.73%)</title><rect x="370.9" y="341" width="681.2" height="15.0" fill="rgb(246,191,45)" rx="2" ry="2" />
+<text  x="373.86" y="351.5" >__do_softirq</text>
+</g>
+<g >
+<title>tcp_stream_memory_free (10,101,010 samples, 0.06%)</title><rect x="1146.9" y="581" width="0.6" height="15.0" fill="rgb(252,217,51)" rx="2" ry="2" />
+<text  x="1149.85" y="591.5" ></text>
+</g>
+<g >
+<title>tcp_rack_update_reo_wnd (10,101,010 samples, 0.06%)</title><rect x="470.9" y="101" width="0.6" height="15.0" fill="rgb(217,58,13)" rx="2" ry="2" />
+<text  x="473.89" y="111.5" ></text>
+</g>
+<g >
+<title>ip_finish_output2 (10,101,010 samples, 0.06%)</title><rect x="1078.2" y="437" width="0.7" height="15.0" fill="rgb(219,67,16)" rx="2" ry="2" />
+<text  x="1081.21" y="447.5" ></text>
+</g>
+<g >
+<title>netif_rx_internal (90,909,090 samples, 0.50%)</title><rect x="1058.6" y="325" width="5.9" height="15.0" fill="rgb(213,36,8)" rx="2" ry="2" />
+<text  x="1061.60" y="335.5" ></text>
+</g>
+<g >
+<title>sock_recvmsg (919,191,910 samples, 5.04%)</title><rect x="30.9" y="789" width="59.5" height="15.0" fill="rgb(206,5,1)" rx="2" ry="2" />
+<text  x="33.92" y="799.5" >sock_r..</text>
+</g>
+<g >
+<title>tcp_queue_rcv (20,202,020 samples, 0.11%)</title><rect x="422.5" y="133" width="1.3" height="15.0" fill="rgb(239,156,37)" rx="2" ry="2" />
+<text  x="425.51" y="143.5" ></text>
+</g>
+<g >
+<title>cubictcp_acked (20,202,020 samples, 0.11%)</title><rect x="465.0" y="85" width="1.3" height="15.0" fill="rgb(235,140,33)" rx="2" ry="2" />
+<text  x="468.00" y="95.5" ></text>
+</g>
+<g >
+<title>tcp_release_cb (20,202,020 samples, 0.11%)</title><rect x="82.6" y="741" width="1.3" height="15.0" fill="rgb(240,162,38)" rx="2" ry="2" />
+<text  x="85.57" y="751.5" ></text>
+</g>
+<g >
+<title>do_epoll_wait (60,606,060 samples, 0.33%)</title><rect x="1185.4" y="789" width="3.9" height="15.0" fill="rgb(211,31,7)" rx="2" ry="2" />
+<text  x="1188.42" y="799.5" ></text>
+</g>
+<g >
+<title>mem_cgroup_charge_skmem (101,010,100 samples, 0.55%)</title><rect x="1139.7" y="549" width="6.5" height="15.0" fill="rgb(237,147,35)" rx="2" ry="2" />
+<text  x="1142.66" y="559.5" ></text>
+</g>
+<g >
+<title>__ip_queue_xmit (12,060,605,940 samples, 66.15%)</title><rect x="305.5" y="501" width="780.6" height="15.0" fill="rgb(253,223,53)" rx="2" ry="2" />
+<text  x="308.49" y="511.5" >__ip_queue_xmit</text>
+</g>
+<g >
+<title>_start (16,747,474,580 samples, 91.86%)</title><rect x="106.1" y="965" width="1083.9" height="15.0" fill="rgb(245,185,44)" rx="2" ry="2" />
+<text  x="109.10" y="975.5" >_start</text>
+</g>
+<g >
+<title>_raw_spin_unlock_irqrestore (8,303,030,220 samples, 45.54%)</title><rect x="475.5" y="69" width="537.3" height="15.0" fill="rgb(228,106,25)" rx="2" ry="2" />
+<text  x="478.46" y="79.5" >_raw_spin_unlock_irqrestore</text>
+</g>
+<g >
+<title>tcache_put (10,101,010 samples, 0.06%)</title><rect x="195.7" y="661" width="0.6" height="15.0" fill="rgb(241,169,40)" rx="2" ry="2" />
+<text  x="198.66" y="671.5" ></text>
+</g>
+<g >
+<title>__x64_sys_sendto (14,111,110,970 samples, 77.40%)</title><rect x="244.0" y="661" width="913.3" height="15.0" fill="rgb(213,37,8)" rx="2" ry="2" />
+<text  x="247.04" y="671.5" >__x64_sys_sendto</text>
+</g>
+<g >
+<title>nebula_rpc_echo (18,232,323,050 samples, 100.00%)</title><rect x="10.0" y="981" width="1180.0" height="15.0" fill="rgb(229,113,27)" rx="2" ry="2" />
+<text  x="13.00" y="991.5" >nebula_rpc_echo</text>
+</g>
+<g >
+<title>std::allocator_traits&lt;std::allocator&lt;char&gt; &gt;::deallocate (20,202,020 samples, 0.11%)</title><rect x="1180.2" y="709" width="1.3" height="15.0" fill="rgb(213,40,9)" rx="2" ry="2" />
+<text  x="1183.19" y="719.5" ></text>
+</g>
+<g >
+<title>eth_type_trans (40,404,040 samples, 0.22%)</title><rect x="1064.5" y="341" width="2.6" height="15.0" fill="rgb(239,159,38)" rx="2" ry="2" />
+<text  x="1067.48" y="351.5" ></text>
+</g>
+<g >
+<title>entry_SYSCALL_64_after_hwframe (14,252,525,110 samples, 78.17%)</title><rect x="234.9" y="709" width="922.4" height="15.0" fill="rgb(218,63,15)" rx="2" ry="2" />
+<text  x="237.89" y="719.5" >entry_SYSCALL_64_after_hwframe</text>
+</g>
+<g >
+<title>enqueue_to_backlog (90,909,090 samples, 0.50%)</title><rect x="1058.6" y="309" width="5.9" height="15.0" fill="rgb(239,159,38)" rx="2" ry="2" />
+<text  x="1061.60" y="319.5" ></text>
+</g>
+<g >
+<title>nebula::net::Channel::HandleEvent (16,666,666,500 samples, 91.41%)</title><rect x="106.8" y="885" width="1078.6" height="15.0" fill="rgb(205,2,0)" rx="2" ry="2" />
+<text  x="109.75" y="895.5" >nebula::net::Channel::HandleEvent</text>
+</g>
+<g >
+<title>aa_inet_msg_perm (30,303,030 samples, 0.17%)</title><rect x="87.8" y="741" width="2.0" height="15.0" fill="rgb(249,205,49)" rx="2" ry="2" />
+<text  x="90.80" y="751.5" ></text>
+</g>
+<g >
+<title>__tls_get_addr (10,101,010 samples, 0.06%)</title><rect x="202.9" y="741" width="0.6" height="15.0" fill="rgb(246,191,45)" rx="2" ry="2" />
+<text  x="205.85" y="751.5" ></text>
+</g>
+<g >
+<title>nebula::example::EchoService::GetDescriptor (101,010,100 samples, 0.55%)</title><rect x="197.0" y="805" width="6.5" height="15.0" fill="rgb(249,206,49)" rx="2" ry="2" />
+<text  x="199.97" y="815.5" ></text>
+</g>
+<g >
+<title>void std::call_once&lt;void  (50,505,050 samples, 0.28%)</title><rect x="200.2" y="773" width="3.3" height="15.0" fill="rgb(222,82,19)" rx="2" ry="2" />
+<text  x="203.24" y="783.5" ></text>
+</g>
+<g >
+<title>google::protobuf::internal::ParseContext::ParseContext&lt;google::protobuf::stringpiece_internal::StringPiece&amp;&gt; (30,303,030 samples, 0.17%)</title><rect x="123.1" y="773" width="2.0" height="15.0" fill="rgb(216,50,12)" rx="2" ry="2" />
+<text  x="126.10" y="783.5" ></text>
+</g>
+<g >
+<title>ip_rcv_finish_core.constprop.0 (20,202,020 samples, 0.11%)</title><rect x="1037.0" y="229" width="1.3" height="15.0" fill="rgb(231,123,29)" rx="2" ry="2" />
+<text  x="1040.02" y="239.5" ></text>
+</g>
+<g >
+<title>cubictcp_cwnd_event (10,101,010 samples, 0.06%)</title><rect x="304.8" y="517" width="0.7" height="15.0" fill="rgb(235,140,33)" rx="2" ry="2" />
+<text  x="307.84" y="527.5" ></text>
+</g>
+<g >
+<title>tcp_current_mss (10,101,010 samples, 0.06%)</title><rect x="284.6" y="581" width="0.6" height="15.0" fill="rgb(253,222,53)" rx="2" ry="2" />
+<text  x="287.57" y="591.5" ></text>
+</g>
+<g >
+<title>tcp_established_options (10,101,010 samples, 0.06%)</title><rect x="1090.0" y="517" width="0.6" height="15.0" fill="rgb(241,168,40)" rx="2" ry="2" />
+<text  x="1092.98" y="527.5" ></text>
+</g>
+<g >
+<title>google::protobuf::internal::IsStructurallyValidUTF8 (10,101,010 samples, 0.06%)</title><rect x="221.2" y="693" width="0.6" height="15.0" fill="rgb(210,26,6)" rx="2" ry="2" />
+<text  x="224.16" y="703.5" ></text>
+</g>
+<g >
+<title>tcp_data_ready (8,333,333,250 samples, 45.71%)</title><rect x="473.5" y="117" width="539.3" height="15.0" fill="rgb(232,124,29)" rx="2" ry="2" />
+<text  x="476.50" y="127.5" >tcp_data_ready</text>
+</g>
+<g >
+<title>nf_nat_ipv4_pre_routing (10,101,010 samples, 0.06%)</title><rect x="1033.8" y="197" width="0.6" height="15.0" fill="rgb(227,103,24)" rx="2" ry="2" />
+<text  x="1036.76" y="207.5" ></text>
+</g>
+<g >
+<title>std::allocator_traits&lt;std::allocator&lt;char&gt; &gt;::deallocate (10,101,010 samples, 0.06%)</title><rect x="195.7" y="725" width="0.6" height="15.0" fill="rgb(213,40,9)" rx="2" ry="2" />
+<text  x="198.66" y="735.5" ></text>
+</g>
+<g >
+<title>nf_conntrack_in (20,202,020 samples, 0.11%)</title><rect x="350.6" y="437" width="1.3" height="15.0" fill="rgb(206,8,2)" rx="2" ry="2" />
+<text  x="353.60" y="447.5" ></text>
+</g>
+<g >
+<title>__GI___libc_free (10,101,010 samples, 0.06%)</title><rect x="1184.1" y="709" width="0.7" height="15.0" fill="rgb(252,218,52)" rx="2" ry="2" />
+<text  x="1187.12" y="719.5" ></text>
+</g>
+<g >
+<title>raw_local_deliver (10,101,010 samples, 0.06%)</title><rect x="1021.3" y="181" width="0.7" height="15.0" fill="rgb(250,208,49)" rx="2" ry="2" />
+<text  x="1024.34" y="191.5" ></text>
+</g>
+<g >
+<title>__virt_addr_valid (20,202,020 samples, 0.11%)</title><rect x="278.0" y="517" width="1.3" height="15.0" fill="rgb(216,53,12)" rx="2" ry="2" />
+<text  x="281.03" y="527.5" ></text>
+</g>
+<g >
+<title>CheckFieldPresence (10,101,010 samples, 0.06%)</title><rect x="176.7" y="789" width="0.7" height="15.0" fill="rgb(245,186,44)" rx="2" ry="2" />
+<text  x="179.70" y="799.5" ></text>
+</g>
+<g >
+<title>tcp_grow_window (10,101,010 samples, 0.06%)</title><rect x="1013.5" y="117" width="0.6" height="15.0" fill="rgb(246,192,46)" rx="2" ry="2" />
+<text  x="1016.49" y="127.5" ></text>
+</g>
+<g >
+<title>__rcu_read_lock (20,202,020 samples, 0.11%)</title><rect x="355.2" y="469" width="1.3" height="15.0" fill="rgb(220,69,16)" rx="2" ry="2" />
+<text  x="358.17" y="479.5" ></text>
+</g>
+<g >
+<title>__inet_lookup_skb (40,404,040 samples, 0.22%)</title><rect x="397.7" y="149" width="2.6" height="15.0" fill="rgb(248,200,48)" rx="2" ry="2" />
+<text  x="400.67" y="159.5" ></text>
+</g>
+<g >
+<title>__GI___libc_free (10,101,010 samples, 0.06%)</title><rect x="195.7" y="693" width="0.6" height="15.0" fill="rgb(252,218,52)" rx="2" ry="2" />
+<text  x="198.66" y="703.5" ></text>
+</g>
+<g >
+<title>std::__cxx11::basic_string&lt;char, std::char_traits&lt;char&gt;, std::allocator&lt;char&gt; &gt;::reserve (40,404,040 samples, 0.22%)</title><rect x="218.5" y="725" width="2.7" height="15.0" fill="rgb(244,181,43)" rx="2" ry="2" />
+<text  x="221.54" y="735.5" ></text>
+</g>
+<g >
+<title>mod_memcg_state (50,505,050 samples, 0.28%)</title><rect x="1141.6" y="533" width="3.3" height="15.0" fill="rgb(232,127,30)" rx="2" ry="2" />
+<text  x="1144.62" y="543.5" ></text>
+</g>
+<g >
+<title>clear_page_erms (10,101,010 samples, 0.06%)</title><rect x="273.5" y="485" width="0.6" height="15.0" fill="rgb(229,113,27)" rx="2" ry="2" />
+<text  x="276.46" y="495.5" ></text>
+</g>
+<g >
+<title>__memset (30,303,030 samples, 0.17%)</title><rect x="1128.5" y="549" width="2.0" height="15.0" fill="rgb(230,118,28)" rx="2" ry="2" />
+<text  x="1131.55" y="559.5" ></text>
+</g>
+<g >
+<title>nf_confirm (10,101,010 samples, 0.06%)</title><rect x="1082.8" y="437" width="0.6" height="15.0" fill="rgb(235,140,33)" rx="2" ry="2" />
+<text  x="1085.79" y="447.5" ></text>
+</g>
+<g >
+<title>ip_local_out (11,909,090,790 samples, 65.32%)</title><rect x="314.6" y="485" width="770.8" height="15.0" fill="rgb(233,131,31)" rx="2" ry="2" />
+<text  x="317.64" y="495.5" >ip_local_out</text>
+</g>
+<g >
+<title>__check_object_size.part.0 (111,111,110 samples, 0.61%)</title><rect x="274.1" y="549" width="7.2" height="15.0" fill="rgb(236,142,34)" rx="2" ry="2" />
+<text  x="277.11" y="559.5" ></text>
+</g>
+<g >
+<title>tcp_rearm_rto (20,202,020 samples, 0.11%)</title><rect x="1105.7" y="533" width="1.3" height="15.0" fill="rgb(214,45,10)" rx="2" ry="2" />
+<text  x="1108.67" y="543.5" ></text>
+</g>
+<g >
+<title>kfree_skbmem (20,202,020 samples, 0.11%)</title><rect x="1044.9" y="277" width="1.3" height="15.0" fill="rgb(230,117,28)" rx="2" ry="2" />
+<text  x="1047.87" y="287.5" ></text>
+</g>
+<g >
+<title>_int_free (10,101,010 samples, 0.06%)</title><rect x="1178.9" y="773" width="0.6" height="15.0" fill="rgb(247,196,46)" rx="2" ry="2" />
+<text  x="1181.89" y="783.5" ></text>
+</g>
+<g >
+<title>tcp_rcv_space_adjust (80,808,080 samples, 0.44%)</title><rect x="77.3" y="725" width="5.3" height="15.0" fill="rgb(231,121,29)" rx="2" ry="2" />
+<text  x="80.34" y="735.5" ></text>
+</g>
+<g >
+<title>__GI___readv (1,444,444,430 samples, 7.92%)</title><rect x="12.6" y="933" width="93.5" height="15.0" fill="rgb(241,166,39)" rx="2" ry="2" />
+<text  x="15.61" y="943.5" >__GI___readv</text>
+</g>
+<g >
+<title>operator new (10,101,010 samples, 0.06%)</title><rect x="1170.4" y="741" width="0.6" height="15.0" fill="rgb(216,51,12)" rx="2" ry="2" />
+<text  x="1173.39" y="751.5" ></text>
+</g>
+<g >
+<title>sockfd_lookup_light (20,202,020 samples, 0.11%)</title><rect x="1153.4" y="629" width="1.3" height="15.0" fill="rgb(225,95,22)" rx="2" ry="2" />
+<text  x="1156.39" y="639.5" ></text>
+</g>
+<g >
+<title>rb_first (10,101,010 samples, 0.06%)</title><rect x="453.2" y="101" width="0.7" height="15.0" fill="rgb(214,43,10)" rx="2" ry="2" />
+<text  x="456.24" y="111.5" ></text>
+</g>
+<g >
+<title>_copy_from_iter (10,101,010 samples, 0.06%)</title><rect x="271.5" y="581" width="0.6" height="15.0" fill="rgb(227,104,24)" rx="2" ry="2" />
+<text  x="274.50" y="591.5" ></text>
+</g>
+<g >
+<title>google::protobuf::Symbol::parent_name_key (20,202,020 samples, 0.11%)</title><rect x="187.8" y="773" width="1.3" height="15.0" fill="rgb(244,180,43)" rx="2" ry="2" />
+<text  x="190.82" y="783.5" ></text>
+</g>
+<g >
+<title>__mod_timer (10,101,010 samples, 0.06%)</title><rect x="1110.2" y="485" width="0.7" height="15.0" fill="rgb(234,136,32)" rx="2" ry="2" />
+<text  x="1113.24" y="495.5" ></text>
+</g>
+<g >
+<title>__gnu_cxx::new_allocator&lt;char&gt;::deallocate (20,202,020 samples, 0.11%)</title><rect x="1180.2" y="693" width="1.3" height="15.0" fill="rgb(230,118,28)" rx="2" ry="2" />
+<text  x="1183.19" y="703.5" ></text>
+</g>
+<g >
+<title>__GI___libc_malloc (30,303,030 samples, 0.17%)</title><rect x="128.3" y="677" width="2.0" height="15.0" fill="rgb(219,68,16)" rx="2" ry="2" />
+<text  x="131.33" y="687.5" ></text>
+</g>
+<g >
+<title>srso_alias_safe_ret (10,101,010 samples, 0.06%)</title><rect x="252.5" y="613" width="0.7" height="15.0" fill="rgb(242,170,40)" rx="2" ry="2" />
+<text  x="255.54" y="623.5" ></text>
+</g>
+<g >
+<title>release_sock (10,101,010 samples, 0.06%)</title><rect x="42.0" y="741" width="0.7" height="15.0" fill="rgb(248,198,47)" rx="2" ry="2" />
+<text  x="45.03" y="751.5" ></text>
+</g>
+<g >
+<title>tcp_v4_do_rcv (9,343,434,250 samples, 51.25%)</title><rect x="414.7" y="149" width="604.7" height="15.0" fill="rgb(210,26,6)" rx="2" ry="2" />
+<text  x="417.66" y="159.5" >tcp_v4_do_rcv</text>
+</g>
+<g >
+<title>copy_iovec_from_user (30,303,030 samples, 0.17%)</title><rect x="91.7" y="789" width="2.0" height="15.0" fill="rgb(207,9,2)" rx="2" ry="2" />
+<text  x="94.72" y="799.5" ></text>
+</g>
+<g >
+<title>srso_alias_safe_ret (20,202,020 samples, 0.11%)</title><rect x="103.5" y="821" width="1.3" height="15.0" fill="rgb(242,170,40)" rx="2" ry="2" />
+<text  x="106.48" y="831.5" ></text>
+</g>
+<g >
+<title>nebula::rpc::proto::RpcMeta::~RpcMeta (20,202,020 samples, 0.11%)</title><rect x="1171.7" y="757" width="1.3" height="15.0" fill="rgb(246,188,45)" rx="2" ry="2" />
+<text  x="1174.70" y="767.5" ></text>
+</g>
+<g >
+<title>nebula::rpc::proto::RpcMeta::_InternalSerialize (40,404,040 samples, 0.22%)</title><rect x="1167.1" y="709" width="2.6" height="15.0" fill="rgb(213,37,9)" rx="2" ry="2" />
+<text  x="1170.12" y="719.5" ></text>
+</g>
+<g >
+<title>nebula::example::EchoResponse::IsInitialized (10,101,010 samples, 0.06%)</title><rect x="176.7" y="757" width="0.7" height="15.0" fill="rgb(220,69,16)" rx="2" ry="2" />
+<text  x="179.70" y="767.5" ></text>
+</g>
+<g >
+<title>tcp_event_data_recv (10,101,010 samples, 0.06%)</title><rect x="1012.8" y="117" width="0.7" height="15.0" fill="rgb(243,178,42)" rx="2" ry="2" />
+<text  x="1015.84" y="127.5" ></text>
+</g>
+<g >
+<title>nf_nat_ipv4_pre_routing (10,101,010 samples, 0.06%)</title><rect x="1034.4" y="213" width="0.7" height="15.0" fill="rgb(227,103,24)" rx="2" ry="2" />
+<text  x="1037.41" y="223.5" ></text>
+</g>
+<g >
+<title>google::protobuf::internal::VarintParseSlow64 (20,202,020 samples, 0.11%)</title><rect x="146.0" y="757" width="1.3" height="15.0" fill="rgb(211,28,6)" rx="2" ry="2" />
+<text  x="148.98" y="767.5" ></text>
+</g>
+<g >
+<title>google::protobuf::MessageLite::IsInitializedWithErrors (10,101,010 samples, 0.06%)</title><rect x="176.7" y="773" width="0.7" height="15.0" fill="rgb(240,162,38)" rx="2" ry="2" />
+<text  x="179.70" y="783.5" ></text>
+</g>
+<g >
+<title>eth_type_trans (10,101,010 samples, 0.06%)</title><rect x="1054.7" y="357" width="0.6" height="15.0" fill="rgb(239,159,38)" rx="2" ry="2" />
+<text  x="1057.68" y="367.5" ></text>
+</g>
+<g >
+<title>tcp_skb_entail (10,101,010 samples, 0.06%)</title><rect x="1147.5" y="597" width="0.7" height="15.0" fill="rgb(241,168,40)" rx="2" ry="2" />
+<text  x="1150.51" y="607.5" ></text>
+</g>
+<g >
+<title>skb_page_frag_refill (10,101,010 samples, 0.06%)</title><rect x="273.5" y="565" width="0.6" height="15.0" fill="rgb(228,108,26)" rx="2" ry="2" />
+<text  x="276.46" y="575.5" ></text>
+</g>
+<g >
+<title>nebula::net::TcpConnection::Send (14,444,444,300 samples, 79.22%)</title><rect x="226.4" y="757" width="934.8" height="15.0" fill="rgb(207,12,3)" rx="2" ry="2" />
+<text  x="229.39" y="767.5" >nebula::net::TcpConnection::Send</text>
+</g>
+<g >
+<title>std::once_flag::_Prepare_execution::_Prepare_execution&lt;std::call_once&lt;void  (10,101,010 samples, 0.06%)</title><rect x="202.9" y="757" width="0.6" height="15.0" fill="rgb(222,78,18)" rx="2" ry="2" />
+<text  x="205.85" y="767.5" ></text>
+</g>
+<g >
+<title>tcp_chrono_stop (10,101,010 samples, 0.06%)</title><rect x="455.2" y="101" width="0.7" height="15.0" fill="rgb(248,200,47)" rx="2" ry="2" />
+<text  x="458.20" y="111.5" ></text>
+</g>
+<g >
+<title>google::protobuf::io::EpsCopyOutputStream::WriteStringMaybeAliasedOutline (10,101,010 samples, 0.06%)</title><rect x="223.1" y="661" width="0.7" height="15.0" fill="rgb(234,134,32)" rx="2" ry="2" />
+<text  x="226.12" y="671.5" ></text>
+</g>
+<g >
+<title>__GI___pthread_self (10,101,010 samples, 0.06%)</title><rect x="230.3" y="741" width="0.7" height="15.0" fill="rgb(243,175,41)" rx="2" ry="2" />
+<text  x="233.31" y="751.5" ></text>
+</g>
+<g >
+<title>net_rx_action (20,202,020 samples, 0.11%)</title><rect x="1050.8" y="325" width="1.3" height="15.0" fill="rgb(240,164,39)" rx="2" ry="2" />
+<text  x="1053.75" y="335.5" ></text>
+</g>
+<g >
+<title>std::__cxx11::basic_string&lt;char, std::char_traits&lt;char&gt;, std::allocator&lt;char&gt; &gt;::_M_replace_aux (40,404,040 samples, 0.22%)</title><rect x="215.3" y="693" width="2.6" height="15.0" fill="rgb(205,0,0)" rx="2" ry="2" />
+<text  x="218.27" y="703.5" ></text>
+</g>
+<g >
+<title>tcp_update_skb_after_send (10,101,010 samples, 0.06%)</title><rect x="1112.2" y="533" width="0.7" height="15.0" fill="rgb(249,206,49)" rx="2" ry="2" />
+<text  x="1115.20" y="543.5" ></text>
+</g>
+<g >
+<title>google::protobuf::SerializeToArrayImpl (40,404,040 samples, 0.22%)</title><rect x="221.2" y="741" width="2.6" height="15.0" fill="rgb(254,228,54)" rx="2" ry="2" />
+<text  x="224.16" y="751.5" ></text>
+</g>
+<g >
+<title>ip_send_check (10,101,010 samples, 0.06%)</title><rect x="1084.7" y="469" width="0.7" height="15.0" fill="rgb(237,151,36)" rx="2" ry="2" />
+<text  x="1087.75" y="479.5" ></text>
+</g>
+<g >
+<title>ktime_get (10,101,010 samples, 0.06%)</title><rect x="79.3" y="693" width="0.7" height="15.0" fill="rgb(207,10,2)" rx="2" ry="2" />
+<text  x="82.30" y="703.5" ></text>
+</g>
+<g >
+<title>nebula::rpc::RpcServer::HandleRequest (15,757,575,600 samples, 86.43%)</title><rect x="162.3" y="821" width="1019.9" height="15.0" fill="rgb(209,22,5)" rx="2" ry="2" />
+<text  x="165.32" y="831.5" >nebula::rpc::RpcServer::HandleRequest</text>
+</g>
+<g >
+<title>tcp_rack_advance (20,202,020 samples, 0.11%)</title><rect x="469.6" y="101" width="1.3" height="15.0" fill="rgb(215,50,12)" rx="2" ry="2" />
+<text  x="472.58" y="111.5" ></text>
+</g>
+<g >
+<title>__fdget (20,202,020 samples, 0.11%)</title><rect x="1153.4" y="613" width="1.3" height="15.0" fill="rgb(214,41,10)" rx="2" ry="2" />
+<text  x="1156.39" y="623.5" ></text>
+</g>
+<g >
+<title>__mod_timer (30,303,030 samples, 0.17%)</title><rect x="1103.1" y="453" width="1.9" height="15.0" fill="rgb(234,136,32)" rx="2" ry="2" />
+<text  x="1106.05" y="463.5" ></text>
+</g>
+<g >
+<title>tcp_event_data_recv (20,202,020 samples, 0.11%)</title><rect x="421.2" y="133" width="1.3" height="15.0" fill="rgb(243,178,42)" rx="2" ry="2" />
+<text  x="424.20" y="143.5" ></text>
+</g>
+<g >
+<title>do_softirq.part.0 (10,101,010 samples, 0.06%)</title><rect x="1068.4" y="373" width="0.7" height="15.0" fill="rgb(233,131,31)" rx="2" ry="2" />
+<text  x="1071.40" y="383.5" ></text>
+</g>
+<g >
+<title>tcp_established_options (20,202,020 samples, 0.11%)</title><rect x="1118.7" y="549" width="1.3" height="15.0" fill="rgb(241,168,40)" rx="2" ry="2" />
+<text  x="1121.74" y="559.5" ></text>
+</g>
+<g >
+<title>__gnu_cxx::new_allocator&lt;char&gt;::deallocate (10,101,010 samples, 0.06%)</title><rect x="1184.1" y="725" width="0.7" height="15.0" fill="rgb(230,118,28)" rx="2" ry="2" />
+<text  x="1187.12" y="735.5" ></text>
+</g>
+<g >
+<title>inet_recvmsg (20,202,020 samples, 0.11%)</title><rect x="29.6" y="789" width="1.3" height="15.0" fill="rgb(206,5,1)" rx="2" ry="2" />
+<text  x="32.61" y="799.5" ></text>
+</g>
+<g >
+<title>_int_free (30,303,030 samples, 0.17%)</title><rect x="172.8" y="789" width="1.9" height="15.0" fill="rgb(247,196,46)" rx="2" ry="2" />
+<text  x="175.78" y="799.5" ></text>
+</g>
+<g >
+<title>std::__cxx11::basic_string&lt;char, std::char_traits&lt;char&gt;, std::allocator&lt;char&gt; &gt;::~basic_string (20,202,020 samples, 0.11%)</title><rect x="1184.1" y="789" width="1.3" height="15.0" fill="rgb(248,201,48)" rx="2" ry="2" />
+<text  x="1187.12" y="799.5" ></text>
+</g>
+<g >
+<title>google::protobuf::internal::UTF8GenericScanFastAscii (10,101,010 samples, 0.06%)</title><rect x="221.2" y="677" width="0.6" height="15.0" fill="rgb(220,71,17)" rx="2" ry="2" />
+<text  x="224.16" y="687.5" ></text>
+</g>
+<g >
+<title>std::__cxx11::basic_string&lt;char, std::char_traits&lt;char&gt;, std::allocator&lt;char&gt; &gt;* google::protobuf::Arena::CreateInternal&lt;std::__cxx11::basic_string&lt;char, std::char_traits&lt;char&gt;, std::allocator&lt;char&gt; &gt;, std::__cxx11::basic_string&lt;char, std::char_traits&lt;char&gt;, std::allocator&lt;char&gt; &gt; const&amp;&gt; (40,404,040 samples, 0.22%)</title><rect x="190.4" y="773" width="2.6" height="15.0" fill="rgb(236,143,34)" rx="2" ry="2" />
+<text  x="193.43" y="783.5" ></text>
+</g>
+<g >
+<title>__skb_clone (20,202,020 samples, 0.11%)</title><rect x="1088.7" y="501" width="1.3" height="15.0" fill="rgb(238,151,36)" rx="2" ry="2" />
+<text  x="1091.67" y="511.5" ></text>
+</g>
+<g >
+<title>entry_SYSCALL_64_after_hwframe (1,353,535,340 samples, 7.42%)</title><rect x="18.5" y="917" width="87.6" height="15.0" fill="rgb(218,63,15)" rx="2" ry="2" />
+<text  x="21.50" y="927.5" >entry_SYSC..</text>
+</g>
+<g >
+<title>tcp_poll (30,303,030 samples, 0.17%)</title><rect x="1187.4" y="709" width="1.9" height="15.0" fill="rgb(251,214,51)" rx="2" ry="2" />
+<text  x="1190.39" y="719.5" ></text>
+</g>
+<g >
+<title>nf_hook_slow (50,505,050 samples, 0.28%)</title><rect x="1080.2" y="453" width="3.2" height="15.0" fill="rgb(243,175,42)" rx="2" ry="2" />
+<text  x="1083.17" y="463.5" ></text>
+</g>
+<g >
+<title>read_tsc (40,404,040 samples, 0.22%)</title><rect x="80.0" y="693" width="2.6" height="15.0" fill="rgb(206,7,1)" rx="2" ry="2" />
+<text  x="82.95" y="703.5" ></text>
+</g>
+<g >
+<title>tcp_sendmsg (13,848,484,710 samples, 75.96%)</title><rect x="253.2" y="613" width="896.3" height="15.0" fill="rgb(223,83,19)" rx="2" ry="2" />
+<text  x="256.19" y="623.5" >tcp_sendmsg</text>
+</g>
+<g >
+<title>_copy_to_iter (50,505,050 samples, 0.28%)</title><rect x="65.6" y="677" width="3.2" height="15.0" fill="rgb(227,105,25)" rx="2" ry="2" />
+<text  x="68.57" y="687.5" ></text>
+</g>
+<g >
+<title>skb_free_head (30,303,030 samples, 0.17%)</title><rect x="1048.1" y="261" width="2.0" height="15.0" fill="rgb(221,77,18)" rx="2" ry="2" />
+<text  x="1051.14" y="271.5" ></text>
+</g>
+<g >
+<title>_raw_spin_unlock_irq (20,202,020 samples, 0.11%)</title><rect x="1040.3" y="261" width="1.3" height="15.0" fill="rgb(215,47,11)" rx="2" ry="2" />
+<text  x="1043.29" y="271.5" ></text>
+</g>
+<g >
+<title>google::protobuf::MessageLite::ParseFromString (20,202,020 samples, 0.11%)</title><rect x="179.3" y="805" width="1.3" height="15.0" fill="rgb(247,193,46)" rx="2" ry="2" />
+<text  x="182.32" y="815.5" ></text>
+</g>
+<g >
+<title>mod_memcg_state (90,909,090 samples, 0.50%)</title><rect x="69.5" y="677" width="5.9" height="15.0" fill="rgb(232,127,30)" rx="2" ry="2" />
+<text  x="72.49" y="687.5" ></text>
+</g>
+<g >
+<title>security_socket_recvmsg (70,707,070 samples, 0.39%)</title><rect x="85.2" y="773" width="4.6" height="15.0" fill="rgb(254,226,54)" rx="2" ry="2" />
+<text  x="88.18" y="783.5" ></text>
+</g>
+<g >
+<title>_raw_spin_unlock_irqrestore (121,212,120 samples, 0.66%)</title><rect x="433.0" y="37" width="7.8" height="15.0" fill="rgb(228,106,25)" rx="2" ry="2" />
+<text  x="435.97" y="47.5" ></text>
+</g>
+<g >
+<title>tcp_mtu_probe (10,101,010 samples, 0.06%)</title><rect x="286.5" y="549" width="0.7" height="15.0" fill="rgb(252,216,51)" rx="2" ry="2" />
+<text  x="289.53" y="559.5" ></text>
+</g>
+<g >
+<title>__GI___libc_free (10,101,010 samples, 0.06%)</title><rect x="120.5" y="821" width="0.6" height="15.0" fill="rgb(252,218,52)" rx="2" ry="2" />
+<text  x="123.48" y="831.5" ></text>
+</g>
+<g >
+<title>bool google::protobuf::internal::MergeFromImpl&lt;false&gt; (515,151,510 samples, 2.83%)</title><rect x="122.4" y="789" width="33.4" height="15.0" fill="rgb(248,200,47)" rx="2" ry="2" />
+<text  x="125.44" y="799.5" >bo..</text>
+</g>
+<g >
+<title>__memset_avx2_unaligned_erms (20,202,020 samples, 0.11%)</title><rect x="216.6" y="677" width="1.3" height="15.0" fill="rgb(223,84,20)" rx="2" ry="2" />
+<text  x="219.58" y="687.5" ></text>
+</g>
+<g >
+<title>google::protobuf::STLStringResizeUninitialized (50,505,050 samples, 0.28%)</title><rect x="215.3" y="725" width="3.2" height="15.0" fill="rgb(225,93,22)" rx="2" ry="2" />
+<text  x="218.27" y="735.5" ></text>
+</g>
+<g >
+<title>tcache_get (10,101,010 samples, 0.06%)</title><rect x="193.7" y="757" width="0.7" height="15.0" fill="rgb(253,222,53)" rx="2" ry="2" />
+<text  x="196.70" y="767.5" ></text>
+</g>
+<g >
+<title>nebula::example::EchoService::GetResponsePrototype (10,101,010 samples, 0.06%)</title><rect x="203.5" y="805" width="0.7" height="15.0" fill="rgb(250,207,49)" rx="2" ry="2" />
+<text  x="206.51" y="815.5" ></text>
+</g>
+<g >
+<title>std::__cxx11::basic_string&lt;char, std::char_traits&lt;char&gt;, std::allocator&lt;char&gt; &gt;* google::protobuf::Arena::Create&lt;std::__cxx11::basic_string&lt;char, std::char_traits&lt;char&gt;, std::allocator&lt;char&gt; &gt;&gt; (40,404,040 samples, 0.22%)</title><rect x="127.7" y="725" width="2.6" height="15.0" fill="rgb(228,107,25)" rx="2" ry="2" />
+<text  x="130.67" y="735.5" ></text>
+</g>
+<g >
+<title>std::__cxx11::basic_string&lt;char, std::char_traits&lt;char&gt;, std::allocator&lt;char&gt; &gt;::_M_dispose (10,101,010 samples, 0.06%)</title><rect x="195.7" y="757" width="0.6" height="15.0" fill="rgb(251,215,51)" rx="2" ry="2" />
+<text  x="198.66" y="767.5" ></text>
+</g>
+<g >
+<title>cubictcp_cwnd_event (30,303,030 samples, 0.17%)</title><rect x="1091.9" y="533" width="2.0" height="15.0" fill="rgb(235,140,33)" rx="2" ry="2" />
+<text  x="1094.94" y="543.5" ></text>
+</g>
+<g >
+<title>entry_SYSCALL_64_after_hwframe (70,707,070 samples, 0.39%)</title><rect x="1185.4" y="853" width="4.6" height="15.0" fill="rgb(218,63,15)" rx="2" ry="2" />
+<text  x="1188.42" y="863.5" ></text>
+</g>
+<g >
+<title>ipv4_dst_check (10,101,010 samples, 0.06%)</title><rect x="1085.4" y="485" width="0.7" height="15.0" fill="rgb(253,222,53)" rx="2" ry="2" />
+<text  x="1088.40" y="495.5" ></text>
+</g>
+<g >
+<title>tcp_cleanup_rbuf (10,101,010 samples, 0.06%)</title><rect x="75.4" y="725" width="0.6" height="15.0" fill="rgb(233,130,31)" rx="2" ry="2" />
+<text  x="78.37" y="735.5" ></text>
+</g>
+<g >
+<title>tcp_do_parse_auth_options (10,101,010 samples, 0.06%)</title><rect x="404.9" y="149" width="0.6" height="15.0" fill="rgb(209,19,4)" rx="2" ry="2" />
+<text  x="407.86" y="159.5" ></text>
+</g>
+<g >
+<title>_int_malloc (10,101,010 samples, 0.06%)</title><rect x="196.3" y="757" width="0.7" height="15.0" fill="rgb(215,47,11)" rx="2" ry="2" />
+<text  x="199.32" y="767.5" ></text>
+</g>
+<g >
+<title>std::__cxx11::basic_string&lt;char, std::char_traits&lt;char&gt;, std::allocator&lt;char&gt; &gt;::_S_copy (10,101,010 samples, 0.06%)</title><rect x="192.4" y="661" width="0.6" height="15.0" fill="rgb(254,227,54)" rx="2" ry="2" />
+<text  x="195.39" y="671.5" ></text>
+</g>
+<g >
+<title>skb_network_protocol (10,101,010 samples, 0.06%)</title><rect x="1073.6" y="341" width="0.7" height="15.0" fill="rgb(245,186,44)" rx="2" ry="2" />
+<text  x="1076.63" y="351.5" ></text>
+</g>
+<g >
+<title>google::protobuf::ServiceDescriptor::FindMethodByName (131,313,130 samples, 0.72%)</title><rect x="180.6" y="805" width="8.5" height="15.0" fill="rgb(220,71,17)" rx="2" ry="2" />
+<text  x="183.63" y="815.5" ></text>
+</g>
+<g >
+<title>google::protobuf::internal::WireFormatLite::VerifyUtf8String (10,101,010 samples, 0.06%)</title><rect x="221.2" y="709" width="0.6" height="15.0" fill="rgb(253,223,53)" rx="2" ry="2" />
+<text  x="224.16" y="719.5" ></text>
+</g>
+<g >
+<title>spdlog::details::registry::get_default_raw (10,101,010 samples, 0.06%)</title><rect x="1175.6" y="805" width="0.7" height="15.0" fill="rgb(223,86,20)" rx="2" ry="2" />
+<text  x="1178.62" y="815.5" ></text>
+</g>
+<g >
+<title>operator new (30,303,030 samples, 0.17%)</title><rect x="144.0" y="677" width="2.0" height="15.0" fill="rgb(216,51,12)" rx="2" ry="2" />
+<text  x="147.02" y="687.5" ></text>
+</g>
+<g >
+<title>get_page_from_freelist (10,101,010 samples, 0.06%)</title><rect x="273.5" y="501" width="0.6" height="15.0" fill="rgb(252,218,52)" rx="2" ry="2" />
+<text  x="276.46" y="511.5" ></text>
+</g>
+<g >
+<title>inet_recvmsg (747,474,740 samples, 4.10%)</title><rect x="36.8" y="773" width="48.4" height="15.0" fill="rgb(206,5,1)" rx="2" ry="2" />
+<text  x="39.80" y="783.5" >inet..</text>
+</g>
+<g >
+<title>std::__cxx11::basic_string&lt;char, std::char_traits&lt;char&gt;, std::allocator&lt;char&gt; &gt;::_M_mutate (10,101,010 samples, 0.06%)</title><rect x="157.7" y="789" width="0.7" height="15.0" fill="rgb(217,56,13)" rx="2" ry="2" />
+<text  x="160.75" y="799.5" ></text>
+</g>
+<g >
+<title>spdlog::details::registry::instance (10,101,010 samples, 0.06%)</title><rect x="1175.0" y="789" width="0.6" height="15.0" fill="rgb(226,99,23)" rx="2" ry="2" />
+<text  x="1177.96" y="799.5" ></text>
+</g>
+<g >
+<title>google::protobuf::internal::ArenaStringPtr::Mutable[abi:cxx11] (40,404,040 samples, 0.22%)</title><rect x="127.7" y="757" width="2.6" height="15.0" fill="rgb(236,146,34)" rx="2" ry="2" />
+<text  x="130.67" y="767.5" ></text>
+</g>
+<g >
+<title>syscall_exit_to_user_mode (10,101,010 samples, 0.06%)</title><rect x="241.4" y="677" width="0.7" height="15.0" fill="rgb(251,211,50)" rx="2" ry="2" />
+<text  x="244.42" y="687.5" ></text>
+</g>
+<g >
+<title>google::protobuf::STLStringResizeUninitializedAmortized (10,101,010 samples, 0.06%)</title><rect x="1165.8" y="725" width="0.7" height="15.0" fill="rgb(233,131,31)" rx="2" ry="2" />
+<text  x="1168.81" y="735.5" ></text>
+</g>
+<g >
+<title>ip_queue_xmit (12,101,009,980 samples, 66.37%)</title><rect x="305.5" y="517" width="783.2" height="15.0" fill="rgb(230,119,28)" rx="2" ry="2" />
+<text  x="308.49" y="527.5" >ip_queue_xmit</text>
+</g>
+<g >
+<title>validate_xmit_xfrm (10,101,010 samples, 0.06%)</title><rect x="1075.6" y="373" width="0.6" height="15.0" fill="rgb(215,47,11)" rx="2" ry="2" />
+<text  x="1078.60" y="383.5" ></text>
+</g>
+<g >
+<title>skb_csum_hwoffload_help (20,202,020 samples, 0.11%)</title><rect x="1074.3" y="357" width="1.3" height="15.0" fill="rgb(254,228,54)" rx="2" ry="2" />
+<text  x="1077.29" y="367.5" ></text>
+</g>
+<g >
+<title>vfs_readv (1,232,323,220 samples, 6.76%)</title><rect x="25.0" y="837" width="79.8" height="15.0" fill="rgb(212,32,7)" rx="2" ry="2" />
+<text  x="28.04" y="847.5" >vfs_readv</text>
+</g>
+<g >
+<title>check_heap_object (10,101,010 samples, 0.06%)</title><rect x="281.3" y="549" width="0.7" height="15.0" fill="rgb(241,165,39)" rx="2" ry="2" />
+<text  x="284.30" y="559.5" ></text>
+</g>
+<g >
+<title>google::protobuf::internal::EpsCopyInputStream::EpsCopyInputStream (10,101,010 samples, 0.06%)</title><rect x="123.1" y="757" width="0.7" height="15.0" fill="rgb(231,123,29)" rx="2" ry="2" />
+<text  x="126.10" y="767.5" ></text>
+</g>
+<g >
+<title>__wake_up_sync_key (20,202,020 samples, 0.11%)</title><rect x="473.5" y="101" width="1.3" height="15.0" fill="rgb(226,100,24)" rx="2" ry="2" />
+<text  x="476.50" y="111.5" ></text>
+</g>
+<g >
+<title>task_mm_cid_work (10,101,010 samples, 0.06%)</title><rect x="241.4" y="645" width="0.7" height="15.0" fill="rgb(226,101,24)" rx="2" ry="2" />
+<text  x="244.42" y="655.5" ></text>
+</g>
+<g >
+<title>nebula::rpc::RpcCodec::DecodeBody (565,656,560 samples, 3.10%)</title><rect x="121.8" y="805" width="36.6" height="15.0" fill="rgb(241,167,40)" rx="2" ry="2" />
+<text  x="124.79" y="815.5" >neb..</text>
+</g>
+<g >
+<title>__check_object_size (10,101,010 samples, 0.06%)</title><rect x="270.8" y="581" width="0.7" height="15.0" fill="rgb(226,98,23)" rx="2" ry="2" />
+<text  x="273.84" y="591.5" ></text>
+</g>
+<g >
+<title>begin_current_label_crit_section (10,101,010 samples, 0.06%)</title><rect x="89.1" y="725" width="0.7" height="15.0" fill="rgb(237,148,35)" rx="2" ry="2" />
+<text  x="92.10" y="735.5" ></text>
+</g>
+<g >
+<title>std::__cxx11::basic_string&lt;char, std::char_traits&lt;char&gt;, std::allocator&lt;char&gt; &gt;::~basic_string (20,202,020 samples, 0.11%)</title><rect x="1180.2" y="757" width="1.3" height="15.0" fill="rgb(248,201,48)" rx="2" ry="2" />
+<text  x="1183.19" y="767.5" ></text>
+</g>
+<g >
+<title>operator new (10,101,010 samples, 0.06%)</title><rect x="193.7" y="789" width="0.7" height="15.0" fill="rgb(216,51,12)" rx="2" ry="2" />
+<text  x="196.70" y="799.5" ></text>
+</g>
+<g >
+<title>tcp_v4_rcv (10,101,010 samples, 0.06%)</title><rect x="1022.0" y="181" width="0.6" height="15.0" fill="rgb(237,148,35)" rx="2" ry="2" />
+<text  x="1024.99" y="191.5" ></text>
+</g>
+<g >
+<title>__GI___libc_free (10,101,010 samples, 0.06%)</title><rect x="1172.3" y="741" width="0.7" height="15.0" fill="rgb(252,218,52)" rx="2" ry="2" />
+<text  x="1175.35" y="751.5" ></text>
+</g>
+<g >
+<title>__napi_poll (10,282,828,180 samples, 56.40%)</title><rect x="376.1" y="293" width="665.5" height="15.0" fill="rgb(247,195,46)" rx="2" ry="2" />
+<text  x="379.09" y="303.5" >__napi_poll</text>
+</g>
+<g >
+<title>nebula::example::EchoResponse::ByteSizeLong (20,202,020 samples, 0.11%)</title><rect x="223.8" y="741" width="1.3" height="15.0" fill="rgb(212,36,8)" rx="2" ry="2" />
+<text  x="226.77" y="751.5" ></text>
+</g>
+<g >
+<title>google::protobuf::internal::EpsCopyInputStream::InitFrom (20,202,020 samples, 0.11%)</title><rect x="123.8" y="757" width="1.3" height="15.0" fill="rgb(245,185,44)" rx="2" ry="2" />
+<text  x="126.75" y="767.5" ></text>
+</g>
+<g >
+<title>__tcp_ack_snd_check (171,717,170 samples, 0.94%)</title><rect x="430.4" y="117" width="11.1" height="15.0" fill="rgb(231,121,29)" rx="2" ry="2" />
+<text  x="433.35" y="127.5" ></text>
+</g>
+<g >
+<title>nebula::net::EventLoop::Loop (16,747,474,580 samples, 91.86%)</title><rect x="106.1" y="901" width="1083.9" height="15.0" fill="rgb(209,20,4)" rx="2" ry="2" />
+<text  x="109.10" y="911.5" >nebula::net::EventLoop::Loop</text>
+</g>
+<g >
+<title>bool google::protobuf::internal::MergeFromImpl&lt;false&gt; (50,505,050 samples, 0.28%)</title><rect x="176.0" y="805" width="3.3" height="15.0" fill="rgb(248,200,47)" rx="2" ry="2" />
+<text  x="179.05" y="815.5" ></text>
+</g>
+<g >
+<title>google::protobuf::MessageLite::AppendPartialToString (80,808,080 samples, 0.44%)</title><rect x="1165.2" y="741" width="5.2" height="15.0" fill="rgb(214,44,10)" rx="2" ry="2" />
+<text  x="1168.16" y="751.5" ></text>
+</g>
+<g >
+<title>nf_confirm (20,202,020 samples, 0.11%)</title><rect x="1078.9" y="453" width="1.3" height="15.0" fill="rgb(235,140,33)" rx="2" ry="2" />
+<text  x="1081.86" y="463.5" ></text>
+</g>
+<g >
+<title>release_sock (30,303,030 samples, 0.17%)</title><rect x="250.6" y="613" width="1.9" height="15.0" fill="rgb(248,198,47)" rx="2" ry="2" />
+<text  x="253.58" y="623.5" ></text>
+</g>
+<g >
+<title>kmalloc_reserve (80,808,080 samples, 0.44%)</title><rect x="1130.5" y="549" width="5.2" height="15.0" fill="rgb(240,163,39)" rx="2" ry="2" />
+<text  x="1133.51" y="559.5" ></text>
+</g>
+<g >
+<title>kmem_cache_alloc_node (10,101,010 samples, 0.06%)</title><rect x="1135.7" y="549" width="0.7" height="15.0" fill="rgb(236,142,34)" rx="2" ry="2" />
+<text  x="1138.74" y="559.5" ></text>
+</g>
+<g >
+<title>nf_hook_slow (30,303,030 samples, 0.17%)</title><rect x="1024.0" y="197" width="1.9" height="15.0" fill="rgb(243,175,42)" rx="2" ry="2" />
+<text  x="1026.95" y="207.5" ></text>
+</g>
+<g >
+<title>__GI___libc_malloc (10,101,010 samples, 0.06%)</title><rect x="1165.8" y="677" width="0.7" height="15.0" fill="rgb(219,68,16)" rx="2" ry="2" />
+<text  x="1168.81" y="687.5" ></text>
+</g>
+<g >
+<title>tcp_recvmsg (10,101,010 samples, 0.06%)</title><rect x="89.8" y="773" width="0.6" height="15.0" fill="rgb(234,135,32)" rx="2" ry="2" />
+<text  x="92.76" y="783.5" ></text>
+</g>
+<g >
+<title>__netif_receive_skb_core.constprop.0 (10,101,010 samples, 0.06%)</title><rect x="379.4" y="245" width="0.6" height="15.0" fill="rgb(244,182,43)" rx="2" ry="2" />
+<text  x="382.36" y="255.5" ></text>
+</g>
+<g >
+<title>ep_poll (60,606,060 samples, 0.33%)</title><rect x="1185.4" y="773" width="3.9" height="15.0" fill="rgb(238,151,36)" rx="2" ry="2" />
+<text  x="1188.42" y="783.5" ></text>
+</g>
+<g >
+<title>ipv4_conntrack_local (40,404,040 samples, 0.22%)</title><rect x="317.9" y="453" width="2.6" height="15.0" fill="rgb(236,146,34)" rx="2" ry="2" />
+<text  x="320.91" y="463.5" ></text>
+</g>
+<g >
+<title>__netif_receive_skb_core.constprop.0 (70,707,070 samples, 0.39%)</title><rect x="380.7" y="229" width="4.5" height="15.0" fill="rgb(244,182,43)" rx="2" ry="2" />
+<text  x="383.67" y="239.5" ></text>
+</g>
+<g >
+<title>nebula::rpc::proto::RpcMeta::InternalSwap (10,101,010 samples, 0.06%)</title><rect x="1171.0" y="757" width="0.7" height="15.0" fill="rgb(218,61,14)" rx="2" ry="2" />
+<text  x="1174.04" y="767.5" ></text>
+</g>
+<g >
+<title>sock_rfree (101,010,100 samples, 0.55%)</title><rect x="68.8" y="725" width="6.6" height="15.0" fill="rgb(222,80,19)" rx="2" ry="2" />
+<text  x="71.84" y="735.5" ></text>
+</g>
+<g >
+<title>ip_rcv_core (20,202,020 samples, 0.11%)</title><rect x="1035.7" y="229" width="1.3" height="15.0" fill="rgb(250,210,50)" rx="2" ry="2" />
+<text  x="1038.72" y="239.5" ></text>
+</g>
+<g >
+<title>tcp_schedule_loss_probe (20,202,020 samples, 0.11%)</title><rect x="1017.4" y="117" width="1.3" height="15.0" fill="rgb(238,154,36)" rx="2" ry="2" />
+<text  x="1020.41" y="127.5" ></text>
+</g>
+<g >
+<title>_raw_spin_unlock_irqrestore (30,303,030 samples, 0.17%)</title><rect x="1103.1" y="437" width="1.9" height="15.0" fill="rgb(228,106,25)" rx="2" ry="2" />
+<text  x="1106.05" y="447.5" ></text>
+</g>
+<g >
+<title>tcp_in_window (70,707,070 samples, 0.39%)</title><rect x="334.3" y="373" width="4.5" height="15.0" fill="rgb(245,186,44)" rx="2" ry="2" />
+<text  x="337.25" y="383.5" ></text>
+</g>
+<g >
+<title>__tcp_cleanup_rbuf (10,101,010 samples, 0.06%)</title><rect x="75.4" y="709" width="0.6" height="15.0" fill="rgb(206,4,1)" rx="2" ry="2" />
+<text  x="78.37" y="719.5" ></text>
+</g>
+<g >
+<title>nf_nat_inet_fn (20,202,020 samples, 0.11%)</title><rect x="353.2" y="421" width="1.3" height="15.0" fill="rgb(206,5,1)" rx="2" ry="2" />
+<text  x="356.21" y="431.5" ></text>
+</g>
+<g >
+<title>aa_inet_msg_perm (20,202,020 samples, 0.11%)</title><rect x="1150.8" y="613" width="1.3" height="15.0" fill="rgb(249,205,49)" rx="2" ry="2" />
+<text  x="1153.78" y="623.5" ></text>
+</g>
+<g >
+<title>__GI___libc_malloc (30,303,030 samples, 0.17%)</title><rect x="144.0" y="661" width="2.0" height="15.0" fill="rgb(219,68,16)" rx="2" ry="2" />
+<text  x="147.02" y="671.5" ></text>
+</g>
+<g >
+<title>_raw_spin_unlock (10,101,010 samples, 0.06%)</title><rect x="372.8" y="309" width="0.7" height="15.0" fill="rgb(223,85,20)" rx="2" ry="2" />
+<text  x="375.83" y="319.5" ></text>
+</g>
+<g >
+<title>srso_alias_safe_ret (10,101,010 samples, 0.06%)</title><rect x="466.3" y="85" width="0.7" height="15.0" fill="rgb(242,170,40)" rx="2" ry="2" />
+<text  x="469.31" y="95.5" ></text>
+</g>
+<g >
+<title>srso_alias_safe_ret (10,101,010 samples, 0.06%)</title><rect x="104.8" y="869" width="0.6" height="15.0" fill="rgb(242,170,40)" rx="2" ry="2" />
+<text  x="107.79" y="879.5" ></text>
+</g>
+<g >
+<title>std::__cxx11::basic_string&lt;char, std::char_traits&lt;char&gt;, std::allocator&lt;char&gt; &gt;::~basic_string (10,101,010 samples, 0.06%)</title><rect x="195.7" y="773" width="0.6" height="15.0" fill="rgb(248,201,48)" rx="2" ry="2" />
+<text  x="198.66" y="783.5" ></text>
+</g>
+<g >
+<title>skb_copy_datagram_iter (272,727,270 samples, 1.50%)</title><rect x="51.2" y="725" width="17.6" height="15.0" fill="rgb(245,188,45)" rx="2" ry="2" />
+<text  x="54.19" y="735.5" ></text>
+</g>
+<g >
+<title>__usecs_to_jiffies (10,101,010 samples, 0.06%)</title><rect x="1041.6" y="293" width="0.7" height="15.0" fill="rgb(254,227,54)" rx="2" ry="2" />
+<text  x="1044.60" y="303.5" ></text>
+</g>
+<g >
+<title>tcp_v4_rcv (9,696,969,600 samples, 53.19%)</title><rect x="393.7" y="165" width="627.6" height="15.0" fill="rgb(237,148,35)" rx="2" ry="2" />
+<text  x="396.75" y="175.5" >tcp_v4_rcv</text>
+</g>
+<g >
+<title>google::protobuf::MessageLite::ParseFromArray (30,303,030 samples, 0.17%)</title><rect x="155.8" y="789" width="1.9" height="15.0" fill="rgb(222,79,19)" rx="2" ry="2" />
+<text  x="158.78" y="799.5" ></text>
+</g>
+<g >
+<title>operator new (10,101,010 samples, 0.06%)</title><rect x="196.3" y="789" width="0.7" height="15.0" fill="rgb(216,51,12)" rx="2" ry="2" />
+<text  x="199.32" y="799.5" ></text>
+</g>
+<g >
+<title>__x64_sys_readv (1,272,727,260 samples, 6.98%)</title><rect x="22.4" y="869" width="82.4" height="15.0" fill="rgb(207,12,2)" rx="2" ry="2" />
+<text  x="25.42" y="879.5" >__x64_sys..</text>
+</g>
+<g >
+<title>try_charge_memcg (20,202,020 samples, 0.11%)</title><rect x="1144.9" y="533" width="1.3" height="15.0" fill="rgb(210,27,6)" rx="2" ry="2" />
+<text  x="1147.89" y="543.5" ></text>
+</g>
+<g >
+<title>netif_skb_features (30,303,030 samples, 0.17%)</title><rect x="1072.3" y="357" width="2.0" height="15.0" fill="rgb(244,181,43)" rx="2" ry="2" />
+<text  x="1075.33" y="367.5" ></text>
+</g>
+<g >
+<title>mod_timer (10,101,010 samples, 0.06%)</title><rect x="431.7" y="85" width="0.6" height="15.0" fill="rgb(212,32,7)" rx="2" ry="2" />
+<text  x="434.66" y="95.5" ></text>
+</g>
+<g >
+<title>tcp_rearm_rto.part.0 (40,404,040 samples, 0.22%)</title><rect x="1102.4" y="501" width="2.6" height="15.0" fill="rgb(224,90,21)" rx="2" ry="2" />
+<text  x="1105.40" y="511.5" ></text>
+</g>
+<g >
+<title>google::protobuf::internal::AssignDescriptors (70,707,070 samples, 0.39%)</title><rect x="198.9" y="789" width="4.6" height="15.0" fill="rgb(229,112,26)" rx="2" ry="2" />
+<text  x="201.93" y="799.5" ></text>
+</g>
+<g >
+<title>ip_skb_dst_mtu (10,101,010 samples, 0.06%)</title><rect x="1076.9" y="421" width="0.7" height="15.0" fill="rgb(206,4,1)" rx="2" ry="2" />
+<text  x="1079.90" y="431.5" ></text>
+</g>
+<g >
+<title>__inet_lookup_established (10,101,010 samples, 0.06%)</title><rect x="397.0" y="149" width="0.7" height="15.0" fill="rgb(222,79,19)" rx="2" ry="2" />
+<text  x="400.01" y="159.5" ></text>
+</g>
+<g >
+<title>tcp_stream_alloc_skb (343,434,340 samples, 1.88%)</title><rect x="1124.6" y="581" width="22.3" height="15.0" fill="rgb(252,218,52)" rx="2" ry="2" />
+<text  x="1127.63" y="591.5" >t..</text>
+</g>
+<g >
+<title>sk_forced_mem_schedule (121,212,120 samples, 0.66%)</title><rect x="1139.0" y="565" width="7.9" height="15.0" fill="rgb(218,63,15)" rx="2" ry="2" />
+<text  x="1142.01" y="575.5" ></text>
+</g>
+<g >
+<title>std::__cxx11::basic_string&lt;char, std::char_traits&lt;char&gt;, std::allocator&lt;char&gt; &gt;::clear (20,202,020 samples, 0.11%)</title><rect x="225.1" y="741" width="1.3" height="15.0" fill="rgb(227,101,24)" rx="2" ry="2" />
+<text  x="228.08" y="751.5" ></text>
+</g>
+<g >
+<title>std::__cxx11::basic_string&lt;char, std::char_traits&lt;char&gt;, std::allocator&lt;char&gt; &gt;::_M_replace (10,101,010 samples, 0.06%)</title><rect x="178.7" y="725" width="0.6" height="15.0" fill="rgb(226,98,23)" rx="2" ry="2" />
+<text  x="181.66" y="735.5" ></text>
+</g>
+<g >
+<title>__libc_start_call_main (16,747,474,580 samples, 91.86%)</title><rect x="106.1" y="933" width="1083.9" height="15.0" fill="rgb(210,26,6)" rx="2" ry="2" />
+<text  x="109.10" y="943.5" >__libc_start_call_main</text>
+</g>
+<g >
+<title>ip_protocol_deliver_rcu (9,767,676,670 samples, 53.57%)</title><rect x="389.2" y="181" width="632.1" height="15.0" fill="rgb(215,49,11)" rx="2" ry="2" />
+<text  x="392.17" y="191.5" >ip_protocol_deliver_rcu</text>
+</g>
+<g >
+<title>_raw_spin_lock_bh (10,101,010 samples, 0.06%)</title><rect x="254.5" y="597" width="0.7" height="15.0" fill="rgb(221,75,18)" rx="2" ry="2" />
+<text  x="257.50" y="607.5" ></text>
+</g>
+<g >
+<title>loopback_xmit (30,303,030 samples, 0.17%)</title><rect x="1069.1" y="373" width="1.9" height="15.0" fill="rgb(247,194,46)" rx="2" ry="2" />
+<text  x="1072.06" y="383.5" ></text>
+</g>
+<g >
+<title>google::protobuf::MessageLite::IsInitializedWithErrors (10,101,010 samples, 0.06%)</title><rect x="122.4" y="757" width="0.7" height="15.0" fill="rgb(240,162,38)" rx="2" ry="2" />
+<text  x="125.44" y="767.5" ></text>
+</g>
+<g >
+<title>tcp_write_xmit (30,303,030 samples, 0.17%)</title><rect x="1115.5" y="565" width="1.9" height="15.0" fill="rgb(231,122,29)" rx="2" ry="2" />
+<text  x="1118.47" y="575.5" ></text>
+</g>
+<g >
+<title>_int_free (10,101,010 samples, 0.06%)</title><rect x="1172.3" y="725" width="0.7" height="15.0" fill="rgb(247,196,46)" rx="2" ry="2" />
+<text  x="1175.35" y="735.5" ></text>
+</g>
+<g >
+<title>__alloc_skb (212,121,210 samples, 1.16%)</title><rect x="1124.6" y="565" width="13.8" height="15.0" fill="rgb(226,100,23)" rx="2" ry="2" />
+<text  x="1127.63" y="575.5" ></text>
+</g>
+<g >
+<title>kmem_cache_free (10,101,010 samples, 0.06%)</title><rect x="461.1" y="53" width="0.6" height="15.0" fill="rgb(254,225,53)" rx="2" ry="2" />
+<text  x="464.08" y="63.5" ></text>
+</g>
+<g >
+<title>google::protobuf::SerializeToArrayImpl (50,505,050 samples, 0.28%)</title><rect x="1166.5" y="725" width="3.2" height="15.0" fill="rgb(254,228,54)" rx="2" ry="2" />
+<text  x="1169.47" y="735.5" ></text>
+</g>
+<g >
+<title>operator new (20,202,020 samples, 0.11%)</title><rect x="190.4" y="693" width="1.3" height="15.0" fill="rgb(216,51,12)" rx="2" ry="2" />
+<text  x="193.43" y="703.5" ></text>
+</g>
+<g >
+<title>task_work_run (10,101,010 samples, 0.06%)</title><rect x="241.4" y="661" width="0.7" height="15.0" fill="rgb(209,22,5)" rx="2" ry="2" />
+<text  x="244.42" y="671.5" ></text>
+</g>
+<g >
+<title>nf_conntrack_put (10,101,010 samples, 0.06%)</title><rect x="402.9" y="149" width="0.7" height="15.0" fill="rgb(217,55,13)" rx="2" ry="2" />
+<text  x="405.90" y="159.5" ></text>
+</g>
+<g >
+<title>napi_consume_skb (111,111,110 samples, 0.61%)</title><rect x="1042.9" y="293" width="7.2" height="15.0" fill="rgb(207,11,2)" rx="2" ry="2" />
+<text  x="1045.91" y="303.5" ></text>
+</g>
+<g >
+<title>do_iter_readv_writev (989,898,980 samples, 5.43%)</title><rect x="26.3" y="821" width="64.1" height="15.0" fill="rgb(221,76,18)" rx="2" ry="2" />
+<text  x="29.34" y="831.5" >do_iter..</text>
+</g>
+<g >
+<title>nebula::rpc::RpcServer::OnMessage (16,474,747,310 samples, 90.36%)</title><rect x="119.2" y="837" width="1066.2" height="15.0" fill="rgb(219,68,16)" rx="2" ry="2" />
+<text  x="122.17" y="847.5" >nebula::rpc::RpcServer::OnMessage</text>
+</g>
+<g >
+<title>std::__cxx11::basic_string&lt;char, std::char_traits&lt;char&gt;, std::allocator&lt;char&gt; &gt;* google::protobuf::Arena::CreateInternal&lt;std::__cxx11::basic_string&lt;char, std::char_traits&lt;char&gt;, std::allocator&lt;char&gt; &gt;&gt; (40,404,040 samples, 0.22%)</title><rect x="127.7" y="709" width="2.6" height="15.0" fill="rgb(223,83,19)" rx="2" ry="2" />
+<text  x="130.67" y="719.5" ></text>
+</g>
+<g >
+<title>skb_release_head_state (10,101,010 samples, 0.06%)</title><rect x="463.7" y="69" width="0.6" height="15.0" fill="rgb(226,100,24)" rx="2" ry="2" />
+<text  x="466.70" y="79.5" ></text>
+</g>
+<g >
+<title>ip_finish_output (10,101,010 samples, 0.06%)</title><rect x="357.1" y="469" width="0.7" height="15.0" fill="rgb(242,173,41)" rx="2" ry="2" />
+<text  x="360.14" y="479.5" ></text>
+</g>
+<g >
+<title>google::protobuf::internal::ArenaStringPtr::DestroyNoArenaSlowPath (20,202,020 samples, 0.11%)</title><rect x="1184.1" y="805" width="1.3" height="15.0" fill="rgb(253,221,53)" rx="2" ry="2" />
+<text  x="1187.12" y="815.5" ></text>
+</g>
+<g >
+<title>nebula::rpc::proto::RpcMeta::ByteSizeLong (10,101,010 samples, 0.06%)</title><rect x="1169.7" y="725" width="0.7" height="15.0" fill="rgb(229,114,27)" rx="2" ry="2" />
+<text  x="1172.73" y="735.5" ></text>
+</g>
+<g >
+<title>kfree (10,101,010 samples, 0.06%)</title><rect x="463.0" y="53" width="0.7" height="15.0" fill="rgb(222,78,18)" rx="2" ry="2" />
+<text  x="466.04" y="63.5" ></text>
+</g>
+<g >
+<title>tcp_clean_rtx_queue.constprop.0 (212,121,210 samples, 1.16%)</title><rect x="455.9" y="101" width="13.7" height="15.0" fill="rgb(211,30,7)" rx="2" ry="2" />
+<text  x="458.85" y="111.5" ></text>
+</g>
+<g >
+<title>iovec_from_user.part.0 (20,202,020 samples, 0.11%)</title><rect x="93.7" y="789" width="1.3" height="15.0" fill="rgb(242,171,40)" rx="2" ry="2" />
+<text  x="96.68" y="799.5" ></text>
+</g>
+<g >
+<title>ipv4_conntrack_in (20,202,020 samples, 0.11%)</title><rect x="1029.8" y="213" width="1.3" height="15.0" fill="rgb(226,98,23)" rx="2" ry="2" />
+<text  x="1032.83" y="223.5" ></text>
+</g>
+<g >
+<title>std::__cxx11::basic_string&lt;char, std::char_traits&lt;char&gt;, std::allocator&lt;char&gt; &gt;::_M_destroy (20,202,020 samples, 0.11%)</title><rect x="1180.2" y="725" width="1.3" height="15.0" fill="rgb(229,111,26)" rx="2" ry="2" />
+<text  x="1183.19" y="735.5" ></text>
+</g>
+<g >
+<title>__memcpy_avx_unaligned_erms (10,101,010 samples, 0.06%)</title><rect x="121.1" y="805" width="0.7" height="15.0" fill="rgb(246,190,45)" rx="2" ry="2" />
+<text  x="124.14" y="815.5" ></text>
+</g>
+<g >
+<title>__netif_receive_skb_one_core (20,202,020 samples, 0.11%)</title><rect x="1039.0" y="261" width="1.3" height="15.0" fill="rgb(215,47,11)" rx="2" ry="2" />
+<text  x="1041.99" y="271.5" ></text>
+</g>
+<g >
+<title>__skb_datagram_iter (242,424,240 samples, 1.33%)</title><rect x="53.1" y="709" width="15.7" height="15.0" fill="rgb(244,179,42)" rx="2" ry="2" />
+<text  x="56.15" y="719.5" ></text>
+</g>
+<g >
+<title>lock_sock_nested (40,404,040 samples, 0.22%)</title><rect x="255.2" y="597" width="2.6" height="15.0" fill="rgb(246,190,45)" rx="2" ry="2" />
+<text  x="258.15" y="607.5" ></text>
+</g>
+<g >
+<title>nebula::rpc::RpcCodec::Encode[abi:cxx11] (151,515,150 samples, 0.83%)</title><rect x="1161.2" y="757" width="9.8" height="15.0" fill="rgb(223,86,20)" rx="2" ry="2" />
+<text  x="1164.24" y="767.5" ></text>
+</g>
+<g >
+<title>nebula::net::EventLoop::AssertInLoopThread (10,101,010 samples, 0.06%)</title><rect x="1157.3" y="725" width="0.7" height="15.0" fill="rgb(207,11,2)" rx="2" ry="2" />
+<text  x="1160.31" y="735.5" ></text>
+</g>
+<g >
+<title>google::protobuf::MessageLite::SerializeToString (20,202,020 samples, 0.11%)</title><rect x="225.1" y="757" width="1.3" height="15.0" fill="rgb(225,96,23)" rx="2" ry="2" />
+<text  x="228.08" y="767.5" ></text>
+</g>
+<g >
+<title>__libc_send (14,303,030,160 samples, 78.45%)</title><rect x="231.6" y="725" width="925.7" height="15.0" fill="rgb(222,78,18)" rx="2" ry="2" />
+<text  x="234.62" y="735.5" >__libc_send</text>
+</g>
+<g >
+<title>google::protobuf::Closure::~Closure (30,303,030 samples, 0.17%)</title><rect x="204.8" y="789" width="2.0" height="15.0" fill="rgb(225,93,22)" rx="2" ry="2" />
+<text  x="207.81" y="799.5" ></text>
+</g>
+<g >
+<title>google::protobuf::io::EpsCopyOutputStream::WriteRawMaybeAliased (10,101,010 samples, 0.06%)</title><rect x="223.1" y="693" width="0.7" height="15.0" fill="rgb(239,159,38)" rx="2" ry="2" />
+<text  x="226.12" y="703.5" ></text>
+</g>
+<g >
+<title>__GI___libc_free (10,101,010 samples, 0.06%)</title><rect x="229.7" y="741" width="0.6" height="15.0" fill="rgb(252,218,52)" rx="2" ry="2" />
+<text  x="232.66" y="751.5" ></text>
+</g>
+<g >
+<title>__GI___libc_malloc (10,101,010 samples, 0.06%)</title><rect x="193.7" y="773" width="0.7" height="15.0" fill="rgb(219,68,16)" rx="2" ry="2" />
+<text  x="196.70" y="783.5" ></text>
+</g>
+<g >
+<title>sk_reset_timer (20,202,020 samples, 0.11%)</title><rect x="1109.6" y="517" width="1.3" height="15.0" fill="rgb(247,197,47)" rx="2" ry="2" />
+<text  x="1112.59" y="527.5" ></text>
+</g>
+<g >
+<title>tcp_send_mss (50,505,050 samples, 0.28%)</title><rect x="1117.4" y="581" width="3.3" height="15.0" fill="rgb(231,124,29)" rx="2" ry="2" />
+<text  x="1120.43" y="591.5" ></text>
+</g>
+<g >
+<title>operator delete (10,101,010 samples, 0.06%)</title><rect x="1173.7" y="805" width="0.6" height="15.0" fill="rgb(247,196,46)" rx="2" ry="2" />
+<text  x="1176.66" y="815.5" ></text>
+</g>
+<g >
+<title>x64_sys_call (14,131,312,990 samples, 77.51%)</title><rect x="242.7" y="677" width="914.6" height="15.0" fill="rgb(247,194,46)" rx="2" ry="2" />
+<text  x="245.73" y="687.5" >x64_sys_call</text>
+</g>
+<g >
+<title>nebula::rpc::proto::RpcMeta::~RpcMeta (40,404,040 samples, 0.22%)</title><rect x="1182.8" y="821" width="2.6" height="15.0" fill="rgb(246,188,45)" rx="2" ry="2" />
+<text  x="1185.81" y="831.5" ></text>
+</g>
+<g >
+<title>skb_release_data (30,303,030 samples, 0.17%)</title><rect x="461.7" y="69" width="2.0" height="15.0" fill="rgb(209,20,4)" rx="2" ry="2" />
+<text  x="464.73" y="79.5" ></text>
+</g>
+<g >
+<title>skb_clone (20,202,020 samples, 0.11%)</title><rect x="1088.7" y="517" width="1.3" height="15.0" fill="rgb(215,47,11)" rx="2" ry="2" />
+<text  x="1091.67" y="527.5" ></text>
+</g>
+<g >
+<title>google::protobuf::io::EpsCopyOutputStream::UnsafeWriteSize (10,101,010 samples, 0.06%)</title><rect x="222.5" y="677" width="0.6" height="15.0" fill="rgb(224,88,21)" rx="2" ry="2" />
+<text  x="225.47" y="687.5" ></text>
+</g>
+<g >
+<title>google::protobuf::internal::EpsCopyInputStream::ReadString (222,222,220 samples, 1.22%)</title><rect x="131.6" y="741" width="14.4" height="15.0" fill="rgb(234,133,31)" rx="2" ry="2" />
+<text  x="134.60" y="751.5" ></text>
+</g>
+<g >
+<title>ip_finish_output2 (11,030,302,920 samples, 60.50%)</title><rect x="363.0" y="421" width="713.9" height="15.0" fill="rgb(219,67,16)" rx="2" ry="2" />
+<text  x="366.02" y="431.5" >ip_finish_output2</text>
+</g>
+<g >
+<title>tcp_rcv_established (30,303,030 samples, 0.17%)</title><rect x="412.7" y="149" width="2.0" height="15.0" fill="rgb(242,170,40)" rx="2" ry="2" />
+<text  x="415.70" y="159.5" ></text>
+</g>
+<g >
+<title>skb_page_frag_refill (10,101,010 samples, 0.06%)</title><rect x="283.9" y="581" width="0.7" height="15.0" fill="rgb(228,108,26)" rx="2" ry="2" />
+<text  x="286.92" y="591.5" ></text>
+</g>
+<g >
+<title>try_charge_memcg (10,101,010 samples, 0.06%)</title><rect x="1146.2" y="549" width="0.7" height="15.0" fill="rgb(210,27,6)" rx="2" ry="2" />
+<text  x="1149.20" y="559.5" ></text>
+</g>
+<g >
+<title>__sk_dst_check (40,404,040 samples, 0.22%)</title><rect x="312.0" y="485" width="2.6" height="15.0" fill="rgb(241,169,40)" rx="2" ry="2" />
+<text  x="315.03" y="495.5" ></text>
+</g>
+<g >
+<title>sk_filter_trim_cap (60,606,060 samples, 0.33%)</title><rect x="405.5" y="133" width="3.9" height="15.0" fill="rgb(207,11,2)" rx="2" ry="2" />
+<text  x="408.51" y="143.5" ></text>
+</g>
+<g >
+<title>ip_local_deliver_finish (9,797,979,700 samples, 53.74%)</title><rect x="388.5" y="197" width="634.1" height="15.0" fill="rgb(225,95,22)" rx="2" ry="2" />
+<text  x="391.52" y="207.5" >ip_local_deliver_finish</text>
+</g>
+<g >
+<title>std::__cxx11::basic_string&lt;char, std::char_traits&lt;char&gt;, std::allocator&lt;char&gt; &gt;::resize (50,505,050 samples, 0.28%)</title><rect x="215.3" y="709" width="3.2" height="15.0" fill="rgb(229,111,26)" rx="2" ry="2" />
+<text  x="218.27" y="719.5" ></text>
+</g>
+<g >
+<title>spdlog::default_logger_raw (10,101,010 samples, 0.06%)</title><rect x="1175.0" y="805" width="0.6" height="15.0" fill="rgb(241,167,40)" rx="2" ry="2" />
+<text  x="1177.96" y="815.5" ></text>
+</g>
+<g >
+<title>ktime_get (10,101,010 samples, 0.06%)</title><rect x="1014.8" y="101" width="0.7" height="15.0" fill="rgb(207,10,2)" rx="2" ry="2" />
+<text  x="1017.80" y="111.5" ></text>
+</g>
+<g >
+<title>nebula::net::EPollPoller::Poll (70,707,070 samples, 0.39%)</title><rect x="1185.4" y="885" width="4.6" height="15.0" fill="rgb(254,229,54)" rx="2" ry="2" />
+<text  x="1188.42" y="895.5" ></text>
+</g>
+<g >
+<title>__usecs_to_jiffies (10,101,010 samples, 0.06%)</title><rect x="464.3" y="85" width="0.7" height="15.0" fill="rgb(254,227,54)" rx="2" ry="2" />
+<text  x="467.35" y="95.5" ></text>
+</g>
+<g >
+<title>__memcpy_avx_unaligned_erms (30,303,030 samples, 0.17%)</title><rect x="1163.2" y="741" width="2.0" height="15.0" fill="rgb(246,190,45)" rx="2" ry="2" />
+<text  x="1166.20" y="751.5" ></text>
+</g>
+<g >
+<title>tcp_ack_tstamp (10,101,010 samples, 0.06%)</title><rect x="467.0" y="85" width="0.6" height="15.0" fill="rgb(220,71,17)" rx="2" ry="2" />
+<text  x="469.96" y="95.5" ></text>
+</g>
+<g >
+<title>tcp_established_options (10,101,010 samples, 0.06%)</title><rect x="1120.0" y="565" width="0.7" height="15.0" fill="rgb(241,168,40)" rx="2" ry="2" />
+<text  x="1123.05" y="575.5" ></text>
+</g>
+<g >
+<title>syscall_exit_to_user_mode_prepare (10,101,010 samples, 0.06%)</title><rect x="242.1" y="677" width="0.6" height="15.0" fill="rgb(235,142,34)" rx="2" ry="2" />
+<text  x="245.08" y="687.5" ></text>
+</g>
+<g >
+<title>is_vmalloc_addr (30,303,030 samples, 0.17%)</title><rect x="279.3" y="533" width="2.0" height="15.0" fill="rgb(215,46,11)" rx="2" ry="2" />
+<text  x="282.34" y="543.5" ></text>
+</g>
+<g >
+<title>__tcp_push_pending_frames (12,828,282,700 samples, 70.36%)</title><rect x="285.2" y="565" width="830.3" height="15.0" fill="rgb(230,117,28)" rx="2" ry="2" />
+<text  x="288.22" y="575.5" >__tcp_push_pending_frames</text>
+</g>
+<g >
+<title>__rcu_read_unlock (10,101,010 samples, 0.06%)</title><rect x="356.5" y="469" width="0.6" height="15.0" fill="rgb(253,224,53)" rx="2" ry="2" />
+<text  x="359.48" y="479.5" ></text>
+</g>
+<g >
+<title>nebula::example::EchoRequest::Clear (10,101,010 samples, 0.06%)</title><rect x="180.0" y="773" width="0.6" height="15.0" fill="rgb(224,90,21)" rx="2" ry="2" />
+<text  x="182.97" y="783.5" ></text>
+</g>
+<g >
+<title>std::__cxx11::basic_string&lt;char, std::char_traits&lt;char&gt;, std::allocator&lt;char&gt; &gt;::_M_mutate (131,313,130 samples, 0.72%)</title><rect x="137.5" y="693" width="8.5" height="15.0" fill="rgb(217,56,13)" rx="2" ry="2" />
+<text  x="140.48" y="703.5" ></text>
+</g>
+<g >
+<title>mem_cgroup_uncharge_skmem (101,010,100 samples, 0.55%)</title><rect x="68.8" y="693" width="6.6" height="15.0" fill="rgb(220,72,17)" rx="2" ry="2" />
+<text  x="71.84" y="703.5" ></text>
+</g>
+<g >
+<title>sk_reset_timer (30,303,030 samples, 0.17%)</title><rect x="1103.1" y="485" width="1.9" height="15.0" fill="rgb(247,197,47)" rx="2" ry="2" />
+<text  x="1106.05" y="495.5" ></text>
+</g>
+<g >
+<title>kmem_cache_alloc_node (10,101,010 samples, 0.06%)</title><rect x="1138.4" y="565" width="0.6" height="15.0" fill="rgb(236,142,34)" rx="2" ry="2" />
+<text  x="1141.35" y="575.5" ></text>
+</g>
+<g >
+<title>ep_item_poll.isra.0 (60,606,060 samples, 0.33%)</title><rect x="1185.4" y="741" width="3.9" height="15.0" fill="rgb(251,213,51)" rx="2" ry="2" />
+<text  x="1188.42" y="751.5" ></text>
+</g>
+<g >
+<title>tcache_get (10,101,010 samples, 0.06%)</title><rect x="191.1" y="661" width="0.6" height="15.0" fill="rgb(253,222,53)" rx="2" ry="2" />
+<text  x="194.09" y="671.5" ></text>
+</g>
+<g >
+<title>nf_nat_ipv4_local_in (10,101,010 samples, 0.06%)</title><rect x="1025.9" y="197" width="0.7" height="15.0" fill="rgb(235,139,33)" rx="2" ry="2" />
+<text  x="1028.91" y="207.5" ></text>
+</g>
+<g >
+<title>__rcu_read_lock (10,101,010 samples, 0.06%)</title><rect x="387.9" y="197" width="0.6" height="15.0" fill="rgb(220,69,16)" rx="2" ry="2" />
+<text  x="390.86" y="207.5" ></text>
+</g>
+<g >
+<title>release_sock (20,202,020 samples, 0.11%)</title><rect x="257.8" y="597" width="1.3" height="15.0" fill="rgb(248,198,47)" rx="2" ry="2" />
+<text  x="260.77" y="607.5" ></text>
+</g>
+<g >
+<title>epoll_wait (70,707,070 samples, 0.39%)</title><rect x="1185.4" y="869" width="4.6" height="15.0" fill="rgb(238,154,36)" rx="2" ry="2" />
+<text  x="1188.42" y="879.5" ></text>
+</g>
+<g >
+<title>dev_hard_start_xmit (252,525,250 samples, 1.39%)</title><rect x="1052.1" y="373" width="16.3" height="15.0" fill="rgb(219,66,15)" rx="2" ry="2" />
+<text  x="1055.06" y="383.5" ></text>
+</g>
+</g>
+</svg>
