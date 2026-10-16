@@ -10,7 +10,6 @@
 
 #include <chrono>
 #include <memory>
-#include <mutex>
 #include <utility>
 
 namespace nebula::rpc
@@ -29,82 +28,85 @@ struct RpcServer::ServerCall
     std::unique_ptr<google::protobuf::Message> response;
 };
 
-// 一次 OnMessage 调用对应一个批次。
-// 同步完成的响应先聚合；OnMessage 结束后一次性交给 TcpConnection。
-// 如果业务异步完成、错过当前批次，则自动退回原来的单响应发送路径。
-struct RpcServer::ResponseBatch
+// RpcServer 只决定 Flush 边界，不再保存响应字节。
+// 同步完成的响应全部 Write 到 TcpConnection，OnMessage 结束时统一 Flush。
+// 异步完成若已经错过本轮，则在所属连接 EventLoop 中 Write + Flush。
+struct RpcServer::ResponseFlushScope final
+    : public std::enable_shared_from_this<ResponseFlushScope>
 {
-    ResponseBatch(RpcServer* owner, net::TcpConnectionPtr connection)
-        : owner_(owner),
+    ResponseFlushScope(RpcServer* server, net::TcpConnectionPtr connection)
+        : server_(server),
           conn_(std::move(connection))
     {
     }
 
-    void Enqueue(std::string bytes, bool finish_call)
+    void Write(std::string bytes, bool finish_call)
     {
-        std::string direct;
+        if (conn_->Loop()->IsInLoopThread())
         {
-            std::lock_guard<std::mutex> lock(mutex);
-            if (collecting)
+            WriteInLoop(std::move(bytes), finish_call);
+            return;
+        }
+
+        auto self = shared_from_this();
+        conn_->Loop()->QueueInLoop([self, bytes = std::move(bytes), finish_call]() mutable
             {
-                if (!bytes.empty())
-                {
-                    output.append(bytes);
-                }
-                if (finish_call)
-                {
-                    ++finished_calls;
-                }
-                return;
-            }
+                self->WriteInLoop(std::move(bytes), finish_call);
+            });
+    }
 
-            direct = std::move(bytes);
+    void Close()
+    {
+        conn_->Loop()->AssertInLoopThread();
+        if (!collecting_)
+        {
+            return;
         }
 
-        if (!direct.empty())
+        collecting_ = false;
+
+        // 当前 OnMessage 内所有同步响应已经入 TcpConnection 队列，现在由 RPC 层明确结束批次。
+        conn_->Flush();
+
+        if (finished_calls_ != 0U)
         {
-            conn_->Send(direct);
-        }
-        if (finish_call)
-        {
-            owner_->OnCallsFinished(1);
+            server_->OnCallsFinished(finished_calls_);
+            finished_calls_ = 0;
         }
     }
 
-    void FlushAndClose()
+private:
+    void WriteInLoop(std::string bytes, bool finish_call)
     {
-        std::string bytes;
-        std::uint64_t calls = 0;
-
-        {
-            std::lock_guard<std::mutex> lock(mutex);
-            if (!collecting)
-            {
-                return;
-            }
-
-            collecting = false;
-            bytes.swap(output);
-            calls = finished_calls;
-            finished_calls = 0;
-        }
+        conn_->Loop()->AssertInLoopThread();
 
         if (!bytes.empty())
         {
-            conn_->Send(bytes);
+            conn_->Write(std::move(bytes));
         }
-        if (calls != 0U)
+
+        if (collecting_)
         {
-            owner_->OnCallsFinished(calls);
+            if (finish_call)
+            {
+                ++finished_calls_;
+            }
+            return;
+        }
+
+        // 异步业务完成发生在 OnMessage 批次结束之后，不能等下一次读事件帮它发送。
+        conn_->Flush();
+
+        if (finish_call)
+        {
+            server_->OnCallsFinished(1);
         }
     }
 
-    RpcServer* owner_;
+    RpcServer* server_;
     net::TcpConnectionPtr conn_;
-    std::mutex mutex;
-    std::string output;
-    std::uint64_t finished_calls{0};
-    bool collecting{true};
+    std::uint64_t finished_calls_{0};
+    bool collecting_{true};
 };
 
 RpcServer::RpcServer(net::EventLoop* loop, std::string ip, std::uint16_t port)
@@ -124,6 +126,7 @@ void RpcServer::RegisterService(google::protobuf::Service* service)
     {
         return;
     }
+
     const auto* descriptor = service->GetDescriptor();
     services_[descriptor->full_name()] = service;
 }
@@ -152,7 +155,7 @@ void RpcServer::StopInLoop()
 
     if (stopping_.exchange(true))
     {
-        return;                                         // 幂等：重复 Stop 不重排关闭流程
+        return;
     }
 
     NLOG_INFO("rpc server stopping in_flight={}", in_flight_.load());
@@ -190,7 +193,7 @@ void RpcServer::CloseConnectionsInLoop()
         NLOG_WARN("rpc server dropping in_flight={} at graceful shutdown", remaining);
     }
 
-    // 用 Shutdown 而非 ForceClose：FIN 排在待发缓冲之后，已生成的响应不会丢
+    // 用 Shutdown 而非 ForceClose：TcpConnection 会先 Flush 已入队数据，再发送 FIN。
     server_.CloseAllConnections([this]
         {
             FinishShutdownInLoop("drained");
@@ -228,8 +231,7 @@ void RpcServer::OnCallsFinished(std::uint64_t count)
         return;
     }
 
-    // 响应真正交给 TcpConnection 后再减少 in-flight。
-    // 批量响应可一次完成多个调用，异步响应仍按 1 个调用回收。
+    // 同步批次在 Flush 后一次回收；异步完成在 Write + Flush 后单独回收。
     const auto previous = in_flight_.fetch_sub(count, std::memory_order_acq_rel);
     if (previous == count && stopping_.load())
     {
@@ -242,7 +244,7 @@ void RpcServer::OnCallsFinished(std::uint64_t count)
 
 void RpcServer::OnMessage(const net::TcpConnectionPtr& conn, net::Buffer* buffer)
 {
-    auto batch = std::make_shared<ResponseBatch>(this, conn);
+    auto flush_scope = std::make_shared<ResponseFlushScope>(this, conn);
 
     while (true)
     {
@@ -252,16 +254,13 @@ void RpcServer::OnMessage(const net::TcpConnectionPtr& conn, net::Buffer* buffer
 
         if (result == RpcCodec::DecodeResult::kNeedMore)
         {
-            // 当前 input buffer 中的完整帧已经全部处理完。
-            // 把本轮同步生成的多个响应合并成一次 Send。
-            batch->FlushAndClose();
+            flush_scope->Close();
             return;
         }
 
         if (result == RpcCodec::DecodeResult::kError)
         {
-            // 前面合法帧已经生成的响应先交给连接，再关闭协议错误连接。
-            batch->FlushAndClose();
+            flush_scope->Close();
             NLOG_ERROR("rpc protocol error name={} detail={}", conn->Name(), error);
             conn->Shutdown();
             return;
@@ -269,13 +268,13 @@ void RpcServer::OnMessage(const net::TcpConnectionPtr& conn, net::Buffer* buffer
 
         if (frame.meta.type() == proto::RpcMeta::HEARTBEAT)
         {
-            SendHeartbeatEcho(frame.meta, batch);
+            SendHeartbeatEcho(frame.meta, flush_scope);
             continue;
         }
 
         if (frame.meta.type() == proto::RpcMeta::REQUEST)
         {
-            HandleRequest(conn, frame, batch);
+            HandleRequest(conn, frame, flush_scope);
             continue;
         }
 
@@ -283,13 +282,13 @@ void RpcServer::OnMessage(const net::TcpConnectionPtr& conn, net::Buffer* buffer
                   frame.meta.trace_id(),
                   RpcErrorCode::BadRequest,
                   "server received a non-request/heartbeat frame",
-                  batch);
+                  flush_scope);
     }
 }
 
 void RpcServer::HandleRequest(const net::TcpConnectionPtr& conn,
                               const RpcFrame& frame,
-                              const std::shared_ptr<ResponseBatch>& batch)
+                              const std::shared_ptr<ResponseFlushScope>& flush_scope)
 {
     const auto service_it = services_.find(frame.meta.service_name());
     if (service_it == services_.end())
@@ -298,7 +297,7 @@ void RpcServer::HandleRequest(const net::TcpConnectionPtr& conn,
                   frame.meta.trace_id(),
                   RpcErrorCode::NotFound,
                   "service not found",
-                  batch);
+                  flush_scope);
         return;
     }
 
@@ -310,7 +309,7 @@ void RpcServer::HandleRequest(const net::TcpConnectionPtr& conn,
                   frame.meta.trace_id(),
                   RpcErrorCode::NotFound,
                   "method not found",
-                  batch);
+                  flush_scope);
         return;
     }
 
@@ -324,7 +323,7 @@ void RpcServer::HandleRequest(const net::TcpConnectionPtr& conn,
                   frame.meta.trace_id(),
                   RpcErrorCode::BadRequest,
                   "request protobuf parse failed",
-                  batch);
+                  flush_scope);
         return;
     }
 
@@ -341,9 +340,9 @@ void RpcServer::HandleRequest(const net::TcpConnectionPtr& conn,
     // 先计数再调用：业务可能同步回调 done，计数晚了就会在清零之后又减一次
     in_flight_.fetch_add(1, std::memory_order_relaxed);
 
-    auto* done = new RpcClosure([this, call, request_id, trace_id, batch]
+    auto* done = new RpcClosure([this, call, request_id, trace_id, flush_scope]
         {
-            SendResponse(request_id, trace_id, *call->response, batch);
+            SendResponse(request_id, trace_id, *call->response, flush_scope);
         });
 
     service->CallMethod(method, nullptr, call->request.get(), call->response.get(), done);
@@ -352,7 +351,7 @@ void RpcServer::HandleRequest(const net::TcpConnectionPtr& conn,
 void RpcServer::SendResponse(std::uint64_t request_id,
                              const std::string& trace_id,
                              const google::protobuf::Message& response,
-                             const std::shared_ptr<ResponseBatch>& batch)
+                             const std::shared_ptr<ResponseFlushScope>& flush_scope)
 {
     std::string payload;
     if (!response.SerializeToString(&payload))
@@ -361,8 +360,8 @@ void RpcServer::SendResponse(std::uint64_t request_id,
                   trace_id,
                   RpcErrorCode::InternalError,
                   "response protobuf serialization failed",
-                  batch);
-        batch->Enqueue({}, true);
+                  flush_scope);
+        flush_scope->Write({}, true);
         return;
     }
 
@@ -370,27 +369,28 @@ void RpcServer::SendResponse(std::uint64_t request_id,
     meta.set_type(proto::RpcMeta::RESPONSE);
     meta.set_request_id(request_id);
     meta.set_trace_id(trace_id);
-    const std::string bytes = RpcCodec::Encode(std::move(meta), payload);
+
+    std::string bytes = RpcCodec::Encode(std::move(meta), payload);
     if (bytes.empty())
     {
         SendError(request_id,
                   trace_id,
                   RpcErrorCode::InternalError,
                   "response frame encoding failed",
-                  batch);
-        batch->Enqueue({}, true);
+                  flush_scope);
+        flush_scope->Write({}, true);
         return;
     }
-    batch->Enqueue(bytes, true);
+
+    flush_scope->Write(std::move(bytes), true);
 }
 
 void RpcServer::SendError(std::uint64_t request_id,
                           const std::string& trace_id,
                           RpcErrorCode error_code,
                           std::string error_text,
-                          const std::shared_ptr<ResponseBatch>& batch)
+                          const std::shared_ptr<ResponseFlushScope>& flush_scope)
 {
-    // 枚举只在本端表达语义，出网前统一落地成 int32（日志同样用整数，避免依赖枚举的格式化器）
     const auto code = static_cast<std::int32_t>(error_code);
 
     NLOG_WARN("rpc server error request_id={} trace_id={} code={} text={}",
@@ -405,26 +405,26 @@ void RpcServer::SendError(std::uint64_t request_id,
     meta.set_trace_id(trace_id);
     meta.set_error_code(code);
     meta.set_error_text(std::move(error_text));
-    const std::string bytes = RpcCodec::Encode(std::move(meta), {});
+
+    std::string bytes = RpcCodec::Encode(std::move(meta), {});
     if (!bytes.empty())
     {
-        batch->Enqueue(bytes, false);
+        flush_scope->Write(std::move(bytes), false);
     }
 }
 
 void RpcServer::SendHeartbeatEcho(const proto::RpcMeta& request_meta,
-                                  const std::shared_ptr<ResponseBatch>& batch)
+                                  const std::shared_ptr<ResponseFlushScope>& flush_scope)
 {
     proto::RpcMeta meta;
     meta.set_type(proto::RpcMeta::HEARTBEAT);
     meta.set_request_id(request_meta.request_id());
     meta.set_trace_id(request_meta.trace_id());
 
-    const std::string bytes = RpcCodec::Encode(std::move(meta), {});
-
+    std::string bytes = RpcCodec::Encode(std::move(meta), {});
     if (!bytes.empty())
     {
-        batch->Enqueue(bytes, false);
+        flush_scope->Write(std::move(bytes), false);
     }
 }
 

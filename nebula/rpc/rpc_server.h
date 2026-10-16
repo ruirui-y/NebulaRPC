@@ -55,23 +55,23 @@ public:
 
 private:
     struct ServerCall;
-    struct ResponseBatch;
+    struct ResponseFlushScope;
 
     void OnMessage(const net::TcpConnectionPtr& conn, net::Buffer* buffer);
     void HandleRequest(const net::TcpConnectionPtr& conn,
                        const RpcFrame& frame,
-                       const std::shared_ptr<ResponseBatch>& batch);
+                       const std::shared_ptr<ResponseFlushScope>& flush_scope);
     void SendResponse(std::uint64_t request_id,
                       const std::string& trace_id,
                       const google::protobuf::Message& response,
-                      const std::shared_ptr<ResponseBatch>& batch);
+                      const std::shared_ptr<ResponseFlushScope>& flush_scope);
     void SendError(std::uint64_t request_id,
                    const std::string& trace_id,
                    RpcErrorCode error_code,
                    std::string error_text,
-                   const std::shared_ptr<ResponseBatch>& batch);
+                   const std::shared_ptr<ResponseFlushScope>& flush_scope);
     void SendHeartbeatEcho(const proto::RpcMeta& request_meta,
-                           const std::shared_ptr<ResponseBatch>& batch);
+                           const std::shared_ptr<ResponseFlushScope>& flush_scope);
 
     void StopInLoop();
     void CloseConnectionsInLoop();
