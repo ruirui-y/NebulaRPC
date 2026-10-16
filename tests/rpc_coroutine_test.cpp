@@ -182,10 +182,12 @@ int main()
     {
         nebula::rpc::Task<int> dropped = RunDropped(channel);
         dropped.Start();
+        channel.Flush();
     }
 
     nebula::rpc::Task<int> cases = RunCases(channel, outcome);
     cases.Start();
+    channel.Flush();
 
     bool finished = false;
 

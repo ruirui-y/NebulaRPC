@@ -180,6 +180,9 @@ int main()
               &slow->response,
               slow_done);
 
+    // 两个请求构造完成后统一 Flush，测试超时语义而不是逐请求发送策略。
+    channel.Flush();
+
     bool passed = false;
 
     loop.RunAfter(5000ms, [&]

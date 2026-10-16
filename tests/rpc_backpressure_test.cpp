@@ -125,6 +125,9 @@ bool RunPendingLimitCase()
                           &context->response,
                           done);
             }
+
+            // CallMethod 只写入连接缓冲；这一批请求构造完成后统一提交。
+            channel.Flush();
         });
 
     bool passed = false;
@@ -224,7 +227,9 @@ bool RunOutputWatermarkCase()
 
             for (int i = 0; i < 512; ++i)
             {
-                conn->Send(chunk);
+                // 保持原测试语义：每块都主动 Flush，直到慢客户端让内核发送路径产生积压。
+                conn->Write(chunk);
+                conn->Flush();
 
                 const std::size_t pending = conn->PendingOutputBytes();
 
@@ -415,7 +420,8 @@ bool RunForcedCloseFailsPendingCase()
 
             for (int i = 0; i < kChunkCount; ++i)
             {
-                conn->Send(filler_frame);
+                conn->Write(filler_frame);
+                conn->Flush();
             }
 
             overload_closes->store(static_cast<int>(conn->OverloadCloseCount()));
@@ -442,6 +448,7 @@ bool RunForcedCloseFailsPendingCase()
                       &context->request,
                       &context->response,
                       done);
+            channel.Flush();
         });
 
     bool passed = false;

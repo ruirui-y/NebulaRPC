@@ -90,6 +90,7 @@ int main()
                   &warmup->request,
                   &warmup->response,
                   warmup_done);
+        channel.Flush();
 
         std::unique_lock<std::mutex> lock(warmup->mutex);
 
@@ -129,6 +130,7 @@ int main()
                   &context->request,
                   &context->response,
                   done);
+        channel.Flush();
 
         // 业务线程随时取消：可能早于注册、早于响应、晚于响应
         context->controller.StartCancel();

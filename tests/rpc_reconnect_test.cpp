@@ -158,6 +158,7 @@ private:
         // RpcClosure 由框架在调用结束后 delete，这里只能 new
         auto* done = new nebula::rpc::RpcClosure([this, context] { OnCallDone(context); });
         stub_.Echo(&context->controller, &context->request, &context->response, done);
+        channel_.Flush();
     }
 
     void OnCallDone(const std::shared_ptr<CallContext>& context)
