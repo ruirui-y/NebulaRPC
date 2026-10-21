@@ -30,3 +30,4 @@ compile_commands.json
 /perf-profiles/**/*.pidstat.txt
 /perf-profiles/**/*.threads.txt
 /perf-profiles/**/*.meta.txt
+drawio/*.html
