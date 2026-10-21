@@ -4,7 +4,9 @@
 #include "nebula/net/tcp_server.h"
 #include "nebula/net/timer_id.h"
 #include "nebula/rpc/rpc_codec.h"
+#include "nebula/rpc/rpc_coroutine_service.h"
 #include "nebula/rpc/rpc_error.h"
+#include "nebula/rpc/rpc_task.h"
 
 #include <google/protobuf/service.h>
 
@@ -32,6 +34,11 @@ public:
     RpcServer(net::EventLoop* loop, std::string ip, std::uint16_t port);
 
     void RegisterService(google::protobuf::Service* service);
+
+    // 新代码优先注册协程服务：handler 直接返回 Task<Response>，不再暴露 done Closure。
+    // 旧 RegisterService 保留给已有 examples/tests 做兼容。
+    void RegisterCoroutineService(CoroutineService* service);
+
     void Start(std::size_t io_thread_count = 0);
 
     // 优雅关闭：停 accept -> 等在途请求清零（上限 10s）-> 逐个 Shutdown 连接 -> 回调
@@ -61,6 +68,14 @@ private:
     void HandleRequest(const net::TcpConnectionPtr& conn,
                        const RpcFrame& frame,
                        const std::shared_ptr<ResponseFlushScope>& flush_scope);
+    void HandleCoroutineRequest(const net::TcpConnectionPtr& conn,
+                                const RpcFrame& frame,
+                                CoroutineService* service,
+                                const std::shared_ptr<ResponseFlushScope>& flush_scope);
+    DetachedTask DispatchCoroutineRequest(const CoroutineService::Method* method,
+                                          RpcServerContext context,
+                                          std::unique_ptr<google::protobuf::Message> request,
+                                          std::shared_ptr<ResponseFlushScope> flush_scope);
     void SendResponse(std::uint64_t request_id,
                       const std::string& trace_id,
                       const google::protobuf::Message& response,
@@ -81,6 +96,7 @@ private:
     net::EventLoop* loop_;
     net::TcpServer server_;
     std::unordered_map<std::string, google::protobuf::Service*> services_;
+    std::unordered_map<std::string, CoroutineService*> coroutine_services_;
 
     // 在途请求计数：done 回调可能在业务线程跑，用 atomic 让关闭决策看到最新值
     std::atomic_uint64_t in_flight_{0};

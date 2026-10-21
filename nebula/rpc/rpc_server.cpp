@@ -9,6 +9,7 @@
 #include <google/protobuf/message.h>
 
 #include <chrono>
+#include <exception>
 #include <memory>
 #include <utility>
 
@@ -129,6 +130,16 @@ void RpcServer::RegisterService(google::protobuf::Service* service)
 
     const auto* descriptor = service->GetDescriptor();
     services_[descriptor->full_name()] = service;
+}
+
+void RpcServer::RegisterCoroutineService(CoroutineService* service)
+{
+    if (service == nullptr || service->Descriptor() == nullptr)
+    {
+        return;
+    }
+
+    coroutine_services_[service->Descriptor()->full_name()] = service;
 }
 
 void RpcServer::Start(std::size_t io_thread_count)
@@ -290,6 +301,13 @@ void RpcServer::HandleRequest(const net::TcpConnectionPtr& conn,
                               const RpcFrame& frame,
                               const std::shared_ptr<ResponseFlushScope>& flush_scope)
 {
+    const auto coroutine_service_it = coroutine_services_.find(frame.meta.service_name());
+    if (coroutine_service_it != coroutine_services_.end())
+    {
+        HandleCoroutineRequest(conn, frame, coroutine_service_it->second, flush_scope);
+        return;
+    }
+
     const auto service_it = services_.find(frame.meta.service_name());
     if (service_it == services_.end())
     {
@@ -346,6 +364,128 @@ void RpcServer::HandleRequest(const net::TcpConnectionPtr& conn,
         });
 
     service->CallMethod(method, nullptr, call->request.get(), call->response.get(), done);
+}
+
+void RpcServer::HandleCoroutineRequest(
+    const net::TcpConnectionPtr& conn,
+    const RpcFrame& frame,
+    CoroutineService* service,
+    const std::shared_ptr<ResponseFlushScope>& flush_scope)
+{
+    const CoroutineService::Method* method = service->FindMethod(frame.meta.method_name());
+    if (method == nullptr)
+    {
+        SendError(frame.meta.request_id(),
+                  frame.meta.trace_id(),
+                  RpcErrorCode::NotFound,
+                  "coroutine method not found",
+                  flush_scope);
+        return;
+    }
+
+    std::unique_ptr<google::protobuf::Message> request = method->new_request();
+    if (request == nullptr || !request->ParseFromString(frame.payload))
+    {
+        SendError(frame.meta.request_id(),
+                  frame.meta.trace_id(),
+                  RpcErrorCode::BadRequest,
+                  "request protobuf parse failed",
+                  flush_scope);
+        return;
+    }
+
+    const std::uint64_t request_id = frame.meta.request_id();
+    const std::string trace_id = frame.meta.trace_id();
+
+    NLOG_DEBUG("rpc coroutine dispatch request_id={} trace_id={} service={} method={} name={}",
+               request_id,
+               trace_id,
+               frame.meta.service_name(),
+               frame.meta.method_name(),
+               conn->Name());
+
+    // DetachedTask 会立刻执行到第一个挂起点。
+    // 若 handler 同步完成，响应仍属于当前 OnMessage 批次；若挂起后再完成，
+    // ResponseFlushScope 会在 collecting=false 时自动 Write + Flush。
+    in_flight_.fetch_add(1, std::memory_order_relaxed);
+
+    RpcServerContext context(
+        conn->Loop(),
+        request_id,
+        trace_id,
+        conn->Name());
+
+    DispatchCoroutineRequest(
+        method,
+        std::move(context),
+        std::move(request),
+        flush_scope);
+}
+
+DetachedTask RpcServer::DispatchCoroutineRequest(
+    const CoroutineService::Method* method,
+    RpcServerContext context,
+    std::unique_ptr<google::protobuf::Message> request,
+    std::shared_ptr<ResponseFlushScope> flush_scope)
+{
+    const std::uint64_t request_id = context.RequestId();
+    const std::string trace_id = context.TraceId();
+
+    try
+    {
+        std::unique_ptr<google::protobuf::Message> response =
+            co_await method->invoke(std::move(context), std::move(request));
+
+        if (response == nullptr)
+        {
+            SendError(request_id,
+                      trace_id,
+                      RpcErrorCode::InternalError,
+                      "coroutine handler returned a null response",
+                      flush_scope);
+            flush_scope->Write({}, true);
+            co_return;
+        }
+
+        SendResponse(request_id, trace_id, *response, flush_scope);
+    }
+    catch (const RpcServiceError& error)
+    {
+        SendError(request_id,
+                  trace_id,
+                  error.Code(),
+                  error.what(),
+                  flush_scope);
+        flush_scope->Write({}, true);
+    }
+    catch (const RpcError& error)
+    {
+        // handler 内部调用下游 RPC 失败但没有自行处理时，向上游统一映射为服务端错误。
+        SendError(request_id,
+                  trace_id,
+                  RpcErrorCode::InternalError,
+                  error.what(),
+                  flush_scope);
+        flush_scope->Write({}, true);
+    }
+    catch (const std::exception& error)
+    {
+        SendError(request_id,
+                  trace_id,
+                  RpcErrorCode::InternalError,
+                  error.what(),
+                  flush_scope);
+        flush_scope->Write({}, true);
+    }
+    catch (...)
+    {
+        SendError(request_id,
+                  trace_id,
+                  RpcErrorCode::InternalError,
+                  "unknown coroutine handler exception",
+                  flush_scope);
+        flush_scope->Write({}, true);
+    }
 }
 
 void RpcServer::SendResponse(std::uint64_t request_id,
