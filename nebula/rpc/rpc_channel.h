@@ -11,6 +11,7 @@
 #include <google/protobuf/service.h>
 #include <atomic>
 #include <chrono>
+#include <coroutine>
 #include <cstddef>
 #include <cstdint>
 #include <functional>
@@ -29,6 +30,17 @@ class TcpClient;
 
 namespace nebula::rpc
 {
+
+class RpcController;
+
+struct RpcCoroutineCompletion final
+{
+    std::atomic<std::coroutine_handle<>> handle{};
+    std::atomic_uint64_t request_id{0};
+    std::string trace_id;
+    std::chrono::microseconds latency{0};
+    std::int32_t remote_error_code{0};
+};
 
 // 单连接 RPC 通道：连接不可用时当场失败并给出原因，不排队、不重发
 class RpcChannel final : public google::protobuf::RpcChannel,
@@ -50,8 +62,23 @@ public:
                     google::protobuf::Message* response,
                     google::protobuf::Closure* done) override;
 
-    // CallMethod 只把帧写入连接缓冲；由调用方在批次结束时显式 Flush。
+    // 协程原生入口：不创建 RpcClosure，完成后直接恢复 coroutine handle。
+    // 必须在 channel 所属 EventLoop 线程调用。
+    void StartCoroutineCall(
+        const google::protobuf::MethodDescriptor* method,
+        RpcController* controller,
+        const google::protobuf::Message* request,
+        google::protobuf::Message* response,
+        const std::shared_ptr<RpcCoroutineCompletion>& completion);
+
+    // 协程帧提前销毁时撤销仍在途调用；可从任意线程调用。
+    void CancelCoroutineCall(std::uint64_t request_id);
+
+    // CallMethod / StartCoroutineCall 只把帧写入连接缓冲；由调用方决定 Flush 边界。
     void Flush();
+
+    // 协程业务可在 owner EventLoop 中配合 net::SleepFor 做无回调的建连等待。
+    [[nodiscard]] bool Connected() const noexcept;
 
     // 过载闸门，0 表示不限制
     void SetMaxPendingCalls(std::size_t max_pending_calls) noexcept;
@@ -78,6 +105,7 @@ private:
         google::protobuf::Message* response{};
         google::protobuf::RpcController* controller{};
         google::protobuf::Closure* done{};
+        std::shared_ptr<RpcCoroutineCompletion> coroutine_completion;
         // 描述符指向生成代码里的静态对象，进程内长存，存指针不额外分配
         const google::protobuf::MethodDescriptor* method{};
         std::optional<TimePoint> deadline;
@@ -96,11 +124,22 @@ private:
         kDisconnected,
     };
 
+    void BeginCall(const google::protobuf::MethodDescriptor* method,
+                   google::protobuf::RpcController* controller,
+                   const google::protobuf::Message* request,
+                   google::protobuf::Message* response,
+                   google::protobuf::Closure* done,
+                   std::shared_ptr<RpcCoroutineCompletion> coroutine_completion);
     void RegisterAndSend(std::uint64_t request_id, std::string bytes, PendingCall pending_call);
-    void RejectOverloaded(google::protobuf::RpcController* controller,
-                          google::protobuf::Message* response,
-                          google::protobuf::Closure* done,
-                          const std::string& reason);
+    bool RejectIfUnavailable(std::uint64_t request_id, PendingCall& pending_call);
+    bool RejectIfOverloaded(std::uint64_t request_id, PendingCall& pending_call);
+    bool RejectIfExpired(std::uint64_t request_id, PendingCall& pending_call);
+    int RegisterCancelCallback(std::uint64_t request_id, PendingCall& pending_call);
+    void RegisterTimeoutTimer(std::uint64_t request_id, PendingCall& pending_call);
+    void WriteRegisteredCall(std::uint64_t request_id, std::string bytes);
+
+    void RejectOverloaded(PendingCall& pending_call, const std::string& reason);
+    void NotifyCompletion(PendingCall& pending_call);
     void OnConnection(const net::TcpConnectionPtr& conn);
     void OnMessage(const net::TcpConnectionPtr& conn, net::Buffer* buffer);
     void OnTimeout(std::uint64_t request_id);

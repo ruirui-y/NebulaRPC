@@ -94,24 +94,17 @@ void SetCallState(google::protobuf::RpcController* controller, RpcCallState stat
 }
 
 // state 不给默认值：强制每个调用点表态，终态漏写编译期就拦下
-void CompleteFailure(google::protobuf::RpcController* controller,
-                     google::protobuf::Closure* done,
-                     const std::string& reason,
-                     RpcCallState state)
+void ApplyFailure(google::protobuf::RpcController* controller,
+                  const std::string& reason,
+                  RpcCallState state)
 {
     SetControllerFailure(controller, reason);
     SetCallState(controller, state);
-
-    if (done != nullptr)
-    {
-        done->Run();
-    }
 }
 
-void CompleteFrame(google::protobuf::Message* response,
-                   google::protobuf::RpcController* controller,
-                   google::protobuf::Closure* done,
-                   RpcFrame frame)
+void ApplyFrame(google::protobuf::Message* response,
+                google::protobuf::RpcController* controller,
+                RpcFrame frame)
 {
     if (frame.meta.type() == proto::RpcMeta::ERROR)
     {
@@ -126,10 +119,25 @@ void CompleteFrame(google::protobuf::Message* response,
         SetControllerFailure(controller, "response protobuf parse failed");
     }
 
-    if (done != nullptr)
+}
+
+void QueueCoroutineResume(net::EventLoop* loop,
+                          const std::shared_ptr<RpcCoroutineCompletion>& completion)
+{
+    if (completion == nullptr)
     {
-        done->Run();
+        return;
     }
+
+    loop->QueueInLoop([completion]
+        {
+            if (const std::coroutine_handle<> resumed =
+                    completion->handle.exchange(nullptr, std::memory_order_acq_rel);
+                resumed != nullptr)
+            {
+                resumed.resume();
+            }
+        });
 }
 
 }  // namespace
@@ -182,43 +190,110 @@ void RpcChannel::CallMethod(const google::protobuf::MethodDescriptor* method,
 {
     if (done == nullptr)
     {
-        CompleteFailure(controller,
-                        nullptr,
-                        "async RpcChannel requires a non-null done callback",
-                        RpcCallState::Invalid);
+        ApplyFailure(controller,
+                     "async RpcChannel requires a non-null done callback",
+                     RpcCallState::Invalid);
         return;
     }
 
+    BeginCall(method, controller, request, response, done, nullptr);
+}
+
+void RpcChannel::StartCoroutineCall(
+    const google::protobuf::MethodDescriptor* method,
+    RpcController* controller,
+    const google::protobuf::Message* request,
+    google::protobuf::Message* response,
+    const std::shared_ptr<RpcCoroutineCompletion>& completion)
+{
+    loop_->AssertInLoopThread();
+
+    if (completion == nullptr)
+    {
+        ApplyFailure(controller,
+                     "coroutine RPC requires a completion state",
+                     RpcCallState::Invalid);
+        return;
+    }
+
+    BeginCall(method, controller, request, response, nullptr, completion);
+}
+
+void RpcChannel::CancelCoroutineCall(std::uint64_t request_id)
+{
+    if (request_id == 0U)
+    {
+        return;
+    }
+
+    const std::weak_ptr<AliveGuard> weak_guard = alive_guard_;
+    loop_->RunInLoop([weak_guard, request_id]
+        {
+            const auto guard = weak_guard.lock();
+            if (guard == nullptr)
+            {
+                return;
+            }
+
+            RpcChannel* channel = guard->Acquire();
+            if (channel == nullptr)
+            {
+                return;
+            }
+
+            channel->CompleteCallWithCancel(request_id);
+        });
+}
+
+void RpcChannel::BeginCall(
+    const google::protobuf::MethodDescriptor* method,
+    google::protobuf::RpcController* controller,
+    const google::protobuf::Message* request,
+    google::protobuf::Message* response,
+    google::protobuf::Closure* done,
+    std::shared_ptr<RpcCoroutineCompletion> coroutine_completion)
+{
+    const auto complete_invalid =
+        [this, controller, done, coroutine_completion](const std::string& reason)
+        {
+            loop_->RunInLoop([this, controller, done, coroutine_completion, reason]
+                {
+                    ApplyFailure(controller, reason, RpcCallState::Invalid);
+
+                    if (done != nullptr)
+                    {
+                        done->Run();
+                    }
+                    else
+                    {
+                        QueueCoroutineResume(loop_, coroutine_completion);
+                    }
+                });
+        };
+
     if (method == nullptr || request == nullptr || response == nullptr)
     {
-        loop_->RunInLoop([controller, done]
-            {
-                CompleteFailure(controller,
-                                done,
-                                "invalid RPC call arguments",
-                                RpcCallState::Invalid);
-            });
+        complete_invalid("invalid RPC call arguments");
         return;
     }
 
     const std::optional<TimePoint> deadline = ResolveDeadline(controller);
 
     std::string payload;
-
     if (!request->SerializeToString(&payload))
     {
-        loop_->RunInLoop([controller, done]
-            {
-                CompleteFailure(controller,
-                                done,
-                                "request protobuf serialization failed",
-                                RpcCallState::Invalid);
-            });
+        complete_invalid("request protobuf serialization failed");
         return;
     }
 
     const std::uint64_t request_id = next_request_id_.fetch_add(1);
     const std::string trace_id = GenerateTraceId();
+
+    if (coroutine_completion != nullptr)
+    {
+        coroutine_completion->request_id.store(request_id, std::memory_order_release);
+        coroutine_completion->trace_id = trace_id;
+    }
 
     proto::RpcMeta meta;
     meta.set_type(proto::RpcMeta::REQUEST);
@@ -228,16 +303,9 @@ void RpcChannel::CallMethod(const google::protobuf::MethodDescriptor* method,
     meta.set_trace_id(trace_id);
 
     std::string bytes = RpcCodec::Encode(std::move(meta), payload);
-
     if (bytes.empty())
     {
-        loop_->RunInLoop([controller, done]
-            {
-                CompleteFailure(controller,
-                                done,
-                                "request frame encoding failed",
-                                RpcCallState::Invalid);
-            });
+        complete_invalid("request frame encoding failed");
         return;
     }
 
@@ -249,11 +317,11 @@ void RpcChannel::CallMethod(const google::protobuf::MethodDescriptor* method,
                method->service()->full_name(),
                method->name());
 
-    // PendingCall 里的 RpcCall 不可拷贝，过投递边界只能用 shared_ptr
     auto pending_call = std::make_shared<PendingCall>(PendingCall{
         .response = response,
         .controller = controller,
         .done = done,
+        .coroutine_completion = std::move(coroutine_completion),
         .method = method,
         .deadline = deadline,
         .sent_at = sent_at,
@@ -278,51 +346,10 @@ void RpcChannel::RegisterAndSend(std::uint64_t request_id,
 {
     loop_->AssertInLoopThread();
 
-    // 取消回调与超时定时器都可能活到 channel 析构之后，一律经 weak_ptr 校验，禁止捕获 this
-    const std::weak_ptr<AliveGuard> weak_guard = alive_guard_;
-
-    // 两种不可用状态都当场失败、都不排队：kDisconnected 透传永久原因，kConnecting 只报暂时不可用
-    if (connection_state_ != ConnectionState::kConnected)
+    if (RejectIfUnavailable(request_id, pending_call) ||
+        RejectIfOverloaded(request_id, pending_call) ||
+        RejectIfExpired(request_id, pending_call))
     {
-        const std::string& reason = connection_state_ == ConnectionState::kDisconnected
-                                        ? connection_error_
-                                        : "RPC connection is not available";
-
-        // 没进 pending_calls_ 的调用也计入指标，否则整类被拦下的请求都不会出现在统计里
-        const auto latency = RecordMetrics(pending_call, RpcCallState::Failed);
-        LogCompletion(request_id, pending_call, "rejected", latency, reason);
-
-        CompleteFailure(pending_call.controller, pending_call.done, reason, RpcCallState::Failed);
-        return;
-    }
-
-    // 过载闸门放在 deadline 之前：系统级资源保护优先于单次调用的自身超时
-    if (max_pending_calls_ > 0U && pending_calls_.size() >= max_pending_calls_)
-    {
-        const auto latency = RecordMetrics(pending_call, RpcCallState::Failed);
-        LogCompletion(request_id,
-                      pending_call,
-                      "rejected",
-                      latency,
-                      "too many pending rpcs");
-
-        RejectOverloaded(pending_call.controller,
-                         pending_call.response,
-                         pending_call.done,
-                         "too many pending rpcs");
-        return;
-    }
-
-    if (pending_call.deadline.has_value() &&
-        *pending_call.deadline <= std::chrono::steady_clock::now())
-    {
-        const auto latency = RecordMetrics(pending_call, RpcCallState::Timeout);
-        LogCompletion(request_id, pending_call, "timeout", latency, "RPC timeout");
-
-        CompleteFailure(pending_call.controller,
-                        pending_call.done,
-                        "RPC timeout",
-                        RpcCallState::Timeout);
         return;
     }
 
@@ -330,83 +357,173 @@ void RpcChannel::RegisterAndSend(std::uint64_t request_id,
         request_id, std::move(pending_call));
     assert(inserted);
 
-    // ---- 第一步：注册取消回调，业务线程随时可能 StartCancel ----
-    auto* rpc_controller = dynamic_cast<RpcController*>(it->second.controller);
-    int cancel_token = -1;
+    const int cancel_token = RegisterCancelCallback(request_id, it->second);
 
-    if (rpc_controller != nullptr)
-    {
-        // RegisterOnCancel 在 controller 已取消时会内联执行并摘掉 pending → it 失效，token 要先存
-        cancel_token = rpc_controller->RegisterOnCancel(
-            new RpcClosure([weak_guard, request_id, loop = loop_]
-                {
-                    // StartCancel 在任意业务线程：先确认 channel 活（活则 loop 活），否则这里是唯一的裸 loop 解引用
-                    auto guard = weak_guard.lock();
-
-                    if (guard == nullptr || guard->Acquire() == nullptr)
-                    {
-                        return;
-                    }
-
-                    loop->RunInLoop([weak_guard, request_id]
-                        {
-                            // 投递与执行之间 channel 仍可能析构，进 loop 线程后再校验一次
-                            auto inner_guard = weak_guard.lock();
-
-                            if (inner_guard == nullptr)
-                            {
-                                return;
-                            }
-
-                            RpcChannel* channel = inner_guard->Acquire();
-
-                            if (channel == nullptr)
-                            {
-                                return;
-                            }
-
-                            channel->CompleteCallWithCancel(request_id);
-                        });
-                }));
-    }
-
-    // ---- 第二步：重新查表；注册前已被取消的调用会在这里发现条目已摘除 ----
+    // 注册 cancel callback 时调用可能已经完成并从 pending_calls_ 摘除。
     const auto alive_it = pending_calls_.find(request_id);
 
     if (alive_it == pending_calls_.end())
     {
-        return;                                         // 已走取消完成路径
+        return;
     }
 
     alive_it->second.cancel_token = cancel_token;
+    RegisterTimeoutTimer(request_id, alive_it->second);
+    WriteRegisteredCall(request_id, std::move(bytes));
+}
 
-    // ---- 第三步：有 deadline 就挂超时定时器 ----
-    if (alive_it->second.deadline.has_value())
+bool RpcChannel::RejectIfUnavailable(std::uint64_t request_id,
+                                     PendingCall& pending_call)
+{
+    if (connection_state_ == ConnectionState::kConnected)
     {
-        alive_it->second.timeout_timer = loop_->RunAt(
-            *alive_it->second.deadline,
-            [weak_guard, request_id]
-                {
-                    // 定时器可能比 channel 长寿，捕 this 会在 channel 析构后打进已释放对象
-                    auto guard = weak_guard.lock();
-
-                    if (guard == nullptr)
-                    {
-                        return;
-                    }
-
-                    RpcChannel* channel = guard->Acquire();
-
-                    if (channel == nullptr)
-                    {
-                        return;
-                    }
-
-                    channel->OnTimeout(request_id);
-                });
+        return false;
     }
 
-    // ---- 第四步：发送。闸门与发送之间同线程无交错，这里的检查纯粹是防御 ----
+    const std::string& reason = connection_state_ == ConnectionState::kDisconnected
+                                    ? connection_error_
+                                    : "RPC connection is not available";
+
+    const auto latency = RecordMetrics(pending_call, RpcCallState::Failed);
+    LogCompletion(request_id, pending_call, "rejected", latency, reason);
+
+    if (pending_call.coroutine_completion != nullptr)
+    {
+        pending_call.coroutine_completion->latency = latency;
+    }
+
+    ApplyFailure(pending_call.controller, reason, RpcCallState::Failed);
+    NotifyCompletion(pending_call);
+    return true;
+}
+
+bool RpcChannel::RejectIfOverloaded(std::uint64_t request_id,
+                                    PendingCall& pending_call)
+{
+    if (max_pending_calls_ == 0U ||
+        pending_calls_.size() < max_pending_calls_)
+    {
+        return false;
+    }
+
+    const auto latency = RecordMetrics(pending_call, RpcCallState::Failed);
+    LogCompletion(request_id,
+                  pending_call,
+                  "rejected",
+                  latency,
+                  "too many pending rpcs");
+
+    if (pending_call.coroutine_completion != nullptr)
+    {
+        pending_call.coroutine_completion->latency = latency;
+    }
+
+    RejectOverloaded(pending_call, "too many pending rpcs");
+    return true;
+}
+
+bool RpcChannel::RejectIfExpired(std::uint64_t request_id,
+                                 PendingCall& pending_call)
+{
+    if (!pending_call.deadline.has_value() ||
+        *pending_call.deadline > std::chrono::steady_clock::now())
+    {
+        return false;
+    }
+
+    const auto latency = RecordMetrics(pending_call, RpcCallState::Timeout);
+    LogCompletion(request_id, pending_call, "timeout", latency, "RPC timeout");
+
+    if (pending_call.coroutine_completion != nullptr)
+    {
+        pending_call.coroutine_completion->latency = latency;
+    }
+
+    ApplyFailure(pending_call.controller, "RPC timeout", RpcCallState::Timeout);
+    NotifyCompletion(pending_call);
+    return true;
+}
+
+int RpcChannel::RegisterCancelCallback(std::uint64_t request_id,
+                                       PendingCall& pending_call)
+{
+    auto* rpc_controller = dynamic_cast<RpcController*>(pending_call.controller);
+
+    if (rpc_controller == nullptr ||
+        pending_call.coroutine_completion != nullptr)
+    {
+        return -1;
+    }
+
+    const std::weak_ptr<AliveGuard> weak_guard = alive_guard_;
+
+    // Legacy callback API 通过 RpcController 注册取消；coroutine 由 Awaiter 直接取消。
+    return rpc_controller->RegisterOnCancel(
+        new RpcClosure([weak_guard, request_id, loop = loop_]
+            {
+                auto guard = weak_guard.lock();
+
+                if (guard == nullptr || guard->Acquire() == nullptr)
+                {
+                    return;
+                }
+
+                loop->RunInLoop([weak_guard, request_id]
+                    {
+                        auto inner_guard = weak_guard.lock();
+
+                        if (inner_guard == nullptr)
+                        {
+                            return;
+                        }
+
+                        RpcChannel* channel = inner_guard->Acquire();
+
+                        if (channel == nullptr)
+                        {
+                            return;
+                        }
+
+                        channel->CompleteCallWithCancel(request_id);
+                    });
+            }));
+}
+
+void RpcChannel::RegisterTimeoutTimer(std::uint64_t request_id,
+                                      PendingCall& pending_call)
+{
+    if (!pending_call.deadline.has_value())
+    {
+        return;
+    }
+
+    const std::weak_ptr<AliveGuard> weak_guard = alive_guard_;
+
+    pending_call.timeout_timer = loop_->RunAt(
+        *pending_call.deadline,
+        [weak_guard, request_id]
+            {
+                auto guard = weak_guard.lock();
+
+                if (guard == nullptr)
+                {
+                    return;
+                }
+
+                RpcChannel* channel = guard->Acquire();
+
+                if (channel == nullptr)
+                {
+                    return;
+                }
+
+                channel->OnTimeout(request_id);
+            });
+}
+
+void RpcChannel::WriteRegisteredCall(std::uint64_t request_id,
+                                     std::string bytes)
+{
     if (connection_ == nullptr || !connection_->Connected())
     {
         CompleteCallWithFailure(request_id,
@@ -415,6 +532,7 @@ void RpcChannel::RegisterAndSend(std::uint64_t request_id,
         return;
     }
 
+    // 这里只 Write，Flush 仍由上层决定批次边界。
     connection_->Write(std::move(bytes));
 }
 
@@ -779,15 +897,17 @@ void RpcChannel::CompleteCallWithFrame(std::uint64_t request_id,
                   latency,
                   server_error ? std::string_view(frame.meta.error_text()) : std::string_view{});
 
-    // ---- 第三步：写结果并执行回调 ----
-    loop_->RunInLoop([response = pending_call->response,
-                        controller = pending_call->controller,
-                        done = pending_call->done,
-                        frame = std::move(frame)]() mutable
-        {
-            SetCallState(controller, RpcCallState::Completed);
-            CompleteFrame(response, controller, done, std::move(frame));
-        });
+    if (pending_call->coroutine_completion != nullptr)
+    {
+        pending_call->coroutine_completion->latency = latency;
+        pending_call->coroutine_completion->remote_error_code =
+            server_error ? frame.meta.error_code() : 0;
+    }
+
+    // ---- 第三步：写结果并恢复 callback / coroutine ----
+    SetCallState(pending_call->controller, RpcCallState::Completed);
+    ApplyFrame(pending_call->response, pending_call->controller, std::move(frame));
+    NotifyCompletion(*pending_call);
 }
 
 void RpcChannel::CompleteCallWithFailure(std::uint64_t request_id,
@@ -817,15 +937,14 @@ void RpcChannel::CompleteCallWithFailure(std::uint64_t request_id,
 
     const auto latency = RecordMetrics(*pending_call, state);
     LogCompletion(request_id, *pending_call, "failed", latency, reason);
+    if (pending_call->coroutine_completion != nullptr)
+    {
+        pending_call->coroutine_completion->latency = latency;
+    }
 
-    // ---- 第三步：写错误并执行回调 ----
-    loop_->QueueInLoop([controller = pending_call->controller,
-                        done = pending_call->done,
-                        reason,
-                        state]
-        {
-            CompleteFailure(controller, done, reason, state);
-        });
+    // ---- 第三步：写错误并恢复 callback / coroutine ----
+    ApplyFailure(pending_call->controller, reason, state);
+    NotifyCompletion(*pending_call);
 }
 
 void RpcChannel::CompleteCallWithCancel(std::uint64_t request_id)
@@ -855,6 +974,10 @@ void RpcChannel::CompleteCallWithCancel(std::uint64_t request_id)
 
     const auto latency = RecordMetrics(*pending_call, RpcCallState::Cancelled);
     LogCompletion(request_id, *pending_call, "cancelled", latency, {});
+    if (pending_call->coroutine_completion != nullptr)
+    {
+        pending_call->coroutine_completion->latency = latency;
+    }
 
     // ---- 第三步：抢到完成权之后才把「取消」标记为已生效（输给 response/timeout 时保持 false）----
     auto* rpc_controller = dynamic_cast<RpcController*>(pending_call->controller);
@@ -864,14 +987,8 @@ void RpcChannel::CompleteCallWithCancel(std::uint64_t request_id)
         rpc_controller->MarkCanceled();
     }
 
-    // ---- 第四步：执行回调；取消不算失败，不 SetFailed，业务读 IsCanceled() ----
-    loop_->QueueInLoop([done = pending_call->done]
-        {
-            if (done != nullptr)
-            {
-                done->Run();
-            }
-        });
+    // ---- 第四步：恢复 callback / coroutine；取消不算失败，不 SetFailed ----
+    NotifyCompletion(*pending_call);
 }
 
 std::chrono::microseconds RpcChannel::RecordMetrics(const PendingCall& pending_call,
@@ -960,13 +1077,20 @@ void RpcChannel::FailAllPendingNow(const std::string& reason)
         {
             const auto latency = RecordMetrics(*pending_call, RpcCallState::Failed);
             LogCompletion(request_id, *pending_call, "failed", latency, reason);
+            if (pending_call->coroutine_completion != nullptr)
+            {
+                pending_call->coroutine_completion->latency = latency;
+            }
 
-            CompleteFailure(pending_call->controller,
-                            pending_call->done,
-                            reason,
-                            RpcCallState::Failed);
+            ApplyFailure(pending_call->controller, reason, RpcCallState::Failed);
+            NotifyCompletion(*pending_call);
         }
     }
+}
+
+bool RpcChannel::Connected() const noexcept
+{
+    return connection_state_ == ConnectionState::kConnected && connection_ != nullptr;
 }
 
 void RpcChannel::Flush()
@@ -1020,27 +1144,35 @@ std::uint64_t RpcChannel::OverloadRejectCount() const noexcept
     return overload_reject_count_.load();
 }
 
-void RpcChannel::RejectOverloaded(google::protobuf::RpcController* controller,
-                                  google::protobuf::Message* response,
-                                  google::protobuf::Closure* done,
+void RpcChannel::NotifyCompletion(PendingCall& pending_call)
+{
+    if (pending_call.coroutine_completion != nullptr)
+    {
+        QueueCoroutineResume(loop_, pending_call.coroutine_completion);
+        return;
+    }
+
+    if (pending_call.done != nullptr)
+    {
+        pending_call.done->Run();
+    }
+}
+
+void RpcChannel::RejectOverloaded(PendingCall& pending_call,
                                   const std::string& reason)
 {
     overload_reject_count_.fetch_add(1);
 
-    // 钩子返回 true 即由业务给出兜底结果；返回 false 说明它不接管，回落为直接失败
-    if (degrade_handler_ != nullptr && degrade_handler_(controller, response, reason))
+    if (degrade_handler_ != nullptr &&
+        degrade_handler_(pending_call.controller, pending_call.response, reason))
     {
-        // 钩子已自行完成该次调用：往返被收口，业务是否失败由 Failed() 表达
-        SetCallState(controller, RpcCallState::Completed);
-
-        if (done != nullptr)
-        {
-            done->Run();
-        }
+        SetCallState(pending_call.controller, RpcCallState::Completed);
+        NotifyCompletion(pending_call);
         return;
     }
 
-    CompleteFailure(controller, done, reason, RpcCallState::Failed);
+    ApplyFailure(pending_call.controller, reason, RpcCallState::Failed);
+    NotifyCompletion(pending_call);
 }
 
 }  // namespace nebula::rpc
