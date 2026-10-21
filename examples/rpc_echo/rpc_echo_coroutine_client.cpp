@@ -1,8 +1,6 @@
 #include "nebula/net/event_loop.h"
-#include "nebula/rpc/rpc_awaiter.h"
 #include "nebula/rpc/rpc_channel.h"
-#include "nebula/rpc/rpc_error.h"
-#include "nebula/rpc/rpc_task.h"
+#include "nebula/rpc/rpc_coroutine.h"
 #include "echo.pb.h"
 
 #include <chrono>
@@ -11,44 +9,66 @@
 #include <exception>
 #include <iostream>
 #include <string>
+#include <utility>
 
 namespace
 {
+using namespace std::chrono_literals;
+using EchoRequest = nebula::example::EchoRequest;
+using EchoResponse = nebula::example::EchoResponse;
+using EchoCoroutineStub = nebula::rpc::CoroutineStub<nebula::example::EchoService>;
 
-using nebula::example::EchoRequest;
-using nebula::example::EchoResponse;
-
-// 协程体：写起来像同步代码，底下仍是「发出去 → 挂起 → 完成路径恢复」
-nebula::rpc::Task<int> RunEcho(nebula::rpc::RpcChannel& channel,
-                               nebula::net::EventLoop& loop)
+nebula::coro::Task<int> RunEcho(EchoCoroutineStub& stub,
+    nebula::rpc::RpcChannel& channel,
+    nebula::net::EventLoop& loop)
 {
-    const google::protobuf::MethodDescriptor* echo =
-        nebula::rpc::FindMethod(nebula::example::EchoService::descriptor(), "Echo");
+    const auto connect_deadline = std::chrono::steady_clock::now() + 2s;
+
+    // RpcChannel 建连本身是异步的，先用协程等待连接建立。
+    while (!channel.Connected())
+    {
+        if (std::chrono::steady_clock::now() >= connect_deadline)
+        {
+            std::cerr << "[coroutine] connect timeout\n";
+            loop.Quit();
+            co_return 1;
+        }
+
+        co_await nebula::net::SleepFor(&loop, 10ms);
+    }
 
     EchoRequest request;
     request.set_text("hello coroutine");
 
-    int exit_code = 0;
+    nebula::rpc::RpcCallOptions options;
+    options.timeout = 2s;
 
-    try
-    {
-        EchoResponse response = co_await nebula::rpc::RpcAwaiter<EchoRequest, EchoResponse>(
-            &channel, echo, request, std::chrono::milliseconds(2000));
+    auto result = co_await stub.Call<EchoRequest, EchoResponse>(
+        "Echo",
+        std::move(request),
+        options);
 
-        std::cout << "[coroutine] response=" << response.text()
-                  << ", server_sequence=" << response.server_sequence()
-                  << '\n';
-    }
-    catch (const nebula::rpc::RpcError& error)
+    if (!result)
     {
         std::cerr << "[coroutine] RPC failed: state="
-                  << static_cast<int>(error.State())
-                  << ", reason=" << error.what() << '\n';
-        exit_code = 1;
+            << static_cast<int>(result.State())
+            << ", reason=" << result.ErrorText() << '\n';
+
+        loop.Quit();
+        co_return 1;
     }
 
+    const EchoResponse& response = result.ResponseValue();
+
+    std::cout << "[coroutine] response=" << response.text()
+        << ", server_sequence=" << response.server_sequence()
+        << ", request_id=" << result.RequestId()
+        << ", trace_id=" << result.TraceId()
+        << ", latency_us=" << result.Latency().count()
+        << '\n';
+
     loop.Quit();
-    co_return exit_code;
+    co_return 0;
 }
 
 }  // namespace
@@ -62,8 +82,9 @@ int main(int argc, char** argv)
 
     nebula::net::EventLoop loop;
     nebula::rpc::RpcChannel channel(&loop, ip, port);
+    EchoCoroutineStub stub(&channel);
 
-    nebula::rpc::Task<int> task = RunEcho(channel, loop);
+    nebula::coro::Task<int> task = RunEcho(stub, channel, loop);
     task.Start();
 
     loop.Loop();

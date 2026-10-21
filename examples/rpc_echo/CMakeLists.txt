@@ -27,6 +27,11 @@ add_executable(nebula_rpc_echo_coroutine_client rpc_echo_coroutine_client.cpp)
 target_include_directories(nebula_rpc_echo_coroutine_client PRIVATE ${CMAKE_CURRENT_BINARY_DIR})
 target_link_libraries(nebula_rpc_echo_coroutine_client PRIVATE nebula_rpc nebula_rpc_echo_proto)
 
+# 基础协程 RPC Server。
+add_executable(nebula_rpc_echo_coroutine_server rpc_echo_coroutine_server.cpp)
+target_include_directories(nebula_rpc_echo_coroutine_server PRIVATE ${CMAKE_CURRENT_BINARY_DIR})
+target_link_libraries(nebula_rpc_echo_coroutine_server PRIVATE nebula_rpc nebula_rpc_echo_proto)
+
 # 同一任务的两种写法：顺序发 3 个请求，回调版 vs 协程版。
 add_executable(nebula_rpc_echo_sequence_client rpc_echo_sequence_client.cpp)
 target_include_directories(nebula_rpc_echo_sequence_client PRIVATE ${CMAKE_CURRENT_BINARY_DIR})
