@@ -35,8 +35,7 @@ int main(int argc, char** argv) {
         std::cerr << "Usage: " << argv[0] << " [port=9000] [io_threads=0]\n";
         return 2;
     }
-    nebula::base::InitLogger();
-    spdlog::set_level(spdlog::level::warn);
+    nebula::base::InitLogger(spdlog::level::warn);
     nebula::net::EventLoop loop;
     nebula::rpc::RpcServer server(&loop, "0.0.0.0", static_cast<std::uint16_t>(port));
     EchoServiceImpl service;

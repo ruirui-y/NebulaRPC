@@ -33,7 +33,11 @@ int main(int argc, char** argv)
         ? static_cast<std::uint16_t>(std::atoi(argv[1]))
         : 9000;
 
-    nebula::base::InitLogger();
+    const std::size_t io_threads = argc > 2
+        ? static_cast<std::size_t>(std::strtoull(argv[2], nullptr, 10))
+        : 0;
+
+    nebula::base::InitLogger(spdlog::level::warn);
 
     nebula::net::EventLoop loop;
     nebula::rpc::RpcServer server(&loop, "0.0.0.0", port);
@@ -85,10 +89,11 @@ int main(int argc, char** argv)
 
     std::signal(SIGTERM, HandleSigterm);
 
-    server.Start(0);
+    server.Start(io_threads);
 
     std::cout << "NebulaRPC coroutine echo server listening on 0.0.0.0:"
         << port
+        << ", io_threads=" << io_threads
         << " (SIGTERM triggers graceful shutdown)\n";
 
     loop.Loop();

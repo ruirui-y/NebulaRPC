@@ -5,9 +5,9 @@
 namespace nebula::base
 {
 
-inline void InitLogger()
+inline void InitLogger(spdlog::level::level_enum level = spdlog::level::debug)
 {
-    spdlog::set_level(spdlog::level::debug);
+    spdlog::set_level(level);
 }
 
 } // namespace nebula::base
