@@ -339,6 +339,7 @@ namespace
                 });
 
             stub_.Echo(&c->controller, &c->request, &c->response, done);
+            channel_.Flush();
         }
 
         // 09. 每个 Worker 单独预热，不计入正式测试。
@@ -372,6 +373,7 @@ namespace
                 });
 
             stub_.Echo(&c->controller, &c->request, &c->response, done);
+            channel_.Flush();
         }
 
         // 10. 等待全局起跑信号，然后开始计时和发压。
@@ -396,6 +398,10 @@ namespace
                 });
 
             Pump();
+
+            // 初始 window 个请求全部进入发送缓冲后统一提交。
+            // 稳态阶段由 RpcChannel::OnMessage 在响应批次末尾继续统一 Flush。
+            channel_.Flush();
         }
 
         // 11. 闭环发压：按 window 填充在途 RPC。
