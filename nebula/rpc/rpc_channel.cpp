@@ -121,18 +121,22 @@ void ApplyFrame(google::protobuf::Message* response,
 
 }
 
-void QueueCoroutineResume(net::EventLoop* loop,
-                          const std::shared_ptr<RpcCoroutineCompletion>& completion)
+void QueueCoroutineResume(net::EventLoop* loop, const std::shared_ptr<RpcCoroutineCompletion>& completion)
 {
     if (completion == nullptr)
     {
         return;
     }
 
+    // 即使当前已经位于所属 EventLoop，也不直接 resume。
+    // 将协程恢复延迟到当前 OnMessage / RPC 完成处理返回之后，
+    // 避免用户协程立即重新进入 StartCoroutineCall / BeginCall，
+    // 从而产生 RpcChannel 内部状态的重入问题。
     loop->QueueInLoop([completion]
         {
+            // 原子取走 handle，保证协程最多恢复一次。
             if (const std::coroutine_handle<> resumed =
-                    completion->handle.exchange(nullptr, std::memory_order_acq_rel);
+                completion->handle.exchange(nullptr, std::memory_order_acq_rel);
                 resumed != nullptr)
             {
                 resumed.resume();
@@ -578,8 +582,7 @@ void RpcChannel::OnConnection(const net::TcpConnectionPtr& conn)
     FailAllPending(connection_error_);
 }
 
-void RpcChannel::OnMessage(const net::TcpConnectionPtr& conn,
-                           net::Buffer* buffer)
+void RpcChannel::OnMessage(const net::TcpConnectionPtr& conn, net::Buffer* buffer)
 {
     loop_->AssertInLoopThread();
     while (true)

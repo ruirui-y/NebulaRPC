@@ -11,14 +11,11 @@
 namespace nebula::rpc
 {
 
-// 轻量协程 Stub：不走 generated Stub 的 done Closure 写法。
-// Service 只用于拿 protobuf service descriptor；未来若增加 protoc 插件，可在生成层进一步去掉 method_name 字符串。
 template <typename Service>
 class CoroutineStub final
 {
 public:
-    explicit CoroutineStub(RpcChannel* channel)
-        : channel_(channel)
+    explicit CoroutineStub(RpcChannel* channel) : channel_(channel)
     {
         if (channel_ == nullptr)
         {
@@ -26,11 +23,8 @@ public:
         }
     }
 
-    template <typename Request, typename Response>
-    [[nodiscard]] RpcResultAwaiter<Request, Response> Call(
-        const std::string& method_name,
-        Request request,
-        RpcCallOptions options = {})
+    // 将方法名解析为 MethodDescriptor，可在初始化阶段缓存，避免 RPC 热路径重复查找。
+    [[nodiscard]] const google::protobuf::MethodDescriptor* ResolveMethod(const std::string& method_name) const
     {
         const google::protobuf::MethodDescriptor* method = FindMethod(Service::descriptor(), method_name);
 
@@ -39,11 +33,21 @@ public:
             throw std::invalid_argument("RPC method not found: " + method_name);
         }
 
-        return CoCall<Request, Response>(
-            channel_,
-            method,
-            std::move(request),
-            options);
+        return method;
+    }
+
+    // 推荐调用入口：直接使用已经解析好的 MethodDescriptor。
+    template <typename Request, typename Response>
+    [[nodiscard]] RpcResultAwaiter<Request, Response> Call(const google::protobuf::MethodDescriptor* method, Request request, RpcCallOptions options = {})
+    {
+        return CoCall<Request, Response>(channel_, method, std::move(request), options);
+    }
+
+    // 便利调用入口：按名字解析后调用，不建议在高频 RPC 热路径中重复使用。
+    template <typename Request, typename Response>
+    [[nodiscard]] RpcResultAwaiter<Request, Response> CallByName(const std::string& method_name, Request request, RpcCallOptions options = {})
+    {
+        return Call<Request, Response>(ResolveMethod(method_name), std::move(request), options);
     }
 
     void Flush()
