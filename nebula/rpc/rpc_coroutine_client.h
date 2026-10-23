@@ -38,14 +38,20 @@ public:
 
     // 推荐调用入口：直接使用已经解析好的 MethodDescriptor。
     template <typename Request, typename Response>
-    [[nodiscard]] RpcResultAwaiter<Request, Response> Call(const google::protobuf::MethodDescriptor* method, Request request, RpcCallOptions options = {})
+    [[nodiscard]] RpcResultAwaiter<Request, Response> Call(
+        const google::protobuf::MethodDescriptor* method,
+        Request request,
+        RpcCallOptions options = {})
     {
         return CoCall<Request, Response>(channel_, method, std::move(request), options);
     }
 
     // 便利调用入口：按名字解析后调用，不建议在高频 RPC 热路径中重复使用。
     template <typename Request, typename Response>
-    [[nodiscard]] RpcResultAwaiter<Request, Response> CallByName(const std::string& method_name, Request request, RpcCallOptions options = {})
+    [[nodiscard]] RpcResultAwaiter<Request, Response> CallByName(
+        const std::string& method_name,
+        Request request,
+        RpcCallOptions options = {})
     {
         return Call<Request, Response>(ResolveMethod(method_name), std::move(request), options);
     }

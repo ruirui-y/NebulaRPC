@@ -18,7 +18,10 @@ namespace
     using EchoResponse = nebula::example::EchoResponse;
     using EchoCoroutineStub = nebula::rpc::CoroutineStub<nebula::example::EchoService>;
 
-    nebula::coro::Task<int> RunEcho(EchoCoroutineStub& stub, nebula::rpc::RpcChannel& channel, nebula::net::EventLoop& loop)
+    nebula::coro::Task<int> RunEcho(
+        EchoCoroutineStub& stub,
+        nebula::rpc::RpcChannel& channel,
+        nebula::net::EventLoop& loop)
     {
         const auto connect_deadline = std::chrono::steady_clock::now() + 2s;
 

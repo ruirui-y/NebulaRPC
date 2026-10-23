@@ -25,8 +25,8 @@ public:
         : buffer_(kCheapPrepend + initial_size),
           read_index_(kCheapPrepend),
           write_index_(kCheapPrepend)
-          {
-          }
+    {
+    }
 
     [[nodiscard]] std::size_t ReadableBytes() const noexcept
     {

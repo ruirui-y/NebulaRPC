@@ -21,7 +21,7 @@ public:
               const ::nebula::example::EchoRequest* request,
               ::nebula::example::EchoResponse* response,
               ::google::protobuf::Closure* done) override
-{
+    {
         (void)controller;
         response->set_text(request->text());
         response->set_server_sequence(next_sequence_.fetch_add(1));

@@ -230,8 +230,13 @@ namespace
     {
     public:
         Worker(const Options& opts, SharedStart& shared, std::size_t worker_id, std::uint64_t request_count)
-            : opts_(opts), shared_(shared), target_(request_count), channel_(&loop_, opts.host, opts.port), stub_(&channel_),
-            echo_method_(stub_.ResolveMethod("Echo")), payload_(opts.payload_bytes, 'x')
+            : opts_(opts),
+            shared_(shared),
+            target_(request_count),
+            channel_(&loop_, opts.host, opts.port),
+            stub_(&channel_),
+            echo_method_(stub_.ResolveMethod("Echo")),
+            payload_(opts.payload_bytes, 'x')
         {
             stats_.worker_id = worker_id;
             stats_.latency_ns.reserve(static_cast<std::size_t>(target_));

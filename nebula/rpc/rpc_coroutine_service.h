@@ -105,7 +105,8 @@ public:
         if (method->input_type()->full_name() != Request::descriptor()->full_name() ||
             method->output_type()->full_name() != Response::descriptor()->full_name())
         {
-            throw std::invalid_argument("registered coroutine method type does not match protobuf descriptor: " + method_name);
+            throw std::invalid_argument(
+                "registered coroutine method type does not match protobuf descriptor: " + method_name);
         }
 
         using HandlerType = std::decay_t<Handler>;
