@@ -7,6 +7,8 @@
 
 ## 1. 总体原则
 
+- 新增或修改的 `.h` / `.cpp` 一律照 §10.5 的 `timer_queue.h` / `timer_queue.cpp` 模板写：
+  缩进、空行、include 分组、注释位置全部照抄，不要另起风格。
 - 新代码优先保持简单、可验证、可组合，不为了“框架感”提前引入复杂抽象。
 - 不基于未验证的性能假设修改架构。性能优化必须有可复现实验或 profiling 证据支撑。
 - 网络层、RPC 层、协程层职责必须清晰，禁止把上层协议语义塞进底层网络组件。
@@ -477,9 +479,202 @@ if (state == State::kConnected &&
 
 不要为了压成一行牺牲可读性。
 
+### 10.5 文件模板
+
+后续新增和修改文件一律照 `nebula/net/timer_queue.h` / `nebula/net/timer_queue.cpp` 写，
+包括缩进、空行、注释位置和 include 分组。这两份文件是标准模板。
+
+头文件模板：
+
+```cpp
+#pragma once
+
+#include "nebula/base/noncopyable.h"
+#include "nebula/net/timer_id.h"
+
+#include <atomic>
+#include <chrono>
+#include <cstdint>
+#include <functional>
+#include <map>
+#include <memory>
+#include <unordered_map>
+
+namespace nebula::net
+{
+
+class Channel;
+class EventLoop;
+
+// 定时器队列：timerfd 接入 EventLoop 的 epoll，定时回调统一在本 loop 线程执行。
+class TimerQueue final : private base::Noncopyable
+{
+public:
+    using Clock = std::chrono::steady_clock;                        // 单调时钟，不受系统时间跳变影响
+    using TimePoint = Clock::time_point;
+    using Functor = std::function<void()>;
+
+    explicit TimerQueue(EventLoop* loop);
+    ~TimerQueue();
+
+    TimerId AddTimer(TimePoint deadline, Functor callback);
+    void Cancel(TimerId timer_id);
+
+private:
+    using DeadlineMap = std::multimap<TimePoint, std::uint64_t>;    // 同一 deadline 可挂多个定时器
+
+    struct Timer
+    {
+        Functor callback;
+        DeadlineMap::iterator deadline_it;                          // 指向 deadlines_ 中位置，取消时 O(1) 摘除
+    };
+
+    void AddTimerInLoop(TimerId timer_id,
+                        TimePoint deadline,
+                        Functor callback);
+    void CancelInLoop(TimerId timer_id);
+    void HandleRead();
+    void ResetTimerFd();
+
+    EventLoop* loop_;
+    int timer_fd_;
+    std::unique_ptr<Channel> timer_channel_;
+
+    std::atomic_uint64_t next_timer_id_{1};                         // AddTimer 可能来自非 loop 线程
+    DeadlineMap deadlines_;                                         // 只存到期时间与 id
+    std::unordered_map<std::uint64_t, Timer> timers_;               // 只保留存活且未触发的定时器
+};
+
+}  // namespace nebula::net
+```
+
+源文件模板（节选，见 `timer_queue.cpp` 全文）：
+
+```cpp
+#include "nebula/net/timer_queue.h"
+
+#include "nebula/net/channel.h"
+#include "nebula/net/event_loop.h"
+
+#include <cerrno>
+#include <cstring>
+#include <stdexcept>
+#include <sys/timerfd.h>
+#include <unistd.h>
+#include <utility>
+
+namespace nebula::net
+{
+namespace
+{
+
+int CreateTimerFd()
+{
+    // CLOCK_MONOTONIC 与 TimerQueue::Clock 对应；NONBLOCK 保证 HandleRead 不会被 read 挂住。
+    const int fd = ::timerfd_create(CLOCK_MONOTONIC, TFD_NONBLOCK | TFD_CLOEXEC);
+
+    if (fd < 0)
+    {
+        throw std::runtime_error("timerfd_create failed: " + std::string(std::strerror(errno)));
+    }
+
+    return fd;
+}
+
+}  // namespace
+
+void TimerQueue::HandleRead()
+{
+    loop_->AssertInLoopThread();
+
+    std::uint64_t expirations = 0;
+    // timerfd 的 read 返回累计到期次数，必须一次读满 8 字节；读完计数清零。
+    const ssize_t n = ::read(timer_fd_, &expirations, sizeof(expirations));
+
+    // 非阻塞 fd 无到期数据时是 EAGAIN，被信号打断是 EINTR，两者都不算错误。
+    if (n < 0 && errno != EAGAIN && errno != EINTR)
+    {
+        throw std::runtime_error("timerfd read failed: " + std::string(std::strerror(errno)));
+    }
+
+    const TimePoint now = Clock::now();
+
+    // 先摘除再执行回调：回调里 Cancel 或重新 AddTimer 不会碰到正在遍历的容器。
+    while (!deadlines_.empty() && deadlines_.begin()->first <= now)
+    {
+        // ...
+    }
+
+    ResetTimerFd();
+}
+
+}  // namespace nebula::net
+```
+
+模板固定下来的具体规则：
+
+- 缩进固定 4 空格，禁止 tab；
+- 构造函数初始化列表每个成员一行，续行与 `:` 之后的第一项对齐；
+- 匿名 namespace 写法固定为 `namespace` / `{` / 内容 / `}  // namespace`；
+- 注释位置：`.h` 行尾右对齐，`.cpp` 头顶单行，规则见 §11.2；
+- include 分组与成员位置见 §12。
+
 ---
 
 ## 11. 注释规范
+
+### 11.1 什么时候写
+
+只在这三类地方写：
+
+- 类 / 结构体声明：说明它负责什么、线程归属；
+- 难懂或反直觉的函数：生命周期、所有权、竞争关系、时间窗口；
+- 有隐藏契约的成员：为什么是这个类型、为什么不能换别的。
+
+签名本身已经把用途说清的不写。例如：
+
+```cpp
+TimerId AddTimer(TimePoint deadline, Functor callback);
+void Cancel(TimerId timer_id);
+```
+
+两个名字已经讲完“做什么”，再补 `// 添加定时器` 只是噪音。
+
+注释在复述代码字面同样是噪音：`SetReadCallback` 不必写“注册读回调”，
+`loop_->RunInLoop(...)` 不必写“投递到 loop 线程”。
+
+判断标准：注释回答“为什么这么写 / 不能怎么用”，不回答“这行在做什么”。
+
+### 11.2 写在哪
+
+`.h`：
+
+- 类声明：允许头顶单独一行注释；
+- 成员变量 / 成员函数：用行尾注释，同一段声明内 `//` 起始列右对齐；
+- 没有需要说明的成员就空着，不为了对齐凑注释。
+
+`.cpp`：
+
+- 统一头顶单独一行注释，不用行尾注释；
+- 用于解释这一段实现为什么这么写。
+
+完整示例见 §10.5 的 `timer_queue.h` / `timer_queue.cpp` 模板。
+
+示例：
+
+```cpp
+class RpcCall final
+{
+public:
+    [[nodiscard]] RpcCallState State() const noexcept;                     // 读取当前状态
+    bool TryComplete(RpcCallState state) noexcept;                         // CAS 抢占完成权，只有第一次成功
+
+private:
+    std::atomic<RpcCallState> state_{RpcCallState::Pending};               // 初始为在途
+};
+```
+
+### 11.3 写什么
 
 注释使用：
 
@@ -517,6 +712,59 @@ connection_->Write(data);
 ```
 
 不推荐写大段教程式注释。
+
+### 11.4 CMakeLists
+
+**版式**
+
+- `add_executable` / `add_library` 的源文件列表一个一行；
+- `target_include_directories` / `target_link_libraries` **一律单行**，不换行、不把 `PRIVATE` 单独拆出去：
+
+```cmake
+target_include_directories(nebula_rpc_timeout_test PRIVATE ${PROJECT_BINARY_DIR}/examples/rpc_echo)
+target_link_libraries(nebula_rpc_timeout_test PRIVATE nebula_rpc nebula_rpc_echo_proto)
+```
+
+不要写成：
+
+```cmake
+target_link_libraries(nebula_rpc_timeout_test
+    PRIVATE
+        nebula_rpc
+        nebula_rpc_echo_proto
+)
+```
+
+**注释**
+
+- 每个 target 组上方一行 `# 一句话。`，中文，句号结尾；
+- 只描述这个 target 是什么 / 测什么，不描述它怎么构建；
+- 复杂的 target 允许续行，最多两三行，冒号引出细节；
+- `target_link_libraries`、`add_test`、`set_tests_properties` 不再单独注释。
+
+**测试 target 模板**
+
+```cmake
+# 取消队首后的重新武装：T1 取消不能让 T2 丢失，
+# 覆盖 stale wakeup 之后 timerfd 没有被重设的场景。
+add_executable(nebula_timer_queue_lazy_cancel_test timer_queue_lazy_cancel_test.cpp)
+target_link_libraries(nebula_timer_queue_lazy_cancel_test PRIVATE nebula_net)
+add_test(NAME nebula_timer_queue_lazy_cancel_test COMMAND nebula_timer_queue_lazy_cancel_test)
+set_tests_properties(nebula_timer_queue_lazy_cancel_test PROPERTIES RUN_SERIAL TRUE)
+```
+
+**示例程序模板**
+
+```cmake
+# Fixed-InFlight 协程压测客户端：
+# 每个 Worker 一个线程 / EventLoop / RpcChannel / TCP 长连接，
+# 每条连接同时维持 window 个协程 RPC。
+add_executable(nebula_rpc_echo_fixed_inflight_client rpc_echo_fixed_inflight_client.cpp)
+target_include_directories(nebula_rpc_echo_fixed_inflight_client PRIVATE ${CMAKE_CURRENT_BINARY_DIR})
+target_link_libraries(nebula_rpc_echo_fixed_inflight_client PRIVATE nebula_rpc nebula_rpc_echo_proto)
+```
+
+参照 `tests/CMakeLists.txt` 与 `examples/rpc_echo/CMakeLists.txt`。
 
 ---
 
