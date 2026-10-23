@@ -60,3 +60,10 @@ target_link_libraries(nebula_rpc_echo_benchmark_server PRIVATE nebula_rpc nebula
 add_executable(nebula_rpc_echo_coroutine_benchmark_client rpc_echo_coroutine_benchmark_client.cpp)
 target_include_directories(nebula_rpc_echo_coroutine_benchmark_client PRIVATE ${CMAKE_CURRENT_BINARY_DIR})
 target_link_libraries(nebula_rpc_echo_coroutine_benchmark_client PRIVATE nebula_rpc nebula_rpc_echo_proto)
+
+# Fixed-InFlight 协程压测客户端：
+# 每个 Worker 一个线程 / EventLoop / RpcChannel / TCP 长连接，
+# 每条连接同时维持 window 个协程 RPC。
+add_executable(nebula_rpc_echo_fixed_inflight_client rpc_echo_fixed_inflight_client.cpp)
+target_include_directories(nebula_rpc_echo_fixed_inflight_client PRIVATE ${CMAKE_CURRENT_BINARY_DIR})
+target_link_libraries(nebula_rpc_echo_fixed_inflight_client PRIVATE nebula_rpc nebula_rpc_echo_proto)
