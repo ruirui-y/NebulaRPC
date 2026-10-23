@@ -1,0 +1,1013 @@
+<mxfile host="Electron" pages="6">
+  <diagram name="性能的本质" id="dK7U7rSSJNLa34xWCujY">
+    <mxGraphModel dx="4400" dy="2273" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="500" pageHeight="500" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="kl1wrTt9ctB-OTy96kYS-1" parent="1" style="swimlane;html=1;startSize=28;fillColor=#fafafa;strokeColor=#888888;fontSize=13;fontStyle=1;verticalAlign=top;align=left;spacingLeft=10;" value="性能的本质" vertex="1">
+          <mxGeometry height="2010" width="1290" x="-480" y="50" as="geometry" />
+        </mxCell>
+        <mxCell id="kl1wrTt9ctB-OTy96kYS-117" edge="1" parent="kl1wrTt9ctB-OTy96kYS-1" source="kl1wrTt9ctB-OTy96kYS-134" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="kl1wrTt9ctB-OTy96kYS-124">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="kl1wrTt9ctB-OTy96kYS-118" parent="kl1wrTt9ctB-OTy96kYS-1" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;spacingLeft=8;verticalAlign=top;spacingTop=0;fillColor=#dae8fc;strokeColor=#6c8ebf;points=[[0,0,1,0,0],[0.25,0,1,0,0],[0.5,0,1,0,0],[0.75,0,1,0,0],[1,0,1,0,0],[0,0.25,1,0,0],[0,0.5,1,0,0],[0,0.75,1,0,0],[1,0.25,1,0,0],[1,0.5,1,0,0],[1,0.75,1,0,0],[0,1,1,0,0],[0.25,1,1,0,0],[0.5,1,1,0,0],[0.75,1,1,0,0],[1,1,1,0,0],[0.333333,0.46875,0,0,0]];" value="&lt;b&gt;CPU/执行模型&lt;/b&gt;" vertex="1">
+          <mxGeometry height="30" width="90" x="530" y="212" as="geometry" />
+        </mxCell>
+        <mxCell id="kl1wrTt9ctB-OTy96kYS-119" edge="1" parent="kl1wrTt9ctB-OTy96kYS-1" source="kl1wrTt9ctB-OTy96kYS-124" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="kl1wrTt9ctB-OTy96kYS-125">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="kl1wrTt9ctB-OTy96kYS-120" edge="1" parent="kl1wrTt9ctB-OTy96kYS-1" source="kl1wrTt9ctB-OTy96kYS-124" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="kl1wrTt9ctB-OTy96kYS-126">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="kl1wrTt9ctB-OTy96kYS-121" edge="1" parent="kl1wrTt9ctB-OTy96kYS-1" source="kl1wrTt9ctB-OTy96kYS-124" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="kl1wrTt9ctB-OTy96kYS-128">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="kl1wrTt9ctB-OTy96kYS-122" edge="1" parent="kl1wrTt9ctB-OTy96kYS-1" source="kl1wrTt9ctB-OTy96kYS-124" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="kl1wrTt9ctB-OTy96kYS-129">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="kl1wrTt9ctB-OTy96kYS-123" edge="1" parent="kl1wrTt9ctB-OTy96kYS-1" source="kl1wrTt9ctB-OTy96kYS-124" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="kl1wrTt9ctB-OTy96kYS-130">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="kl1wrTt9ctB-OTy96kYS-124" parent="kl1wrTt9ctB-OTy96kYS-1" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;spacingLeft=8;verticalAlign=top;spacingTop=0;fillColor=#dae8fc;strokeColor=#6c8ebf;points=[[0,0,1,0,0],[0.25,0,1,0,0],[0.5,0,1,0,0],[0.75,0,1,0,0],[1,0,1,0,0],[0,0.25,1,0,0],[0,0.5,1,0,0],[0,0.75,1,0,0],[1,0.25,1,0,0],[1,0.5,1,0,0],[1,0.75,1,0,0],[0,1,1,0,0],[0.25,1,1,0,0],[0.5,1,1,0,0],[0.75,1,1,0,0],[1,1,1,0,0],[0.333333,0.46875,0,0,0]];" value="&lt;b&gt;CPU/执行模型&lt;/b&gt;" vertex="1">
+          <mxGeometry height="30" width="90" x="530" y="212" as="geometry" />
+        </mxCell>
+        <mxCell id="kl1wrTt9ctB-OTy96kYS-125" parent="kl1wrTt9ctB-OTy96kYS-1" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;spacingLeft=8;verticalAlign=top;spacingTop=0;fillColor=#dae8fc;strokeColor=#6c8ebf;points=[[0,0,1,0,0],[0.25,0,1,0,0],[0.5,0,1,0,0],[0.75,0,1,0,0],[1,0,1,0,0],[0,0.25,1,0,0],[0,0.5,1,0,0],[0,0.75,1,0,0],[1,0.25,1,0,0],[1,0.5,1,0,0],[1,0.75,1,0,0],[0,1,1,0,0],[0.25,1,1,0,0],[0.5,1,1,0,0],[0.75,1,1,0,0],[1,1,1,0,0],[0.333333,0.46875,0,0,0]];" value="进程是什么" vertex="1">
+          <mxGeometry height="30" width="80" x="760" y="62" as="geometry" />
+        </mxCell>
+        <mxCell id="kl1wrTt9ctB-OTy96kYS-126" parent="kl1wrTt9ctB-OTy96kYS-1" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;spacingLeft=8;verticalAlign=top;spacingTop=0;fillColor=#dae8fc;strokeColor=#6c8ebf;points=[[0,0,1,0,0],[0.25,0,1,0,0],[0.5,0,1,0,0],[0.75,0,1,0,0],[1,0,1,0,0],[0,0.25,1,0,0],[0,0.5,1,0,0],[0,0.75,1,0,0],[1,0.25,1,0,0],[1,0.5,1,0,0],[1,0.75,1,0,0],[0,1,1,0,0],[0.25,1,1,0,0],[0.5,1,1,0,0],[0.75,1,1,0,0],[1,1,1,0,0],[0.333333,0.46875,0,0,0]];" value="线程是什么" vertex="1">
+          <mxGeometry height="30" width="80" x="760" y="132" as="geometry" />
+        </mxCell>
+        <mxCell id="kl1wrTt9ctB-OTy96kYS-127" parent="kl1wrTt9ctB-OTy96kYS-1" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;spacingLeft=8;verticalAlign=top;spacingTop=0;fillColor=#dae8fc;strokeColor=#6c8ebf;points=[[0,0,1,0,0],[0.25,0,1,0,0],[0.5,0,1,0,0],[0.75,0,1,0,0],[1,0,1,0,0],[0,0.25,1,0,0],[0,0.5,1,0,0],[0,0.75,1,0,0],[1,0.25,1,0,0],[1,0.5,1,0,0],[1,0.75,1,0,0],[0,1,1,0,0],[0.25,1,1,0,0],[0.5,1,1,0,0],[0.75,1,1,0,0],[1,1,1,0,0],[0.333333,0.46875,0,0,0]];" value="线程如何跑到CPU" vertex="1">
+          <mxGeometry height="30" width="100" x="760" y="212" as="geometry" />
+        </mxCell>
+        <mxCell id="kl1wrTt9ctB-OTy96kYS-128" parent="kl1wrTt9ctB-OTy96kYS-1" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;spacingLeft=8;verticalAlign=top;spacingTop=0;fillColor=#dae8fc;strokeColor=#6c8ebf;points=[[0,0,1,0,0],[0.25,0,1,0,0],[0.5,0,1,0,0],[0.75,0,1,0,0],[1,0,1,0,0],[0,0.25,1,0,0],[0,0.5,1,0,0],[0,0.75,1,0,0],[1,0.25,1,0,0],[1,0.5,1,0,0],[1,0.75,1,0,0],[0,1,1,0,0],[0.25,1,1,0,0],[0.5,1,1,0,0],[0.75,1,1,0,0],[1,1,1,0,0],[0.333333,0.46875,0,0,0]];" value="CPU核是什么" vertex="1">
+          <mxGeometry height="30" width="80" x="760" y="282" as="geometry" />
+        </mxCell>
+        <mxCell id="kl1wrTt9ctB-OTy96kYS-129" parent="kl1wrTt9ctB-OTy96kYS-1" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;spacingLeft=8;verticalAlign=top;spacingTop=0;fillColor=#dae8fc;strokeColor=#6c8ebf;points=[[0,0,1,0,0],[0.25,0,1,0,0],[0.5,0,1,0,0],[0.75,0,1,0,0],[1,0,1,0,0],[0,0.25,1,0,0],[0,0.5,1,0,0],[0,0.75,1,0,0],[1,0.25,1,0,0],[1,0.5,1,0,0],[1,0.75,1,0,0],[0,1,1,0,0],[0.25,1,1,0,0],[0.5,1,1,0,0],[0.75,1,1,0,0],[1,1,1,0,0],[0.333333,0.46875,0,0,0]];" value="调度是什么" vertex="1">
+          <mxGeometry height="30" width="80" x="760" y="352" as="geometry" />
+        </mxCell>
+        <mxCell id="kl1wrTt9ctB-OTy96kYS-130" parent="kl1wrTt9ctB-OTy96kYS-1" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;spacingLeft=8;verticalAlign=top;spacingTop=0;fillColor=#dae8fc;strokeColor=#6c8ebf;points=[[0,0,1,0,0],[0.25,0,1,0,0],[0.5,0,1,0,0],[0.75,0,1,0,0],[1,0,1,0,0],[0,0.25,1,0,0],[0,0.5,1,0,0],[0,0.75,1,0,0],[1,0.25,1,0,0],[1,0.5,1,0,0],[1,0.75,1,0,0],[0,1,1,0,0],[0.25,1,1,0,0],[0.5,1,1,0,0],[0.75,1,1,0,0],[1,1,1,0,0],[0.333333,0.46875,0,0,0]];" value="上下文切换" vertex="1">
+          <mxGeometry height="30" width="80" x="760" y="412" as="geometry" />
+        </mxCell>
+        <mxCell id="kl1wrTt9ctB-OTy96kYS-131" edge="1" parent="kl1wrTt9ctB-OTy96kYS-1" source="kl1wrTt9ctB-OTy96kYS-124" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0.039;entryY=0.496;entryDx=0;entryDy=0;entryPerimeter=0;" target="kl1wrTt9ctB-OTy96kYS-127">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="kl1wrTt9ctB-OTy96kYS-132" edge="1" parent="kl1wrTt9ctB-OTy96kYS-1" source="kl1wrTt9ctB-OTy96kYS-134" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="kl1wrTt9ctB-OTy96kYS-141">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="kl1wrTt9ctB-OTy96kYS-133" edge="1" parent="kl1wrTt9ctB-OTy96kYS-1" source="kl1wrTt9ctB-OTy96kYS-134" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="kl1wrTt9ctB-OTy96kYS-156">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="kl1wrTt9ctB-OTy96kYS-180" edge="1" parent="kl1wrTt9ctB-OTy96kYS-1" source="kl1wrTt9ctB-OTy96kYS-134" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="kl1wrTt9ctB-OTy96kYS-171">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="kl1wrTt9ctB-OTy96kYS-134" parent="kl1wrTt9ctB-OTy96kYS-1" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;spacingLeft=8;verticalAlign=top;spacingTop=4;fillColor=#dae8fc;strokeColor=#6c8ebf;" value="&lt;pre dir=&quot;ltr&quot;&gt;&lt;code&gt;性能的本质&lt;/code&gt;&lt;/pre&gt;" vertex="1">
+          <mxGeometry height="53" width="80" x="140" y="1158.5" as="geometry" />
+        </mxCell>
+        <mxCell id="kl1wrTt9ctB-OTy96kYS-135" edge="1" parent="kl1wrTt9ctB-OTy96kYS-1" source="kl1wrTt9ctB-OTy96kYS-141" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="kl1wrTt9ctB-OTy96kYS-142">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="kl1wrTt9ctB-OTy96kYS-136" edge="1" parent="kl1wrTt9ctB-OTy96kYS-1" source="kl1wrTt9ctB-OTy96kYS-141" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="kl1wrTt9ctB-OTy96kYS-143">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="kl1wrTt9ctB-OTy96kYS-137" edge="1" parent="kl1wrTt9ctB-OTy96kYS-1" source="kl1wrTt9ctB-OTy96kYS-141" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="kl1wrTt9ctB-OTy96kYS-145">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="kl1wrTt9ctB-OTy96kYS-138" edge="1" parent="kl1wrTt9ctB-OTy96kYS-1" source="kl1wrTt9ctB-OTy96kYS-141" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="kl1wrTt9ctB-OTy96kYS-146">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="kl1wrTt9ctB-OTy96kYS-139" edge="1" parent="kl1wrTt9ctB-OTy96kYS-1" source="kl1wrTt9ctB-OTy96kYS-141" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="kl1wrTt9ctB-OTy96kYS-147">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="kl1wrTt9ctB-OTy96kYS-140" edge="1" parent="kl1wrTt9ctB-OTy96kYS-1" source="kl1wrTt9ctB-OTy96kYS-141" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="kl1wrTt9ctB-OTy96kYS-149">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="kl1wrTt9ctB-OTy96kYS-141" parent="kl1wrTt9ctB-OTy96kYS-1" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;spacingLeft=8;verticalAlign=top;spacingTop=0;fillColor=#dae8fc;strokeColor=#6c8ebf;points=[[0,0,1,0,0],[0.25,0,1,0,0],[0.5,0,1,0,0],[0.75,0,1,0,0],[1,0,1,0,0],[0,0.25,1,0,0],[0,0.5,1,0,0],[0,0.75,1,0,0],[1,0.25,1,0,0],[1,0.5,1,0,0],[1,0.75,1,0,0],[0,1,1,0,0],[0.25,1,1,0,0],[0.5,1,1,0,0],[0.75,1,1,0,0],[1,1,1,0,0],[0.333333,0.46875,0,0,0]];" value="&lt;b&gt;系统调用/内核&lt;/b&gt;" vertex="1">
+          <mxGeometry height="30" width="90" x="530" y="657" as="geometry" />
+        </mxCell>
+        <mxCell id="kl1wrTt9ctB-OTy96kYS-142" parent="kl1wrTt9ctB-OTy96kYS-1" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;spacingLeft=8;verticalAlign=top;spacingTop=0;fillColor=#dae8fc;strokeColor=#6c8ebf;points=[[0,0,1,0,0],[0.25,0,1,0,0],[0.5,0,1,0,0],[0.75,0,1,0,0],[1,0,1,0,0],[0,0.25,1,0,0],[0,0.5,1,0,0],[0,0.75,1,0,0],[1,0.25,1,0,0],[1,0.5,1,0,0],[1,0.75,1,0,0],[0,1,1,0,0],[0.25,1,1,0,0],[0.5,1,1,0,0],[0.75,1,1,0,0],[1,1,1,0,0],[0.333333,0.46875,0,0,0]];" value="用户态/内核态" vertex="1">
+          <mxGeometry height="30" width="80" x="760" y="507" as="geometry" />
+        </mxCell>
+        <mxCell id="kl1wrTt9ctB-OTy96kYS-143" parent="kl1wrTt9ctB-OTy96kYS-1" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;spacingLeft=8;verticalAlign=top;spacingTop=0;fillColor=#dae8fc;strokeColor=#6c8ebf;points=[[0,0,1,0,0],[0.25,0,1,0,0],[0.5,0,1,0,0],[0.75,0,1,0,0],[1,0,1,0,0],[0,0.25,1,0,0],[0,0.5,1,0,0],[0,0.75,1,0,0],[1,0.25,1,0,0],[1,0.5,1,0,0],[1,0.75,1,0,0],[0,1,1,0,0],[0.25,1,1,0,0],[0.5,1,1,0,0],[0.75,1,1,0,0],[1,1,1,0,0],[0.333333,0.46875,0,0,0]];" value="syscall" vertex="1">
+          <mxGeometry height="30" width="80" x="760" y="577" as="geometry" />
+        </mxCell>
+        <mxCell id="kl1wrTt9ctB-OTy96kYS-144" parent="kl1wrTt9ctB-OTy96kYS-1" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;spacingLeft=8;verticalAlign=top;spacingTop=0;fillColor=#dae8fc;strokeColor=#6c8ebf;points=[[0,0,1,0,0],[0.25,0,1,0,0],[0.5,0,1,0,0],[0.75,0,1,0,0],[1,0,1,0,0],[0,0.25,1,0,0],[0,0.5,1,0,0],[0,0.75,1,0,0],[1,0.25,1,0,0],[1,0.5,1,0,0],[1,0.75,1,0,0],[0,1,1,0,0],[0.25,1,1,0,0],[0.5,1,1,0,0],[0.75,1,1,0,0],[1,1,1,0,0],[0.333333,0.46875,0,0,0]];" value="timerfd" vertex="1">
+          <mxGeometry height="30" width="100" x="760" y="657" as="geometry" />
+        </mxCell>
+        <mxCell id="kl1wrTt9ctB-OTy96kYS-145" parent="kl1wrTt9ctB-OTy96kYS-1" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;spacingLeft=8;verticalAlign=top;spacingTop=0;fillColor=#dae8fc;strokeColor=#6c8ebf;points=[[0,0,1,0,0],[0.25,0,1,0,0],[0.5,0,1,0,0],[0.75,0,1,0,0],[1,0,1,0,0],[0,0.25,1,0,0],[0,0.5,1,0,0],[0,0.75,1,0,0],[1,0.25,1,0,0],[1,0.5,1,0,0],[1,0.75,1,0,0],[0,1,1,0,0],[0.25,1,1,0,0],[0.5,1,1,0,0],[0.75,1,1,0,0],[1,1,1,0,0],[0.333333,0.46875,0,0,0]];" value="epoll" vertex="1">
+          <mxGeometry height="30" width="80" x="760" y="727" as="geometry" />
+        </mxCell>
+        <mxCell id="kl1wrTt9ctB-OTy96kYS-146" parent="kl1wrTt9ctB-OTy96kYS-1" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;spacingLeft=8;verticalAlign=top;spacingTop=0;fillColor=#dae8fc;strokeColor=#6c8ebf;points=[[0,0,1,0,0],[0.25,0,1,0,0],[0.5,0,1,0,0],[0.75,0,1,0,0],[1,0,1,0,0],[0,0.25,1,0,0],[0,0.5,1,0,0],[0,0.75,1,0,0],[1,0.25,1,0,0],[1,0.5,1,0,0],[1,0.75,1,0,0],[0,1,1,0,0],[0.25,1,1,0,0],[0.5,1,1,0,0],[0.75,1,1,0,0],[1,1,1,0,0],[0.333333,0.46875,0,0,0]];" value="read/write" vertex="1">
+          <mxGeometry height="30" width="80" x="760" y="797" as="geometry" />
+        </mxCell>
+        <mxCell id="kl1wrTt9ctB-OTy96kYS-147" parent="kl1wrTt9ctB-OTy96kYS-1" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;spacingLeft=8;verticalAlign=top;spacingTop=0;fillColor=#dae8fc;strokeColor=#6c8ebf;points=[[0,0,1,0,0],[0.25,0,1,0,0],[0.5,0,1,0,0],[0.75,0,1,0,0],[1,0,1,0,0],[0,0.25,1,0,0],[0,0.5,1,0,0],[0,0.75,1,0,0],[1,0.25,1,0,0],[1,0.5,1,0,0],[1,0.75,1,0,0],[0,1,1,0,0],[0.25,1,1,0,0],[0.5,1,1,0,0],[0.75,1,1,0,0],[1,1,1,0,0],[0.333333,0.46875,0,0,0]];" value="send/recv" vertex="1">
+          <mxGeometry height="30" width="80" x="760" y="857" as="geometry" />
+        </mxCell>
+        <mxCell id="kl1wrTt9ctB-OTy96kYS-148" edge="1" parent="kl1wrTt9ctB-OTy96kYS-1" source="kl1wrTt9ctB-OTy96kYS-141" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0.039;entryY=0.496;entryDx=0;entryDy=0;entryPerimeter=0;" target="kl1wrTt9ctB-OTy96kYS-144">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="kl1wrTt9ctB-OTy96kYS-149" parent="kl1wrTt9ctB-OTy96kYS-1" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;spacingLeft=8;verticalAlign=top;spacingTop=0;fillColor=#dae8fc;strokeColor=#6c8ebf;points=[[0,0,1,0,0],[0.25,0,1,0,0],[0.5,0,1,0,0],[0.75,0,1,0,0],[1,0,1,0,0],[0,0.25,1,0,0],[0,0.5,1,0,0],[0,0.75,1,0,0],[1,0.25,1,0,0],[1,0.5,1,0,0],[1,0.75,1,0,0],[0,1,1,0,0],[0.25,1,1,0,0],[0.5,1,1,0,0],[0.75,1,1,0,0],[1,1,1,0,0],[0.333333,0.46875,0,0,0]];" value="page fault" vertex="1">
+          <mxGeometry height="30" width="80" x="760" y="917" as="geometry" />
+        </mxCell>
+        <mxCell id="kl1wrTt9ctB-OTy96kYS-150" edge="1" parent="kl1wrTt9ctB-OTy96kYS-1" source="kl1wrTt9ctB-OTy96kYS-156" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="kl1wrTt9ctB-OTy96kYS-157">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="kl1wrTt9ctB-OTy96kYS-151" edge="1" parent="kl1wrTt9ctB-OTy96kYS-1" source="kl1wrTt9ctB-OTy96kYS-156" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="kl1wrTt9ctB-OTy96kYS-158">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="kl1wrTt9ctB-OTy96kYS-152" edge="1" parent="kl1wrTt9ctB-OTy96kYS-1" source="kl1wrTt9ctB-OTy96kYS-156" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="kl1wrTt9ctB-OTy96kYS-160">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="kl1wrTt9ctB-OTy96kYS-153" edge="1" parent="kl1wrTt9ctB-OTy96kYS-1" source="kl1wrTt9ctB-OTy96kYS-156" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="kl1wrTt9ctB-OTy96kYS-161">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="kl1wrTt9ctB-OTy96kYS-154" edge="1" parent="kl1wrTt9ctB-OTy96kYS-1" source="kl1wrTt9ctB-OTy96kYS-156" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="kl1wrTt9ctB-OTy96kYS-162">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="kl1wrTt9ctB-OTy96kYS-155" edge="1" parent="kl1wrTt9ctB-OTy96kYS-1" source="kl1wrTt9ctB-OTy96kYS-156" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="kl1wrTt9ctB-OTy96kYS-164">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="kl1wrTt9ctB-OTy96kYS-156" parent="kl1wrTt9ctB-OTy96kYS-1" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;spacingLeft=8;verticalAlign=top;spacingTop=0;fillColor=#dae8fc;strokeColor=#6c8ebf;points=[[0,0,1,0,0],[0.25,0,1,0,0],[0.5,0,1,0,0],[0.75,0,1,0,0],[1,0,1,0,0],[0,0.25,1,0,0],[0,0.5,1,0,0],[0,0.75,1,0,0],[1,0.25,1,0,0],[1,0.5,1,0,0],[1,0.75,1,0,0],[0,1,1,0,0],[0.25,1,1,0,0],[0.5,1,1,0,0],[0.75,1,1,0,0],[1,1,1,0,0],[0.333333,0.46875,0,0,0]];" value="&lt;b&gt;内存生命周期&lt;/b&gt;" vertex="1">
+          <mxGeometry height="30" width="90" x="530" y="1170" as="geometry" />
+        </mxCell>
+        <mxCell id="kl1wrTt9ctB-OTy96kYS-157" parent="kl1wrTt9ctB-OTy96kYS-1" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;spacingLeft=8;verticalAlign=top;spacingTop=0;fillColor=#dae8fc;strokeColor=#6c8ebf;points=[[0,0,1,0,0],[0.25,0,1,0,0],[0.5,0,1,0,0],[0.75,0,1,0,0],[1,0,1,0,0],[0,0.25,1,0,0],[0,0.5,1,0,0],[0,0.75,1,0,0],[1,0.25,1,0,0],[1,0.5,1,0,0],[1,0.75,1,0,0],[0,1,1,0,0],[0.25,1,1,0,0],[0.5,1,1,0,0],[0.75,1,1,0,0],[1,1,1,0,0],[0.333333,0.46875,0,0,0]];" value="malloc/free" vertex="1">
+          <mxGeometry height="30" width="80" x="760" y="1032" as="geometry" />
+        </mxCell>
+        <mxCell id="kl1wrTt9ctB-OTy96kYS-158" parent="kl1wrTt9ctB-OTy96kYS-1" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;spacingLeft=8;verticalAlign=top;spacingTop=0;fillColor=#dae8fc;strokeColor=#6c8ebf;points=[[0,0,1,0,0],[0.25,0,1,0,0],[0.5,0,1,0,0],[0.75,0,1,0,0],[1,0,1,0,0],[0,0.25,1,0,0],[0,0.5,1,0,0],[0,0.75,1,0,0],[1,0.25,1,0,0],[1,0.5,1,0,0],[1,0.75,1,0,0],[0,1,1,0,0],[0.25,1,1,0,0],[0.5,1,1,0,0],[0.75,1,1,0,0],[1,1,1,0,0],[0.333333,0.46875,0,0,0]];" value="new/delete" vertex="1">
+          <mxGeometry height="30" width="80" x="760" y="1102" as="geometry" />
+        </mxCell>
+        <mxCell id="kl1wrTt9ctB-OTy96kYS-159" parent="kl1wrTt9ctB-OTy96kYS-1" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;spacingLeft=8;verticalAlign=top;spacingTop=0;fillColor=#dae8fc;strokeColor=#6c8ebf;points=[[0,0,1,0,0],[0.25,0,1,0,0],[0.5,0,1,0,0],[0.75,0,1,0,0],[1,0,1,0,0],[0,0.25,1,0,0],[0,0.5,1,0,0],[0,0.75,1,0,0],[1,0.25,1,0,0],[1,0.5,1,0,0],[1,0.75,1,0,0],[0,1,1,0,0],[0.25,1,1,0,0],[0.5,1,1,0,0],[0.75,1,1,0,0],[1,1,1,0,0],[0.333333,0.46875,0,0,0]];" value="对象生命周期" vertex="1">
+          <mxGeometry height="30" width="100" x="760" y="1170" as="geometry" />
+        </mxCell>
+        <mxCell id="kl1wrTt9ctB-OTy96kYS-160" parent="kl1wrTt9ctB-OTy96kYS-1" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;spacingLeft=8;verticalAlign=top;spacingTop=0;fillColor=#dae8fc;strokeColor=#6c8ebf;points=[[0,0,1,0,0],[0.25,0,1,0,0],[0.5,0,1,0,0],[0.75,0,1,0,0],[1,0,1,0,0],[0,0.25,1,0,0],[0,0.5,1,0,0],[0,0.75,1,0,0],[1,0.25,1,0,0],[1,0.5,1,0,0],[1,0.75,1,0,0],[0,1,1,0,0],[0.25,1,1,0,0],[0.5,1,1,0,0],[0.75,1,1,0,0],[1,1,1,0,0],[0.333333,0.46875,0,0,0]];" value="cache" vertex="1">
+          <mxGeometry height="30" width="80" x="760" y="1240" as="geometry" />
+        </mxCell>
+        <mxCell id="kl1wrTt9ctB-OTy96kYS-161" parent="kl1wrTt9ctB-OTy96kYS-1" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;spacingLeft=8;verticalAlign=top;spacingTop=0;fillColor=#dae8fc;strokeColor=#6c8ebf;points=[[0,0,1,0,0],[0.25,0,1,0,0],[0.5,0,1,0,0],[0.75,0,1,0,0],[1,0,1,0,0],[0,0.25,1,0,0],[0,0.5,1,0,0],[0,0.75,1,0,0],[1,0.25,1,0,0],[1,0.5,1,0,0],[1,0.75,1,0,0],[0,1,1,0,0],[0.25,1,1,0,0],[0.5,1,1,0,0],[0.75,1,1,0,0],[1,1,1,0,0],[0.333333,0.46875,0,0,0]];" value="allocator" vertex="1">
+          <mxGeometry height="30" width="80" x="760" y="1310" as="geometry" />
+        </mxCell>
+        <mxCell id="kl1wrTt9ctB-OTy96kYS-162" parent="kl1wrTt9ctB-OTy96kYS-1" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;spacingLeft=8;verticalAlign=top;spacingTop=0;fillColor=#dae8fc;strokeColor=#6c8ebf;points=[[0,0,1,0,0],[0.25,0,1,0,0],[0.5,0,1,0,0],[0.75,0,1,0,0],[1,0,1,0,0],[0,0.25,1,0,0],[0,0.5,1,0,0],[0,0.75,1,0,0],[1,0.25,1,0,0],[1,0.5,1,0,0],[1,0.75,1,0,0],[0,1,1,0,0],[0.25,1,1,0,0],[0.5,1,1,0,0],[0.75,1,1,0,0],[1,1,1,0,0],[0.333333,0.46875,0,0,0]];" value="碎片" vertex="1">
+          <mxGeometry height="30" width="80" x="760" y="1370" as="geometry" />
+        </mxCell>
+        <mxCell id="kl1wrTt9ctB-OTy96kYS-163" edge="1" parent="kl1wrTt9ctB-OTy96kYS-1" source="kl1wrTt9ctB-OTy96kYS-156" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0.039;entryY=0.496;entryDx=0;entryDy=0;entryPerimeter=0;" target="kl1wrTt9ctB-OTy96kYS-159">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="kl1wrTt9ctB-OTy96kYS-164" parent="kl1wrTt9ctB-OTy96kYS-1" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;spacingLeft=8;verticalAlign=top;spacingTop=0;fillColor=#dae8fc;strokeColor=#6c8ebf;points=[[0,0,1,0,0],[0.25,0,1,0,0],[0.5,0,1,0,0],[0.75,0,1,0,0],[1,0,1,0,0],[0,0.25,1,0,0],[0,0.5,1,0,0],[0,0.75,1,0,0],[1,0.25,1,0,0],[1,0.5,1,0,0],[1,0.75,1,0,0],[0,1,1,0,0],[0.25,1,1,0,0],[0.5,1,1,0,0],[0.75,1,1,0,0],[1,1,1,0,0],[0.333333,0.46875,0,0,0]];" value="shared_ptr" vertex="1">
+          <mxGeometry height="30" width="80" x="760" y="1430" as="geometry" />
+        </mxCell>
+        <mxCell id="kl1wrTt9ctB-OTy96kYS-165" edge="1" parent="kl1wrTt9ctB-OTy96kYS-1" source="kl1wrTt9ctB-OTy96kYS-171" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="kl1wrTt9ctB-OTy96kYS-172">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="kl1wrTt9ctB-OTy96kYS-166" edge="1" parent="kl1wrTt9ctB-OTy96kYS-1" source="kl1wrTt9ctB-OTy96kYS-171" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="kl1wrTt9ctB-OTy96kYS-173">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="kl1wrTt9ctB-OTy96kYS-167" edge="1" parent="kl1wrTt9ctB-OTy96kYS-1" source="kl1wrTt9ctB-OTy96kYS-171" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="kl1wrTt9ctB-OTy96kYS-175">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="kl1wrTt9ctB-OTy96kYS-168" edge="1" parent="kl1wrTt9ctB-OTy96kYS-1" source="kl1wrTt9ctB-OTy96kYS-171" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="kl1wrTt9ctB-OTy96kYS-176">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="kl1wrTt9ctB-OTy96kYS-169" edge="1" parent="kl1wrTt9ctB-OTy96kYS-1" source="kl1wrTt9ctB-OTy96kYS-171" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="kl1wrTt9ctB-OTy96kYS-177">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="kl1wrTt9ctB-OTy96kYS-170" edge="1" parent="kl1wrTt9ctB-OTy96kYS-1" source="kl1wrTt9ctB-OTy96kYS-171" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="kl1wrTt9ctB-OTy96kYS-179">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="kl1wrTt9ctB-OTy96kYS-171" parent="kl1wrTt9ctB-OTy96kYS-1" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;spacingLeft=8;verticalAlign=top;spacingTop=0;fillColor=#dae8fc;strokeColor=#6c8ebf;points=[[0,0,1,0,0],[0.25,0,1,0,0],[0.5,0,1,0,0],[0.75,0,1,0,0],[1,0,1,0,0],[0,0.25,1,0,0],[0,0.5,1,0,0],[0,0.75,1,0,0],[1,0.25,1,0,0],[1,0.5,1,0,0],[1,0.75,1,0,0],[0,1,1,0,0],[0.25,1,1,0,0],[0.5,1,1,0,0],[0.75,1,1,0,0],[1,1,1,0,0],[0.333333,0.46875,0,0,0]];" value="&lt;b&gt;并发与锁&lt;/b&gt;" vertex="1">
+          <mxGeometry height="30" width="90" x="530" y="1660" as="geometry" />
+        </mxCell>
+        <mxCell id="kl1wrTt9ctB-OTy96kYS-172" parent="kl1wrTt9ctB-OTy96kYS-1" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;spacingLeft=8;verticalAlign=top;spacingTop=0;fillColor=#dae8fc;strokeColor=#6c8ebf;points=[[0,0,1,0,0],[0.25,0,1,0,0],[0.5,0,1,0,0],[0.75,0,1,0,0],[1,0,1,0,0],[0,0.25,1,0,0],[0,0.5,1,0,0],[0,0.75,1,0,0],[1,0.25,1,0,0],[1,0.5,1,0,0],[1,0.75,1,0,0],[0,1,1,0,0],[0.25,1,1,0,0],[0.5,1,1,0,0],[0.75,1,1,0,0],[1,1,1,0,0],[0.333333,0.46875,0,0,0]];" value="mutex" vertex="1">
+          <mxGeometry height="30" width="80" x="760" y="1522" as="geometry" />
+        </mxCell>
+        <mxCell id="kl1wrTt9ctB-OTy96kYS-173" parent="kl1wrTt9ctB-OTy96kYS-1" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;spacingLeft=8;verticalAlign=top;spacingTop=0;fillColor=#dae8fc;strokeColor=#6c8ebf;points=[[0,0,1,0,0],[0.25,0,1,0,0],[0.5,0,1,0,0],[0.75,0,1,0,0],[1,0,1,0,0],[0,0.25,1,0,0],[0,0.5,1,0,0],[0,0.75,1,0,0],[1,0.25,1,0,0],[1,0.5,1,0,0],[1,0.75,1,0,0],[0,1,1,0,0],[0.25,1,1,0,0],[0.5,1,1,0,0],[0.75,1,1,0,0],[1,1,1,0,0],[0.333333,0.46875,0,0,0]];" value="atomic" vertex="1">
+          <mxGeometry height="30" width="80" x="760" y="1592" as="geometry" />
+        </mxCell>
+        <mxCell id="kl1wrTt9ctB-OTy96kYS-174" parent="kl1wrTt9ctB-OTy96kYS-1" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;spacingLeft=8;verticalAlign=top;spacingTop=0;fillColor=#dae8fc;strokeColor=#6c8ebf;points=[[0,0,1,0,0],[0.25,0,1,0,0],[0.5,0,1,0,0],[0.75,0,1,0,0],[1,0,1,0,0],[0,0.25,1,0,0],[0,0.5,1,0,0],[0,0.75,1,0,0],[1,0.25,1,0,0],[1,0.5,1,0,0],[1,0.75,1,0,0],[0,1,1,0,0],[0.25,1,1,0,0],[0.5,1,1,0,0],[0.75,1,1,0,0],[1,1,1,0,0],[0.333333,0.46875,0,0,0]];" value="futex" vertex="1">
+          <mxGeometry height="30" width="100" x="760" y="1660" as="geometry" />
+        </mxCell>
+        <mxCell id="kl1wrTt9ctB-OTy96kYS-175" parent="kl1wrTt9ctB-OTy96kYS-1" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;spacingLeft=8;verticalAlign=top;spacingTop=0;fillColor=#dae8fc;strokeColor=#6c8ebf;points=[[0,0,1,0,0],[0.25,0,1,0,0],[0.5,0,1,0,0],[0.75,0,1,0,0],[1,0,1,0,0],[0,0.25,1,0,0],[0,0.5,1,0,0],[0,0.75,1,0,0],[1,0.25,1,0,0],[1,0.5,1,0,0],[1,0.75,1,0,0],[0,1,1,0,0],[0.25,1,1,0,0],[0.5,1,1,0,0],[0.75,1,1,0,0],[1,1,1,0,0],[0.333333,0.46875,0,0,0]];" value="cache line" vertex="1">
+          <mxGeometry height="30" width="80" x="760" y="1730" as="geometry" />
+        </mxCell>
+        <mxCell id="kl1wrTt9ctB-OTy96kYS-176" parent="kl1wrTt9ctB-OTy96kYS-1" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;spacingLeft=8;verticalAlign=top;spacingTop=0;fillColor=#dae8fc;strokeColor=#6c8ebf;points=[[0,0,1,0,0],[0.25,0,1,0,0],[0.5,0,1,0,0],[0.75,0,1,0,0],[1,0,1,0,0],[0,0.25,1,0,0],[0,0.5,1,0,0],[0,0.75,1,0,0],[1,0.25,1,0,0],[1,0.5,1,0,0],[1,0.75,1,0,0],[0,1,1,0,0],[0.25,1,1,0,0],[0.5,1,1,0,0],[0.75,1,1,0,0],[1,1,1,0,0],[0.333333,0.46875,0,0,0]];" value="false sharing" vertex="1">
+          <mxGeometry height="30" width="80" x="760" y="1800" as="geometry" />
+        </mxCell>
+        <mxCell id="kl1wrTt9ctB-OTy96kYS-177" parent="kl1wrTt9ctB-OTy96kYS-1" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;spacingLeft=8;verticalAlign=top;spacingTop=0;fillColor=#dae8fc;strokeColor=#6c8ebf;points=[[0,0,1,0,0],[0.25,0,1,0,0],[0.5,0,1,0,0],[0.75,0,1,0,0],[1,0,1,0,0],[0,0.25,1,0,0],[0,0.5,1,0,0],[0,0.75,1,0,0],[1,0.25,1,0,0],[1,0.5,1,0,0],[1,0.75,1,0,0],[0,1,1,0,0],[0.25,1,1,0,0],[0.5,1,1,0,0],[0.75,1,1,0,0],[1,1,1,0,0],[0.333333,0.46875,0,0,0]];" value="contention" vertex="1">
+          <mxGeometry height="30" width="80" x="760" y="1860" as="geometry" />
+        </mxCell>
+        <mxCell id="kl1wrTt9ctB-OTy96kYS-178" edge="1" parent="kl1wrTt9ctB-OTy96kYS-1" source="kl1wrTt9ctB-OTy96kYS-171" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0.039;entryY=0.496;entryDx=0;entryDy=0;entryPerimeter=0;" target="kl1wrTt9ctB-OTy96kYS-174">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="kl1wrTt9ctB-OTy96kYS-179" parent="kl1wrTt9ctB-OTy96kYS-1" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;spacingLeft=8;verticalAlign=top;spacingTop=0;fillColor=#dae8fc;strokeColor=#6c8ebf;points=[[0,0,1,0,0],[0.25,0,1,0,0],[0.5,0,1,0,0],[0.75,0,1,0,0],[1,0,1,0,0],[0,0.25,1,0,0],[0,0.5,1,0,0],[0,0.75,1,0,0],[1,0.25,1,0,0],[1,0.5,1,0,0],[1,0.75,1,0,0],[0,1,1,0,0],[0.25,1,1,0,0],[0.5,1,1,0,0],[0.75,1,1,0,0],[1,1,1,0,0],[0.333333,0.46875,0,0,0]];" value="lock-free" vertex="1">
+          <mxGeometry height="30" width="80" x="760" y="1920" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+  <diagram id="page_173e621f7459" name="CPU / 执行模型">
+    <mxGraphModel dx="3006" dy="1752" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1500" pageHeight="1570" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="v_3a123e0f6065" parent="1" style="swimlane;html=1;startSize=32;fillColor=#fafafa;strokeColor=#888888;fontSize=14;fontStyle=1;verticalAlign=top;align=left;spacingLeft=10;" value="CPU / 执行模型" vertex="1">
+          <mxGeometry height="1824" width="1650" x="20" y="16" as="geometry" />
+        </mxCell>
+        <mxCell id="sT0R2GHpR6qgm3xtjWRZ-1" edge="1" parent="v_3a123e0f6065" source="v_316304e70ee2" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="v_5f59897a6e73">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="sT0R2GHpR6qgm3xtjWRZ-2" edge="1" parent="v_3a123e0f6065" source="v_316304e70ee2" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="v_4941f09a8d62">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="sT0R2GHpR6qgm3xtjWRZ-3" edge="1" parent="v_3a123e0f6065" source="v_316304e70ee2" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="v_dd9c65282429">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="sT0R2GHpR6qgm3xtjWRZ-4" edge="1" parent="v_3a123e0f6065" source="v_316304e70ee2" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="v_5de331dd55c5">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="sT0R2GHpR6qgm3xtjWRZ-5" edge="1" parent="v_3a123e0f6065" source="v_316304e70ee2" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="v_5e8c98b454d4">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="v_316304e70ee2" parent="v_3a123e0f6065" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;spacingLeft=8;verticalAlign=top;spacingTop=5;fillColor=#dae8fc;strokeColor=#6c8ebf;fontStyle=1;" value="&lt;b&gt;CPU / 执行模型&lt;/b&gt;&lt;br&gt;程序最终如何变成“某个 CPU 核正在执行某个线程”" vertex="1">
+          <mxGeometry height="72" width="190" x="120" y="854" as="geometry" />
+        </mxCell>
+        <mxCell id="sT0R2GHpR6qgm3xtjWRZ-6" edge="1" parent="v_3a123e0f6065" source="v_5f59897a6e73" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="v_e02133d29157">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="sT0R2GHpR6qgm3xtjWRZ-7" edge="1" parent="v_3a123e0f6065" source="v_5f59897a6e73" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="v_db3411751c8d">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="sT0R2GHpR6qgm3xtjWRZ-8" edge="1" parent="v_3a123e0f6065" source="v_5f59897a6e73" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="v_a0b156b084cb">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="v_5f59897a6e73" parent="v_3a123e0f6065" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;spacingLeft=8;verticalAlign=top;spacingTop=5;fillColor=#dae8fc;strokeColor=#6c8ebf;fontStyle=1;" value="&lt;b&gt;进程与线程&lt;/b&gt;" vertex="1">
+          <mxGeometry height="42" width="180" x="365" y="220" as="geometry" />
+        </mxCell>
+        <mxCell id="v_e02133d29157" parent="v_3a123e0f6065" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;spacingLeft=8;verticalAlign=top;spacingTop=5;fillColor=#dae8fc;strokeColor=#6c8ebf;" value="&lt;b&gt;进程（Process）&lt;/b&gt;&lt;br&gt;更像“资源容器”：拥有独立虚拟地址空间、文件描述符、内存映射等。进程本身不是 CPU 直接执行的最小单位。" vertex="1">
+          <mxGeometry height="58" width="650" x="760" y="120" as="geometry" />
+        </mxCell>
+        <mxCell id="v_db3411751c8d" parent="v_3a123e0f6065" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;spacingLeft=8;verticalAlign=top;spacingTop=5;fillColor=#dae8fc;strokeColor=#6c8ebf;" value="&lt;b&gt;线程（Thread）&lt;/b&gt;&lt;br&gt;真正被操作系统调度到 CPU 上运行的执行流。每个线程有自己的寄存器状态、栈、程序计数器。" vertex="1">
+          <mxGeometry height="58" width="650" x="760" y="212" as="geometry" />
+        </mxCell>
+        <mxCell id="v_a0b156b084cb" parent="v_3a123e0f6065" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;spacingLeft=8;verticalAlign=top;spacingTop=5;fillColor=#dae8fc;strokeColor=#6c8ebf;" value="&lt;b&gt;同一进程中的线程&lt;/b&gt;&lt;br&gt;共享代码、堆、全局变量和文件等资源，因此通信方便，但也因此会产生共享状态与同步问题。" vertex="1">
+          <mxGeometry height="58" width="650" x="760" y="304" as="geometry" />
+        </mxCell>
+        <mxCell id="v_dec3e1c9fcf9" parent="v_3a123e0f6065" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;spacingLeft=8;verticalAlign=top;spacingTop=5;fillColor=#fff2cc;strokeColor=#d6b656;fontStyle=1;" value="&lt;b&gt;关键认知&lt;/b&gt;&lt;br&gt;CPU 实际执行的是线程。所谓“一个进程用了 4 个核”，本质是这个进程里的多个线程同时被调度到多个逻辑 CPU。" vertex="1">
+          <mxGeometry height="58" width="650" x="760" y="420" as="geometry" />
+        </mxCell>
+        <mxCell id="sT0R2GHpR6qgm3xtjWRZ-9" edge="1" parent="v_3a123e0f6065" source="v_4941f09a8d62" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="v_dec3e1c9fcf9">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="sT0R2GHpR6qgm3xtjWRZ-10" edge="1" parent="v_3a123e0f6065" source="v_4941f09a8d62" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="v_0e5fe50f219e">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="sT0R2GHpR6qgm3xtjWRZ-11" edge="1" parent="v_3a123e0f6065" source="v_4941f09a8d62" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="v_69f0608b64e3">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="sT0R2GHpR6qgm3xtjWRZ-12" edge="1" parent="v_3a123e0f6065" source="v_4941f09a8d62" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="v_37e89eb59ec5">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="v_4941f09a8d62" parent="v_3a123e0f6065" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;spacingLeft=8;verticalAlign=top;spacingTop=5;fillColor=#dae8fc;strokeColor=#6c8ebf;fontStyle=1;" value="&lt;b&gt;线程如何跑到 CPU&lt;/b&gt;" vertex="1">
+          <mxGeometry height="42" width="180" x="365" y="561" as="geometry" />
+        </mxCell>
+        <mxCell id="v_0e5fe50f219e" parent="v_3a123e0f6065" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;spacingLeft=8;verticalAlign=top;spacingTop=5;fillColor=#dae8fc;strokeColor=#6c8ebf;" value="&lt;b&gt;基本过程&lt;/b&gt;&lt;br&gt;线程变为 runnable → 进入运行队列 → 调度器选择它 → 分配到某个逻辑 CPU → 开始执行。" vertex="1">
+          <mxGeometry height="58" width="650" x="760" y="503" as="geometry" />
+        </mxCell>
+        <mxCell id="v_69f0608b64e3" parent="v_3a123e0f6065" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;spacingLeft=8;verticalAlign=top;spacingTop=5;fillColor=#dae8fc;strokeColor=#6c8ebf;" value="&lt;b&gt;CPU Affinity&lt;/b&gt;&lt;br&gt;taskset / 线程亲和性可以限制线程在哪些 CPU 上运行。固定 CPU 常用于减少迁移并保持缓存局部性。" vertex="1">
+          <mxGeometry height="58" width="650" x="760" y="595" as="geometry" />
+        </mxCell>
+        <mxCell id="v_37e89eb59ec5" parent="v_3a123e0f6065" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;spacingLeft=8;verticalAlign=top;spacingTop=5;fillColor=#dae8fc;strokeColor=#6c8ebf;" value="&lt;b&gt;线程数 ≠ 算力&lt;/b&gt;&lt;br&gt;可运行线程多于逻辑 CPU 后，只能轮流执行；继续加线程可能只增加调度和上下文切换。" vertex="1">
+          <mxGeometry height="58" width="650" x="760" y="687" as="geometry" />
+        </mxCell>
+        <mxCell id="sT0R2GHpR6qgm3xtjWRZ-13" edge="1" parent="v_3a123e0f6065" source="v_dd9c65282429" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="v_8465328b4d80">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="sT0R2GHpR6qgm3xtjWRZ-14" edge="1" parent="v_3a123e0f6065" source="v_dd9c65282429" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="v_4a3baad5c47a">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="sT0R2GHpR6qgm3xtjWRZ-15" edge="1" parent="v_3a123e0f6065" source="v_dd9c65282429" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="v_636327a01a75">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="v_dd9c65282429" parent="v_3a123e0f6065" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;spacingLeft=8;verticalAlign=top;spacingTop=5;fillColor=#dae8fc;strokeColor=#6c8ebf;fontStyle=1;" value="&lt;b&gt;CPU 核与逻辑 CPU&lt;/b&gt;" vertex="1">
+          <mxGeometry height="42" width="180" x="365" y="893" as="geometry" />
+        </mxCell>
+        <mxCell id="v_8465328b4d80" parent="v_3a123e0f6065" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;spacingLeft=8;verticalAlign=top;spacingTop=5;fillColor=#dae8fc;strokeColor=#6c8ebf;" value="&lt;b&gt;物理核心&lt;/b&gt;&lt;br&gt;拥有实际执行单元和缓存层次。它才是真正提供计算资源的硬件。" vertex="1">
+          <mxGeometry height="58" width="650" x="760" y="793" as="geometry" />
+        </mxCell>
+        <mxCell id="v_4a3baad5c47a" parent="v_3a123e0f6065" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;spacingLeft=8;verticalAlign=top;spacingTop=5;fillColor=#dae8fc;strokeColor=#6c8ebf;" value="&lt;b&gt;逻辑 CPU / SMT&lt;/b&gt;&lt;br&gt;一个物理核心可能暴露多个逻辑 CPU；它们能同时保存硬件线程状态，但会共享部分核心执行资源。" vertex="1">
+          <mxGeometry height="58" width="650" x="760" y="885" as="geometry" />
+        </mxCell>
+        <mxCell id="v_636327a01a75" parent="v_3a123e0f6065" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;spacingLeft=8;verticalAlign=top;spacingTop=5;fillColor=#dae8fc;strokeColor=#6c8ebf;" value="&lt;b&gt;CPU 利用率怎么看&lt;/b&gt;&lt;br&gt;Linux 中一个线程占满一个逻辑 CPU，通常约表现为 100% CPU；4 个逻辑 CPU 满载约为 400%。" vertex="1">
+          <mxGeometry height="58" width="650" x="760" y="977" as="geometry" />
+        </mxCell>
+        <mxCell id="sT0R2GHpR6qgm3xtjWRZ-16" edge="1" parent="v_3a123e0f6065" source="v_5de331dd55c5" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="v_7514de26c1b6">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="sT0R2GHpR6qgm3xtjWRZ-17" edge="1" parent="v_3a123e0f6065" source="v_5de331dd55c5" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="v_1930e042622e">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="sT0R2GHpR6qgm3xtjWRZ-18" edge="1" parent="v_3a123e0f6065" source="v_5de331dd55c5" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="v_b23fc245bc44">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="v_5de331dd55c5" parent="v_3a123e0f6065" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;spacingLeft=8;verticalAlign=top;spacingTop=5;fillColor=#dae8fc;strokeColor=#6c8ebf;fontStyle=1;" value="&lt;b&gt;调度&lt;/b&gt;" vertex="1">
+          <mxGeometry height="42" width="180" x="365" y="1195" as="geometry" />
+        </mxCell>
+        <mxCell id="v_7514de26c1b6" parent="v_3a123e0f6065" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;spacingLeft=8;verticalAlign=top;spacingTop=5;fillColor=#dae8fc;strokeColor=#6c8ebf;" value="&lt;b&gt;调度器做什么&lt;/b&gt;&lt;br&gt;从 runnable 线程中决定“谁在哪个 CPU 上运行”，同时处理优先级、唤醒、抢占、负载均衡等。" vertex="1">
+          <mxGeometry height="58" width="650" x="760" y="1095" as="geometry" />
+        </mxCell>
+        <mxCell id="v_1930e042622e" parent="v_3a123e0f6065" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;spacingLeft=8;verticalAlign=top;spacingTop=5;fillColor=#dae8fc;strokeColor=#6c8ebf;" value="&lt;b&gt;线程迁移&lt;/b&gt;&lt;br&gt;线程从 CPU A 跑到 CPU B 并不免费：新 CPU 的 L1/L2 缓存可能没有它之前使用的数据。" vertex="1">
+          <mxGeometry height="58" width="650" x="760" y="1187" as="geometry" />
+        </mxCell>
+        <mxCell id="v_b23fc245bc44" parent="v_3a123e0f6065" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;spacingLeft=8;verticalAlign=top;spacingTop=5;fillColor=#dae8fc;strokeColor=#6c8ebf;" value="&lt;b&gt;过度并发&lt;/b&gt;&lt;br&gt;增加线程只有在存在可利用的并行资源时才有意义；否则可能只是把运行时间切得更碎。" vertex="1">
+          <mxGeometry height="58" width="650" x="760" y="1279" as="geometry" />
+        </mxCell>
+        <mxCell id="sT0R2GHpR6qgm3xtjWRZ-19" edge="1" parent="v_3a123e0f6065" source="v_5e8c98b454d4" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="v_3654f31ae93f">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="sT0R2GHpR6qgm3xtjWRZ-20" edge="1" parent="v_3a123e0f6065" source="v_5e8c98b454d4" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="v_0bc6ce616e0c">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="sT0R2GHpR6qgm3xtjWRZ-21" edge="1" parent="v_3a123e0f6065" source="v_5e8c98b454d4" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="v_ec87c6ad9daa">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="sT0R2GHpR6qgm3xtjWRZ-22" edge="1" parent="v_3a123e0f6065" source="v_5e8c98b454d4" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="v_18f1322acca3">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="v_5e8c98b454d4" parent="v_3a123e0f6065" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;spacingLeft=8;verticalAlign=top;spacingTop=5;fillColor=#dae8fc;strokeColor=#6c8ebf;fontStyle=1;" value="&lt;b&gt;上下文切换&lt;/b&gt;" vertex="1">
+          <mxGeometry height="42" width="180" x="365" y="1552" as="geometry" />
+        </mxCell>
+        <mxCell id="v_3654f31ae93f" parent="v_3a123e0f6065" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;spacingLeft=8;verticalAlign=top;spacingTop=5;fillColor=#dae8fc;strokeColor=#6c8ebf;" value="&lt;b&gt;切换了什么&lt;/b&gt;&lt;br&gt;保存当前线程的寄存器、栈指针、程序计数器等状态，再恢复另一个线程的执行状态。" vertex="1">
+          <mxGeometry height="58" width="650" x="760" y="1414" as="geometry" />
+        </mxCell>
+        <mxCell id="v_0bc6ce616e0c" parent="v_3a123e0f6065" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;spacingLeft=8;verticalAlign=top;spacingTop=5;fillColor=#dae8fc;strokeColor=#6c8ebf;" value="&lt;b&gt;真正成本&lt;/b&gt;&lt;br&gt;不只保存寄存器，还可能破坏 CPU cache / TLB 局部性，并引入调度器工作。" vertex="1">
+          <mxGeometry height="58" width="650" x="760" y="1491" as="geometry" />
+        </mxCell>
+        <mxCell id="v_ec87c6ad9daa" parent="v_3a123e0f6065" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;spacingLeft=8;verticalAlign=top;spacingTop=5;fillColor=#dae8fc;strokeColor=#6c8ebf;" value="&lt;b&gt;主动 vs 被动&lt;/b&gt;&lt;br&gt;阻塞等待 I/O/锁属于主动让出；时间片耗尽、被更高优先级任务抢占属于被动切换。" vertex="1">
+          <mxGeometry height="58" width="650" x="760" y="1583" as="geometry" />
+        </mxCell>
+        <mxCell id="v_18f1322acca3" parent="v_3a123e0f6065" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;spacingLeft=8;verticalAlign=top;spacingTop=5;fillColor=#d5e8d4;strokeColor=#82b366;" value="&lt;b&gt;NebulaRPC 对应&lt;/b&gt;&lt;br&gt;4 Worker = 4 EventLoop 线程。绑定 CPU 0-3 / 4-7 的目的，就是控制调度与迁移变量，而不是盲目增加线程。" vertex="1">
+          <mxGeometry height="76" width="650" x="760" y="1675" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+  <diagram id="page_8999a0aa6054" name="系统调用 / 内核">
+    <mxGraphModel dx="16033" dy="9344" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1500" pageHeight="1710" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="v_be0b3c844935" parent="1" style="swimlane;html=1;startSize=32;fillColor=#fafafa;strokeColor=#888888;fontSize=14;fontStyle=1;verticalAlign=top;align=left;spacingLeft=10;" value="系统调用 / 内核" vertex="1">
+          <mxGeometry height="2010" width="1640" x="230" y="70" as="geometry" />
+        </mxCell>
+        <mxCell id="1Q0AQnvmotAxN2sZUnG9-1" edge="1" parent="v_be0b3c844935" source="v_24f934b6252a" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="v_9ce36bbf0691">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="1Q0AQnvmotAxN2sZUnG9-2" edge="1" parent="v_be0b3c844935" source="v_24f934b6252a" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="v_52cac763ce63">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="1Q0AQnvmotAxN2sZUnG9-3" edge="1" parent="v_be0b3c844935" source="v_24f934b6252a" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="v_e0e4a2e95f18">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="1Q0AQnvmotAxN2sZUnG9-4" edge="1" parent="v_be0b3c844935" source="v_24f934b6252a" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="v_ac2f5d767e22">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="1Q0AQnvmotAxN2sZUnG9-5" edge="1" parent="v_be0b3c844935" source="v_24f934b6252a" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="v_5d01182b0ec8">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="v_24f934b6252a" parent="v_be0b3c844935" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;spacingLeft=8;verticalAlign=top;spacingTop=5;fillColor=#dae8fc;strokeColor=#6c8ebf;fontStyle=1;" value="&lt;b&gt;系统调用 / 内核&lt;/b&gt;&lt;br&gt;用户程序如何请求操作系统完成“自己无权直接做”的事情" vertex="1">
+          <mxGeometry height="76" width="210" x="30" y="780" as="geometry" />
+        </mxCell>
+        <mxCell id="1Q0AQnvmotAxN2sZUnG9-6" edge="1" parent="v_be0b3c844935" source="v_9ce36bbf0691" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="v_80fa1f6d49b8">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="1Q0AQnvmotAxN2sZUnG9-7" edge="1" parent="v_be0b3c844935" source="v_9ce36bbf0691" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="v_2f37670f1248">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="1Q0AQnvmotAxN2sZUnG9-8" edge="1" parent="v_be0b3c844935" source="v_9ce36bbf0691" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="v_e762e5a42991">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="1Q0AQnvmotAxN2sZUnG9-9" edge="1" parent="v_be0b3c844935" source="v_9ce36bbf0691" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="v_1359f12442fb">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="v_9ce36bbf0691" parent="v_be0b3c844935" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;spacingLeft=8;verticalAlign=top;spacingTop=5;fillColor=#dae8fc;strokeColor=#6c8ebf;fontStyle=1;" value="&lt;b&gt;用户态 / 内核态&lt;/b&gt;" vertex="1">
+          <mxGeometry height="42" width="180" x="310" y="209" as="geometry" />
+        </mxCell>
+        <mxCell id="v_80fa1f6d49b8" parent="v_be0b3c844935" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;spacingLeft=8;verticalAlign=top;spacingTop=5;fillColor=#dae8fc;strokeColor=#6c8ebf;" value="&lt;b&gt;不是两颗 CPU&lt;/b&gt;&lt;br&gt;用户态代码和内核态代码都运行在同一颗 CPU 上，区别是 CPU 当前处于不同特权级。" vertex="1">
+          <mxGeometry height="58" width="650" x="690" y="60" as="geometry" />
+        </mxCell>
+        <mxCell id="v_2f37670f1248" parent="v_be0b3c844935" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;spacingLeft=8;verticalAlign=top;spacingTop=5;fillColor=#dae8fc;strokeColor=#6c8ebf;" value="&lt;b&gt;用户态&lt;/b&gt;&lt;br&gt;普通应用代码运行的区域。不能直接操作页表、设备寄存器、调度器等受保护资源。" vertex="1">
+          <mxGeometry height="58" width="650" x="690" y="152" as="geometry" />
+        </mxCell>
+        <mxCell id="v_e762e5a42991" parent="v_be0b3c844935" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;spacingLeft=8;verticalAlign=top;spacingTop=5;fillColor=#dae8fc;strokeColor=#6c8ebf;" value="&lt;b&gt;内核态&lt;/b&gt;&lt;br&gt;操作系统内核拥有更高权限。系统调用进入内核后，内核代码通常仍由“当前这个线程”在当前 CPU 上执行。" vertex="1">
+          <mxGeometry height="58" width="650" x="690" y="244" as="geometry" />
+        </mxCell>
+        <mxCell id="v_1359f12442fb" parent="v_be0b3c844935" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;spacingLeft=8;verticalAlign=top;spacingTop=5;fillColor=#fff2cc;strokeColor=#d6b656;fontStyle=1;" value="&lt;b&gt;关键区别&lt;/b&gt;&lt;br&gt;用户态 → 内核态是 privilege/mode switch；它不等于线程上下文切换。一次 syscall 完全可能由同一线程进入内核再返回。" vertex="1">
+          <mxGeometry height="58" width="650" x="690" y="336" as="geometry" />
+        </mxCell>
+        <mxCell id="1Q0AQnvmotAxN2sZUnG9-11" edge="1" parent="v_be0b3c844935" source="v_52cac763ce63" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="v_a54125ccb3a5">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="1Q0AQnvmotAxN2sZUnG9-12" edge="1" parent="v_be0b3c844935" source="v_52cac763ce63" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="v_0eecbdb92e7c">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="1Q0AQnvmotAxN2sZUnG9-13" edge="1" parent="v_be0b3c844935" source="v_52cac763ce63" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="v_c105f64d027e">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="1Q0AQnvmotAxN2sZUnG9-14" edge="1" parent="v_be0b3c844935" source="v_52cac763ce63" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="v_535301d7b41f">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="v_52cac763ce63" parent="v_be0b3c844935" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;spacingLeft=8;verticalAlign=top;spacingTop=5;fillColor=#dae8fc;strokeColor=#6c8ebf;fontStyle=1;" value="&lt;b&gt;系统调用 syscall&lt;/b&gt;" vertex="1">
+          <mxGeometry height="42" width="180" x="310" y="657" as="geometry" />
+        </mxCell>
+        <mxCell id="v_a54125ccb3a5" parent="v_be0b3c844935" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;spacingLeft=8;verticalAlign=top;spacingTop=5;fillColor=#dae8fc;strokeColor=#6c8ebf;" value="&lt;b&gt;基本路径&lt;/b&gt;&lt;br&gt;用户函数 → syscall 指令 → CPU 切换到内核入口 → 内核校验参数并执行 → 返回用户态。" vertex="1">
+          <mxGeometry height="58" width="650" x="680" y="504" as="geometry" />
+        </mxCell>
+        <mxCell id="v_0eecbdb92e7c" parent="v_be0b3c844935" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;spacingLeft=8;verticalAlign=top;spacingTop=5;fillColor=#dae8fc;strokeColor=#6c8ebf;" value="&lt;b&gt;常见 syscall&lt;/b&gt;&lt;br&gt;read / write / send / recv / epoll_wait / futex / timerfd_settime / mmap ……" vertex="1">
+          <mxGeometry height="58" width="650" x="680" y="596" as="geometry" />
+        </mxCell>
+        <mxCell id="v_c105f64d027e" parent="v_be0b3c844935" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;spacingLeft=8;verticalAlign=top;spacingTop=5;fillColor=#dae8fc;strokeColor=#6c8ebf;" value="&lt;b&gt;为什么有成本&lt;/b&gt;&lt;br&gt;除了进入/退出内核的固定成本，还包括参数检查、内核数据结构、锁、协议栈、调度等实际工作。" vertex="1">
+          <mxGeometry height="58" width="650" x="680" y="688" as="geometry" />
+        </mxCell>
+        <mxCell id="v_535301d7b41f" parent="v_be0b3c844935" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;spacingLeft=8;verticalAlign=top;spacingTop=5;fillColor=#dae8fc;strokeColor=#6c8ebf;" value="&lt;b&gt;频率比“有没有”更重要&lt;/b&gt;&lt;br&gt;一次 syscall 很正常；如果每个 RPC 都重复做多个 syscall，就可能在百万 QPS 下被放大成热点。" vertex="1">
+          <mxGeometry height="58" width="650" x="680" y="780" as="geometry" />
+        </mxCell>
+        <mxCell id="1Q0AQnvmotAxN2sZUnG9-15" edge="1" parent="v_be0b3c844935" source="v_e0e4a2e95f18" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="v_21202f31f4f9">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="1Q0AQnvmotAxN2sZUnG9-16" edge="1" parent="v_be0b3c844935" source="v_e0e4a2e95f18" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="v_cc2183864964">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="1Q0AQnvmotAxN2sZUnG9-17" edge="1" parent="v_be0b3c844935" source="v_e0e4a2e95f18" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="v_dc3eacaa58c6">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="v_e0e4a2e95f18" parent="v_be0b3c844935" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;spacingLeft=8;verticalAlign=top;spacingTop=5;fillColor=#dae8fc;strokeColor=#6c8ebf;fontStyle=1;" value="&lt;b&gt;I/O 也是内核路径&lt;/b&gt;" vertex="1">
+          <mxGeometry height="42" width="180" x="310" y="1058" as="geometry" />
+        </mxCell>
+        <mxCell id="v_21202f31f4f9" parent="v_be0b3c844935" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;spacingLeft=8;verticalAlign=top;spacingTop=5;fillColor=#dae8fc;strokeColor=#6c8ebf;" value="&lt;b&gt;网络 I/O&lt;/b&gt;&lt;br&gt;send/recv/read/write 只是入口；后面还可能经过 socket buffer、TCP/IP 协议栈、软中断、网卡 DMA 等。" vertex="1">
+          <mxGeometry height="58" width="650" x="680" y="958" as="geometry" />
+        </mxCell>
+        <mxCell id="v_cc2183864964" parent="v_be0b3c844935" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;spacingLeft=8;verticalAlign=top;spacingTop=5;fillColor=#dae8fc;strokeColor=#6c8ebf;" value="&lt;b&gt;阻塞的额外代价&lt;/b&gt;&lt;br&gt;如果 syscall 需要等待，线程可能从 runnable 变成 sleeping，之后再被唤醒并重新参与调度。" vertex="1">
+          <mxGeometry height="58" width="650" x="680" y="1050" as="geometry" />
+        </mxCell>
+        <mxCell id="v_dc3eacaa58c6" parent="v_be0b3c844935" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;spacingLeft=8;verticalAlign=top;spacingTop=5;fillColor=#dae8fc;strokeColor=#6c8ebf;" value="&lt;b&gt;批处理为什么有效&lt;/b&gt;&lt;br&gt;把 N 次小操作合并成更少的 syscall，可以摊薄用户态↔内核态以及内核数据结构处理成本。" vertex="1">
+          <mxGeometry height="58" width="650" x="680" y="1142" as="geometry" />
+        </mxCell>
+        <mxCell id="1Q0AQnvmotAxN2sZUnG9-18" edge="1" parent="v_be0b3c844935" source="v_ac2f5d767e22" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="v_655ebc179627">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="1Q0AQnvmotAxN2sZUnG9-19" edge="1" parent="v_be0b3c844935" source="v_ac2f5d767e22" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="v_50e11ed7c63d">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="1Q0AQnvmotAxN2sZUnG9-20" edge="1" parent="v_be0b3c844935" source="v_ac2f5d767e22" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="v_bc33e128fcbb">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="v_ac2f5d767e22" parent="v_be0b3c844935" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;spacingLeft=8;verticalAlign=top;spacingTop=5;fillColor=#dae8fc;strokeColor=#6c8ebf;fontStyle=1;" value="&lt;b&gt;不是 syscall 的内核进入&lt;/b&gt;" vertex="1">
+          <mxGeometry height="42" width="180" x="310" y="1416" as="geometry" />
+        </mxCell>
+        <mxCell id="v_655ebc179627" parent="v_be0b3c844935" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;spacingLeft=8;verticalAlign=top;spacingTop=5;fillColor=#dae8fc;strokeColor=#6c8ebf;" value="&lt;b&gt;Page Fault&lt;/b&gt;&lt;br&gt;CPU 访问虚拟地址时发现页表条件不满足，触发同步异常进入内核处理；它不是应用主动发起的 syscall。" vertex="1">
+          <mxGeometry height="58" width="650" x="680" y="1316" as="geometry" />
+        </mxCell>
+        <mxCell id="v_50e11ed7c63d" parent="v_be0b3c844935" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;spacingLeft=8;verticalAlign=top;spacingTop=5;fillColor=#dae8fc;strokeColor=#6c8ebf;" value="&lt;strong&gt;硬件中断&lt;/strong&gt;&lt;br&gt;硬件设备异步通知 CPU，例如网卡收包；CPU 的硬件时钟设备也可通过定时器中断驱动内核的 timer/hrtimer 到期处理。" vertex="1">
+          <mxGeometry height="58" width="650" x="680" y="1408" as="geometry" />
+        </mxCell>
+        <mxCell id="v_bc33e128fcbb" parent="v_be0b3c844935" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;spacingLeft=8;verticalAlign=top;spacingTop=5;fillColor=#dae8fc;strokeColor=#6c8ebf;" value="&lt;b&gt;Exception / Trap&lt;/b&gt;&lt;br&gt;非法指令、除零、page fault 等都属于 CPU 检测到的异常类入口。" vertex="1">
+          <mxGeometry height="58" width="650" x="680" y="1500" as="geometry" />
+        </mxCell>
+        <mxCell id="1Q0AQnvmotAxN2sZUnG9-21" edge="1" parent="v_be0b3c844935" source="v_5d01182b0ec8" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="v_3ce501d5c6f9">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="1Q0AQnvmotAxN2sZUnG9-22" edge="1" parent="v_be0b3c844935" source="v_5d01182b0ec8" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="v_b4bf4fa66286">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="1Q0AQnvmotAxN2sZUnG9-23" edge="1" parent="v_be0b3c844935" source="v_5d01182b0ec8" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="v_e9f55517ac65">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="v_5d01182b0ec8" parent="v_be0b3c844935" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;spacingLeft=8;verticalAlign=top;spacingTop=5;fillColor=#dae8fc;strokeColor=#6c8ebf;fontStyle=1;" value="&lt;b&gt;NebulaRPC 实测热点&lt;/b&gt;" vertex="1">
+          <mxGeometry height="42" width="180" x="310" y="1808" as="geometry" />
+        </mxCell>
+        <mxCell id="v_3ce501d5c6f9" parent="v_be0b3c844935" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;spacingLeft=8;verticalAlign=top;spacingTop=5;fillColor=#d5e8d4;strokeColor=#82b366;" value="&lt;b&gt;每 RPC timeout 路径&lt;/b&gt;&lt;br&gt;SetTimeout → TimerQueue::AddTimer；RPC 完成后 CancelTimer → TimerQueue::Cancel → ResetTimerFd → timerfd_settime。" vertex="1">
+          <mxGeometry height="58" width="650" x="680" y="1700" as="geometry" />
+        </mxCell>
+        <mxCell id="v_b4bf4fa66286" parent="v_be0b3c844935" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;spacingLeft=8;verticalAlign=top;spacingTop=5;fillColor=#d5e8d4;strokeColor=#82b366;" value="&lt;b&gt;本次 perf&lt;/b&gt;&lt;br&gt;timerfd_settime 相关调用栈约占 Callback 8.1%、Coroutine 9.1%，并伴随明显的内核 timer / spin 路径。" vertex="1">
+          <mxGeometry height="58" width="650" x="680" y="1800" as="geometry" />
+        </mxCell>
+        <mxCell id="v_e9f55517ac65" parent="v_be0b3c844935" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;spacingLeft=8;verticalAlign=top;spacingTop=5;fillColor=#fff2cc;strokeColor=#d6b656;fontStyle=1;" value="&lt;b&gt;优化方向&lt;/b&gt;&lt;br&gt;不是“消灭 syscall”，而是减少高频 syscall：例如减少 timerfd 重设次数、批量/分层管理 timeout，把固定成本摊薄。" vertex="1">
+          <mxGeometry height="58" width="650" x="680" y="1900" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+  <diagram id="page_cae07a674d15" name="内存生命周期">
+    <mxGraphModel grid="1" page="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" pageScale="1" pageWidth="1500" pageHeight="1760" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="v_53eaa593e6c8" parent="1" style="swimlane;html=1;startSize=32;fillColor=#fafafa;strokeColor=#888888;fontSize=14;fontStyle=1;verticalAlign=top;align=left;spacingLeft=10;" value="内存生命周期" vertex="1">
+          <mxGeometry height="2320" width="2070" x="-1280" y="70" as="geometry" />
+        </mxCell>
+        <mxCell id="0EUky69IjswyeOPBGm5G-2" edge="1" parent="v_53eaa593e6c8" source="v_3daacdb5f527" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="v_c663981d1c4a">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="0EUky69IjswyeOPBGm5G-3" edge="1" parent="v_53eaa593e6c8" source="v_3daacdb5f527" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="v_8ec6d77d057e">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="0EUky69IjswyeOPBGm5G-7" edge="1" parent="v_53eaa593e6c8" source="v_3daacdb5f527" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="v_3fdb314ba850">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="0EUky69IjswyeOPBGm5G-15" edge="1" parent="v_53eaa593e6c8" source="v_3daacdb5f527" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="v_9ed29502d3b3">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="0EUky69IjswyeOPBGm5G-20" edge="1" parent="v_53eaa593e6c8" source="v_3daacdb5f527" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="v_322319ebd5e4">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="v_3daacdb5f527" parent="v_53eaa593e6c8" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;spacingLeft=8;verticalAlign=top;spacingTop=5;fillColor=#dae8fc;strokeColor=#6c8ebf;fontStyle=1;" value="&lt;b&gt;内存生命周期&lt;/b&gt;&lt;br&gt;高频对象创建、销毁和访问方式，最终都会表现为 CPU 与缓存成本" vertex="1">
+          <mxGeometry height="76" width="215" x="88" y="1090" as="geometry" />
+        </mxCell>
+        <mxCell id="0EUky69IjswyeOPBGm5G-4" edge="1" parent="v_53eaa593e6c8" source="v_8ec6d77d057e" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="v_c1ec835912dc">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="0EUky69IjswyeOPBGm5G-5" edge="1" parent="v_53eaa593e6c8" source="v_8ec6d77d057e" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="v_e25b595e5eb8">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="0EUky69IjswyeOPBGm5G-6" edge="1" parent="v_53eaa593e6c8" source="v_8ec6d77d057e" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="v_fc4ee6ff6e37">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="v_8ec6d77d057e" parent="v_53eaa593e6c8" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;spacingLeft=8;verticalAlign=top;spacingTop=5;fillColor=#dae8fc;strokeColor=#6c8ebf;fontStyle=1;" value="&lt;b&gt;new/delete 与 malloc/free&lt;/b&gt;" vertex="1">
+          <mxGeometry height="42" width="180" x="378" y="312" as="geometry" />
+        </mxCell>
+        <mxCell id="v_c1ec835912dc" parent="v_53eaa593e6c8" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;spacingLeft=8;verticalAlign=top;spacingTop=5;fillColor=#dae8fc;strokeColor=#6c8ebf;" value="&lt;b&gt;malloc / free&lt;/b&gt;&lt;br&gt;C 运行库的堆分配接口。小对象常先走用户态 allocator 快路径，并不是每次 malloc 都直接 syscall。" vertex="1">
+          <mxGeometry height="58" width="650" x="758" y="210" as="geometry" />
+        </mxCell>
+        <mxCell id="v_e25b595e5eb8" parent="v_53eaa593e6c8" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;spacingLeft=8;verticalAlign=top;spacingTop=5;fillColor=#dae8fc;strokeColor=#6c8ebf;" value="&lt;b&gt;new / delete&lt;/b&gt;&lt;br&gt;C++ new 通常 = 分配内存 + 构造对象；delete = 析构对象 + 释放内存。底层分配常最终落到 allocator。" vertex="1">
+          <mxGeometry height="58" width="650" x="758" y="304" as="geometry" />
+        </mxCell>
+        <mxCell id="v_fc4ee6ff6e37" parent="v_53eaa593e6c8" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;spacingLeft=8;verticalAlign=top;spacingTop=5;fillColor=#dae8fc;strokeColor=#6c8ebf;" value="&lt;b&gt;什么时候进入内核&lt;/b&gt;&lt;br&gt;allocator 需要扩展/归还大块地址空间时，才可能通过 mmap / brk 等向内核申请或释放页面。" vertex="1">
+          <mxGeometry height="58" width="650" x="758" y="398" as="geometry" />
+        </mxCell>
+        <mxCell id="0EUky69IjswyeOPBGm5G-8" edge="1" parent="v_53eaa593e6c8" source="v_3fdb314ba850" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="v_a45040f67e8c">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="0EUky69IjswyeOPBGm5G-9" edge="1" parent="v_53eaa593e6c8" source="v_3fdb314ba850" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="v_2b622bb97612">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="0EUky69IjswyeOPBGm5G-10" edge="1" parent="v_53eaa593e6c8" source="v_3fdb314ba850" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="v_ae4516558003">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="v_3fdb314ba850" parent="v_53eaa593e6c8" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;spacingLeft=8;verticalAlign=top;spacingTop=5;fillColor=#dae8fc;strokeColor=#6c8ebf;fontStyle=1;" value="&lt;b&gt;Allocator&lt;/b&gt;" vertex="1">
+          <mxGeometry height="42" width="180" x="378" y="682" as="geometry" />
+        </mxCell>
+        <mxCell id="v_a45040f67e8c" parent="v_53eaa593e6c8" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;spacingLeft=8;verticalAlign=top;spacingTop=5;fillColor=#dae8fc;strokeColor=#6c8ebf;" value="&lt;b&gt;allocator 在做什么&lt;/b&gt;&lt;br&gt;维护 free list、size class、arena、tcache 等结构，把从 OS 得到的大块内存切成应用需要的小块。" vertex="1">
+          <mxGeometry height="58" width="650" x="758" y="580" as="geometry" />
+        </mxCell>
+        <mxCell id="v_2b622bb97612" parent="v_53eaa593e6c8" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;spacingLeft=8;verticalAlign=top;spacingTop=5;fillColor=#dae8fc;strokeColor=#6c8ebf;" value="&lt;b&gt;为什么频繁分配会贵&lt;/b&gt;&lt;br&gt;元数据更新、链表操作、分支、原子操作、cache miss 都会累积；跨线程释放还可能让路径更复杂。" vertex="1">
+          <mxGeometry height="58" width="650" x="758" y="674" as="geometry" />
+        </mxCell>
+        <mxCell id="v_ae4516558003" parent="v_53eaa593e6c8" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;spacingLeft=8;verticalAlign=top;spacingTop=5;fillColor=#dae8fc;strokeColor=#6c8ebf;" value="&lt;b&gt;堆不是“无限数组”&lt;/b&gt;&lt;br&gt;不同大小对象反复申请/释放会形成复杂空洞，allocator 需要合并、拆分和重新组织空闲块。" vertex="1">
+          <mxGeometry height="58" width="650" x="758" y="768" as="geometry" />
+        </mxCell>
+        <mxCell id="0EUky69IjswyeOPBGm5G-11" edge="1" parent="v_53eaa593e6c8" source="v_c663981d1c4a" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="v_a8835662b22c">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="0EUky69IjswyeOPBGm5G-12" edge="1" parent="v_53eaa593e6c8" source="v_c663981d1c4a" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="v_a752f00e66c8">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="0EUky69IjswyeOPBGm5G-13" edge="1" parent="v_53eaa593e6c8" source="v_c663981d1c4a" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="v_cbf3737cb90b">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="0EUky69IjswyeOPBGm5G-14" edge="1" parent="v_53eaa593e6c8" source="v_c663981d1c4a" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="v_195a42e84531">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="v_c663981d1c4a" parent="v_53eaa593e6c8" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;spacingLeft=8;verticalAlign=top;spacingTop=5;fillColor=#dae8fc;strokeColor=#6c8ebf;fontStyle=1;" value="&lt;b&gt;对象生命周期&lt;/b&gt;" vertex="1">
+          <mxGeometry height="42" width="180" x="378" y="1107" as="geometry" />
+        </mxCell>
+        <mxCell id="v_a8835662b22c" parent="v_53eaa593e6c8" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;spacingLeft=8;verticalAlign=top;spacingTop=5;fillColor=#dae8fc;strokeColor=#6c8ebf;" value="&lt;b&gt;构造 / 析构&lt;/b&gt;&lt;br&gt;成本不只在申请内存；对象初始化、字符串/容器成员、析构链都会在 hot path 上重复执行。" vertex="1">
+          <mxGeometry height="58" width="650" x="758" y="970" as="geometry" />
+        </mxCell>
+        <mxCell id="v_a752f00e66c8" parent="v_53eaa593e6c8" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;spacingLeft=8;verticalAlign=top;spacingTop=5;fillColor=#dae8fc;strokeColor=#6c8ebf;" value="&lt;b&gt;shared_ptr&lt;/b&gt;&lt;br&gt;通常包含 control block 与引用计数；引用计数常依赖原子操作，频繁复制/释放也不是“免费指针”。" vertex="1">
+          <mxGeometry height="58" width="650" x="758" y="1060" as="geometry" />
+        </mxCell>
+        <mxCell id="v_cbf3737cb90b" parent="v_53eaa593e6c8" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;spacingLeft=8;verticalAlign=top;spacingTop=5;fillColor=#dae8fc;strokeColor=#6c8ebf;" value="&lt;b&gt;std::function / Closure&lt;/b&gt;&lt;br&gt;捕获对象过大或生命周期复杂时可能触发堆分配；Callback 模型很容易把异步状态拆成大量短命对象。" vertex="1">
+          <mxGeometry height="58" width="650" x="758" y="1154" as="geometry" />
+        </mxCell>
+        <mxCell id="v_195a42e84531" parent="v_53eaa593e6c8" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;spacingLeft=8;verticalAlign=top;spacingTop=5;fillColor=#dae8fc;strokeColor=#6c8ebf;" value="&lt;b&gt;vector 扩容&lt;/b&gt;&lt;br&gt;容量不足时重新申请更大内存、移动旧元素、释放旧缓冲。hot path 中应关注 reserve / 容量复用。" vertex="1">
+          <mxGeometry height="58" width="650" x="758" y="1248" as="geometry" />
+        </mxCell>
+        <mxCell id="0EUky69IjswyeOPBGm5G-16" edge="1" parent="v_53eaa593e6c8" source="v_9ed29502d3b3" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="v_bce70c9dbfa2">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="0EUky69IjswyeOPBGm5G-17" edge="1" parent="v_53eaa593e6c8" source="v_9ed29502d3b3" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="v_1aa94285590a">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="0EUky69IjswyeOPBGm5G-18" edge="1" parent="v_53eaa593e6c8" source="v_9ed29502d3b3" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="v_97ab8166967c">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="v_9ed29502d3b3" parent="v_53eaa593e6c8" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;spacingLeft=8;verticalAlign=top;spacingTop=5;fillColor=#dae8fc;strokeColor=#6c8ebf;fontStyle=1;" value="&lt;b&gt;Cache 与局部性&lt;/b&gt;" vertex="1">
+          <mxGeometry height="42" width="180" x="378" y="1532" as="geometry" />
+        </mxCell>
+        <mxCell id="v_bce70c9dbfa2" parent="v_53eaa593e6c8" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;spacingLeft=8;verticalAlign=top;spacingTop=5;fillColor=#dae8fc;strokeColor=#6c8ebf;" value="&lt;b&gt;L1 / L2 / L3 / DRAM&lt;/b&gt;&lt;br&gt;CPU 离数据越远，访问延迟通常越高。性能很多时候不是“算得慢”，而是 CPU 在等数据。" vertex="1">
+          <mxGeometry height="58" width="650" x="758" y="1430" as="geometry" />
+        </mxCell>
+        <mxCell id="v_1aa94285590a" parent="v_53eaa593e6c8" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;spacingLeft=8;verticalAlign=top;spacingTop=5;fillColor=#dae8fc;strokeColor=#6c8ebf;" value="&lt;b&gt;空间局部性&lt;/b&gt;&lt;br&gt;连续对象更容易一次带入同一 cache line；散落的堆对象和指针跳转更容易造成 cache miss。" vertex="1">
+          <mxGeometry height="58" width="650" x="758" y="1524" as="geometry" />
+        </mxCell>
+        <mxCell id="v_97ab8166967c" parent="v_53eaa593e6c8" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;spacingLeft=8;verticalAlign=top;spacingTop=5;fillColor=#dae8fc;strokeColor=#6c8ebf;" value="&lt;b&gt;时间局部性&lt;/b&gt;&lt;br&gt;最近刚使用过的数据再次使用时更可能仍在 cache 中。对象复用往往同时改善 allocator 与 cache。" vertex="1">
+          <mxGeometry height="58" width="650" x="758" y="1618" as="geometry" />
+        </mxCell>
+        <mxCell id="0EUky69IjswyeOPBGm5G-21" edge="1" parent="v_53eaa593e6c8" source="v_322319ebd5e4" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="v_b7d16299fd11">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="0EUky69IjswyeOPBGm5G-22" edge="1" parent="v_53eaa593e6c8" source="v_322319ebd5e4" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="v_a7cd6187f1bf">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="0EUky69IjswyeOPBGm5G-23" edge="1" parent="v_53eaa593e6c8" source="v_322319ebd5e4" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="v_0bfb28e4e226">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="0EUky69IjswyeOPBGm5G-24" edge="1" parent="v_53eaa593e6c8" source="v_322319ebd5e4" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="v_2cf58f8a3d6f">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="v_322319ebd5e4" parent="v_53eaa593e6c8" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;spacingLeft=8;verticalAlign=top;spacingTop=5;fillColor=#dae8fc;strokeColor=#6c8ebf;fontStyle=1;" value="&lt;b&gt;碎片与整理&lt;/b&gt;" vertex="1">
+          <mxGeometry height="42" width="180" x="378" y="1964" as="geometry" />
+        </mxCell>
+        <mxCell id="v_b7d16299fd11" parent="v_53eaa593e6c8" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;spacingLeft=8;verticalAlign=top;spacingTop=5;fillColor=#dae8fc;strokeColor=#6c8ebf;" value="&lt;b&gt;内部 / 外部碎片&lt;/b&gt;&lt;br&gt;分配粒度与对象大小不匹配会浪费块内空间；空闲块分散则可能形成外部碎片。" vertex="1">
+          <mxGeometry height="58" width="650" x="758" y="1800" as="geometry" />
+        </mxCell>
+        <mxCell id="v_a7cd6187f1bf" parent="v_53eaa593e6c8" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;spacingLeft=8;verticalAlign=top;spacingTop=5;fillColor=#dae8fc;strokeColor=#6c8ebf;" value="&lt;b&gt;allocator 整理路径&lt;/b&gt;&lt;br&gt;malloc_consolidate / unlink_chunk 等说明 allocator 正在合并、摘除、维护空闲块，这些都直接消耗 CPU。" vertex="1">
+          <mxGeometry height="76" width="650" x="758" y="1899" as="geometry" />
+        </mxCell>
+        <mxCell id="v_0bfb28e4e226" parent="v_53eaa593e6c8" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;spacingLeft=8;verticalAlign=top;spacingTop=5;fillColor=#d5e8d4;strokeColor=#82b366;" value="&lt;b&gt;本次 perf 证据&lt;/b&gt;&lt;br&gt;含 malloc 调用栈：Callback 19.28% → Coroutine 13.95%；malloc_consolidate 3.79% → 1.74%；unlink_chunk 2.75% → 1.15%。" vertex="1">
+          <mxGeometry height="76" width="650" x="758" y="1995" as="geometry" />
+        </mxCell>
+        <mxCell id="v_2cf58f8a3d6f" parent="v_53eaa593e6c8" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;spacingLeft=8;verticalAlign=top;spacingTop=5;fillColor=#fff2cc;strokeColor=#d6b656;fontStyle=1;" value="&lt;b&gt;为什么协程更省&lt;/b&gt;&lt;br&gt;长期 coroutine frame 能复用一部分执行状态；Callback 更容易为每个 RPC 创建 CallContext、Closure、捕获对象等短命异步状态。" vertex="1">
+          <mxGeometry height="76" width="650" x="758" y="2091" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+  <diagram id="page_8c8cadeef2ce" name="并发与锁">
+    <mxGraphModel dx="481" dy="280" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1500" pageHeight="1810" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="v_52a5bfb9aad8" parent="1" style="swimlane;html=1;startSize=32;fillColor=#fafafa;strokeColor=#888888;fontSize=14;fontStyle=1;verticalAlign=top;align=left;spacingLeft=10;" value="并发与锁" vertex="1">
+          <mxGeometry height="2450" width="1880" x="20" y="20" as="geometry" />
+        </mxCell>
+        <mxCell id="jQLC7vHaXhRYITItqoUa-1" edge="1" parent="v_52a5bfb9aad8" source="v_de61247fbd73" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="v_3e4ce4ee0d3b">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="jQLC7vHaXhRYITItqoUa-2" edge="1" parent="v_52a5bfb9aad8" source="v_de61247fbd73" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="v_ae61c8fb18cd">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="jQLC7vHaXhRYITItqoUa-7" edge="1" parent="v_52a5bfb9aad8" source="v_de61247fbd73" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="v_1d56ca3a45b5">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="BF2JybOgnex9REVoqiZU-4" edge="1" parent="v_52a5bfb9aad8" source="v_de61247fbd73" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="v_64f455f6790d">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="BF2JybOgnex9REVoqiZU-8" edge="1" parent="v_52a5bfb9aad8" source="v_de61247fbd73" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="v_ac926e0d826f">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="BF2JybOgnex9REVoqiZU-11" edge="1" parent="v_52a5bfb9aad8" source="v_de61247fbd73" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="v_5419ddaa7fbc">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="v_de61247fbd73" parent="v_52a5bfb9aad8" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;spacingLeft=8;verticalAlign=top;spacingTop=5;fillColor=#dae8fc;strokeColor=#6c8ebf;fontStyle=1;" value="&lt;b&gt;并发与锁&lt;/b&gt;&lt;br&gt;真正昂贵的不是“出现 mutex”，而是多个执行者争抢同一份共享状态" vertex="1">
+          <mxGeometry height="78" width="220" x="70" y="1124" as="geometry" />
+        </mxCell>
+        <mxCell id="jQLC7vHaXhRYITItqoUa-3" edge="1" parent="v_52a5bfb9aad8" source="v_ae61c8fb18cd" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="v_28c27614aa56">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="jQLC7vHaXhRYITItqoUa-4" edge="1" parent="v_52a5bfb9aad8" source="v_ae61c8fb18cd" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="v_c733947bdd34">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="jQLC7vHaXhRYITItqoUa-5" edge="1" parent="v_52a5bfb9aad8" source="v_ae61c8fb18cd" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="v_5966c544c22b">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="jQLC7vHaXhRYITItqoUa-6" edge="1" parent="v_52a5bfb9aad8" source="v_ae61c8fb18cd" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="v_f6a4ab38dce8">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="v_ae61c8fb18cd" parent="v_52a5bfb9aad8" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;spacingLeft=8;verticalAlign=top;spacingTop=5;fillColor=#dae8fc;strokeColor=#6c8ebf;fontStyle=1;" value="&lt;b&gt;Mutex&lt;/b&gt;" vertex="1">
+          <mxGeometry height="42" width="180" x="416" y="301" as="geometry" />
+        </mxCell>
+        <mxCell id="v_28c27614aa56" parent="v_52a5bfb9aad8" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;spacingLeft=8;verticalAlign=top;spacingTop=5;fillColor=#dae8fc;strokeColor=#6c8ebf;" value="&lt;b&gt;无竞争 fast path&lt;/b&gt;&lt;br&gt;pthread_mutex_lock 通常先在用户态通过原子操作尝试拿锁；没人竞争时可以完全不进入内核。" vertex="1">
+          <mxGeometry height="58" width="650" x="796" y="160" as="geometry" />
+        </mxCell>
+        <mxCell id="v_c733947bdd34" parent="v_52a5bfb9aad8" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;spacingLeft=8;verticalAlign=top;spacingTop=5;fillColor=#dae8fc;strokeColor=#6c8ebf;" value="&lt;b&gt;有竞争 slow path&lt;/b&gt;&lt;br&gt;拿不到锁时可能先短暂自旋；仍失败后才通过 futex(FUTEX_WAIT) 进入内核并让线程睡眠。" vertex="1">
+          <mxGeometry height="58" width="650" x="796" y="254" as="geometry" />
+        </mxCell>
+        <mxCell id="v_5966c544c22b" parent="v_52a5bfb9aad8" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;spacingLeft=8;verticalAlign=top;spacingTop=5;fillColor=#dae8fc;strokeColor=#6c8ebf;" value="&lt;b&gt;Unlock + 唤醒&lt;/b&gt;&lt;br&gt;如果存在等待者，解锁方可能通过 futex(FUTEX_WAKE) 进入内核唤醒线程，之后还要经过调度器重新运行。" vertex="1">
+          <mxGeometry height="58" width="650" x="796" y="348" as="geometry" />
+        </mxCell>
+        <mxCell id="v_f6a4ab38dce8" parent="v_52a5bfb9aad8" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;spacingLeft=8;verticalAlign=top;spacingTop=5;fillColor=#fff2cc;strokeColor=#d6b656;fontStyle=1;" value="&lt;b&gt;关键认知&lt;/b&gt;&lt;br&gt;“加锁” ≠ “必然 syscall”。真正危险的是 contention：等待、睡眠、唤醒、调度和 cache line 争夺。" vertex="1">
+          <mxGeometry height="58" width="650" x="796" y="442" as="geometry" />
+        </mxCell>
+        <mxCell id="jQLC7vHaXhRYITItqoUa-8" edge="1" parent="v_52a5bfb9aad8" source="v_1d56ca3a45b5" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="v_12f112079736">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="jQLC7vHaXhRYITItqoUa-9" edge="1" parent="v_52a5bfb9aad8" source="v_1d56ca3a45b5" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="v_ef4b8ab0517c">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="jQLC7vHaXhRYITItqoUa-10" edge="1" parent="v_52a5bfb9aad8" source="v_1d56ca3a45b5" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="v_22901747657e">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="v_1d56ca3a45b5" parent="v_52a5bfb9aad8" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;spacingLeft=8;verticalAlign=top;spacingTop=5;fillColor=#dae8fc;strokeColor=#6c8ebf;fontStyle=1;" value="&lt;b&gt;Atomic&lt;/b&gt;" vertex="1">
+          <mxGeometry height="42" width="180" x="416" y="752" as="geometry" />
+        </mxCell>
+        <mxCell id="v_12f112079736" parent="v_52a5bfb9aad8" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;spacingLeft=8;verticalAlign=top;spacingTop=5;fillColor=#dae8fc;strokeColor=#6c8ebf;" value="&lt;b&gt;原子操作&lt;/b&gt;&lt;br&gt;通常由 CPU 原子指令完成，不需要进入内核；但它仍受 memory ordering 与缓存一致性协议约束。" vertex="1">
+          <mxGeometry height="58" width="650" x="796" y="650" as="geometry" />
+        </mxCell>
+        <mxCell id="v_ef4b8ab0517c" parent="v_52a5bfb9aad8" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;spacingLeft=8;verticalAlign=top;spacingTop=5;fillColor=#dae8fc;strokeColor=#6c8ebf;" value="&lt;b&gt;没有锁 ≠ 没有竞争&lt;/b&gt;&lt;br&gt;多个核心不断 CAS 同一个变量时，cache line 仍会在核心之间来回转移，重试也会烧 CPU。" vertex="1">
+          <mxGeometry height="58" width="650" x="796" y="744" as="geometry" />
+        </mxCell>
+        <mxCell id="v_22901747657e" parent="v_52a5bfb9aad8" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;spacingLeft=8;verticalAlign=top;spacingTop=5;fillColor=#dae8fc;strokeColor=#6c8ebf;" value="&lt;b&gt;Memory Order&lt;/b&gt;&lt;br&gt;顺序约束越强，编译器与 CPU 可重排空间越小。正确性优先，不能为了性能随便降低语义。" vertex="1">
+          <mxGeometry height="58" width="650" x="796" y="838" as="geometry" />
+        </mxCell>
+        <mxCell id="BF2JybOgnex9REVoqiZU-1" edge="1" parent="v_52a5bfb9aad8" source="v_3e4ce4ee0d3b" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="v_ebc14d2da4b1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="BF2JybOgnex9REVoqiZU-2" edge="1" parent="v_52a5bfb9aad8" source="v_3e4ce4ee0d3b" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="v_37354acfa04d">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="BF2JybOgnex9REVoqiZU-3" edge="1" parent="v_52a5bfb9aad8" source="v_3e4ce4ee0d3b" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="v_80fc196bd319">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="v_3e4ce4ee0d3b" parent="v_52a5bfb9aad8" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;spacingLeft=8;verticalAlign=top;spacingTop=5;fillColor=#dae8fc;strokeColor=#6c8ebf;fontStyle=1;" value="&lt;b&gt;Cache Line / False Sharing&lt;/b&gt;" vertex="1">
+          <mxGeometry height="42" width="180" x="416" y="1142" as="geometry" />
+        </mxCell>
+        <mxCell id="v_ebc14d2da4b1" parent="v_52a5bfb9aad8" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;spacingLeft=8;verticalAlign=top;spacingTop=5;fillColor=#dae8fc;strokeColor=#6c8ebf;" value="&lt;b&gt;Cache Line&lt;/b&gt;&lt;br&gt;CPU cache 以一整条 cache line 为一致性和传输单位，而不是以单个 int/字段为单位。" vertex="1">
+          <mxGeometry height="58" width="650" x="796" y="1040" as="geometry" />
+        </mxCell>
+        <mxCell id="v_37354acfa04d" parent="v_52a5bfb9aad8" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;spacingLeft=8;verticalAlign=top;spacingTop=5;fillColor=#dae8fc;strokeColor=#6c8ebf;" value="&lt;b&gt;Cache Coherence&lt;/b&gt;&lt;br&gt;多个核心修改同一 cache line 时，需要通过硬件一致性协议转移所有权；这不是 syscall，但会产生硬件通信成本。" vertex="1">
+          <mxGeometry height="58" width="650" x="796" y="1134" as="geometry" />
+        </mxCell>
+        <mxCell id="v_80fc196bd319" parent="v_52a5bfb9aad8" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;spacingLeft=8;verticalAlign=top;spacingTop=5;fillColor=#dae8fc;strokeColor=#6c8ebf;" value="&lt;b&gt;False Sharing&lt;/b&gt;&lt;br&gt;两个线程明明修改不同变量，但变量恰好位于同一 cache line，也会互相让对方的缓存副本失效。" vertex="1">
+          <mxGeometry height="58" width="650" x="796" y="1228" as="geometry" />
+        </mxCell>
+        <mxCell id="BF2JybOgnex9REVoqiZU-5" edge="1" parent="v_52a5bfb9aad8" source="v_64f455f6790d" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="v_acee0557c580">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="BF2JybOgnex9REVoqiZU-6" edge="1" parent="v_52a5bfb9aad8" source="v_64f455f6790d" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="v_ac02cdc7b130">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="BF2JybOgnex9REVoqiZU-7" edge="1" parent="v_52a5bfb9aad8" source="v_64f455f6790d" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="v_1b139bc5e402">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="v_64f455f6790d" parent="v_52a5bfb9aad8" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;spacingLeft=8;verticalAlign=top;spacingTop=5;fillColor=#dae8fc;strokeColor=#6c8ebf;fontStyle=1;" value="&lt;b&gt;Contention&lt;/b&gt;" vertex="1">
+          <mxGeometry height="42" width="180" x="416" y="1512" as="geometry" />
+        </mxCell>
+        <mxCell id="v_acee0557c580" parent="v_52a5bfb9aad8" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;spacingLeft=8;verticalAlign=top;spacingTop=5;fillColor=#dae8fc;strokeColor=#6c8ebf;" value="&lt;b&gt;锁竞争&lt;/b&gt;&lt;br&gt;多个线程同时进入同一个临界区，等待时间取决于持锁时间、并发线程数和访问频率。" vertex="1">
+          <mxGeometry height="58" width="650" x="796" y="1410" as="geometry" />
+        </mxCell>
+        <mxCell id="v_ac02cdc7b130" parent="v_52a5bfb9aad8" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;spacingLeft=8;verticalAlign=top;spacingTop=5;fillColor=#dae8fc;strokeColor=#6c8ebf;" value="&lt;b&gt;资源竞争&lt;/b&gt;&lt;br&gt;不仅 mutex 会争抢；原子变量、队列头、allocator arena、共享 cache line 都可能形成竞争点。" vertex="1">
+          <mxGeometry height="58" width="650" x="796" y="1504" as="geometry" />
+        </mxCell>
+        <mxCell id="v_1b139bc5e402" parent="v_52a5bfb9aad8" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;spacingLeft=8;verticalAlign=top;spacingTop=5;fillColor=#dae8fc;strokeColor=#6c8ebf;" value="&lt;b&gt;更多线程可能更慢&lt;/b&gt;&lt;br&gt;线程数超过硬件与共享资源承载能力后，会增加切换、缓存抖动和同步，而不是增加吞吐。" vertex="1">
+          <mxGeometry height="58" width="650" x="796" y="1598" as="geometry" />
+        </mxCell>
+        <mxCell id="BF2JybOgnex9REVoqiZU-9" edge="1" parent="v_52a5bfb9aad8" source="v_ac926e0d826f" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="v_9dd61e112d32">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="BF2JybOgnex9REVoqiZU-10" edge="1" parent="v_52a5bfb9aad8" source="v_ac926e0d826f" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="v_92ca211e668c">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="v_ac926e0d826f" parent="v_52a5bfb9aad8" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;spacingLeft=8;verticalAlign=top;spacingTop=5;fillColor=#dae8fc;strokeColor=#6c8ebf;fontStyle=1;" value="&lt;b&gt;Lock-Free&lt;/b&gt;" vertex="1">
+          <mxGeometry height="42" width="180" x="416" y="1818" as="geometry" />
+        </mxCell>
+        <mxCell id="v_9dd61e112d32" parent="v_52a5bfb9aad8" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;spacingLeft=8;verticalAlign=top;spacingTop=5;fillColor=#dae8fc;strokeColor=#6c8ebf;" value="&lt;b&gt;Lock-Free 不等于 Free&lt;/b&gt;&lt;br&gt;它把等待方式从阻塞锁转换成 CAS / retry 等算法；仍然可能出现重试、cache bouncing、ABA、内存回收复杂度。" vertex="1">
+          <mxGeometry height="76" width="650" x="796" y="1770" as="geometry" />
+        </mxCell>
+        <mxCell id="v_92ca211e668c" parent="v_52a5bfb9aad8" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;spacingLeft=8;verticalAlign=top;spacingTop=5;fillColor=#dae8fc;strokeColor=#6c8ebf;" value="&lt;b&gt;什么时候值得做&lt;/b&gt;&lt;br&gt;先用 perf / contention 数据证明锁真的在热点，再决定是否需要 lock-free。否则复杂度往往大于收益。" vertex="1">
+          <mxGeometry height="58" width="650" x="796" y="1866" as="geometry" />
+        </mxCell>
+        <mxCell id="BF2JybOgnex9REVoqiZU-12" edge="1" parent="v_52a5bfb9aad8" source="v_5419ddaa7fbc" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="v_e63edcf6c790">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="BF2JybOgnex9REVoqiZU-13" edge="1" parent="v_52a5bfb9aad8" source="v_5419ddaa7fbc" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="v_10059ead2dfb">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="BF2JybOgnex9REVoqiZU-14" edge="1" parent="v_52a5bfb9aad8" source="v_5419ddaa7fbc" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="v_bd5b0a7f88c4">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="v_5419ddaa7fbc" parent="v_52a5bfb9aad8" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;spacingLeft=8;verticalAlign=top;spacingTop=5;fillColor=#dae8fc;strokeColor=#6c8ebf;fontStyle=1;" value="&lt;b&gt;Thread Confinement&lt;/b&gt;" vertex="1">
+          <mxGeometry height="42" width="180" x="416" y="2174" as="geometry" />
+        </mxCell>
+        <mxCell id="v_e63edcf6c790" parent="v_52a5bfb9aad8" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;spacingLeft=8;verticalAlign=top;spacingTop=5;fillColor=#fff2cc;strokeColor=#d6b656;fontStyle=1;" value="&lt;b&gt;更好的第一选择&lt;/b&gt;&lt;br&gt;先减少共享：让某份状态只由一个 owner thread 修改。没有共享，就没有竞争，也不需要复杂无锁算法。" vertex="1">
+          <mxGeometry height="58" width="650" x="796" y="2070" as="geometry" />
+        </mxCell>
+        <mxCell id="v_10059ead2dfb" parent="v_52a5bfb9aad8" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;spacingLeft=8;verticalAlign=top;spacingTop=5;fillColor=#d5e8d4;strokeColor=#82b366;" value="&lt;b&gt;NebulaRPC 对应&lt;/b&gt;&lt;br&gt;EventLoop = owner thread。大部分连接/RPC 状态在所属 EventLoop 串行处理；本线程 QueueInLoop 可直接进 local queue，跨线程才需要 mutex。" vertex="1">
+          <mxGeometry height="76" width="650" x="796" y="2157" as="geometry" />
+        </mxCell>
+        <mxCell id="v_bd5b0a7f88c4" parent="v_52a5bfb9aad8" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;spacingLeft=8;verticalAlign=top;spacingTop=5;fillColor=#d5e8d4;strokeColor=#82b366;" value="&lt;b&gt;本次 perf 结论&lt;/b&gt;&lt;br&gt;拆 local/remote queue 后 EventLoop QueueInLoop 的 mutex 热路径消失，但性能大头仍是 TimerQueue syscall 与 allocator，证明原锁本来就不是主要瓶颈。" vertex="1">
+          <mxGeometry height="76" width="650" x="796" y="2270" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+  <diagram name="程序代码和数据主要存在进程的虚拟地址空间中，运行时需要的页面驻留在 DRAM；CPU Core 真正执行时，会把代码和数据逐级缓存进 L3、L2、L1，最终进入寄存器和执行单元。线程由操作系统调度到 Logical CPU 上执行，而 Logical CPU 属于某个物理 Core" id="page_full_execution_flow">
+    <mxGraphModel dx="694" dy="404" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1500" pageHeight="1810" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="flow_swimlane" parent="1" style="swimlane;html=1;startSize=32;fillColor=#fafafa;strokeColor=#888888;fontSize=14;fontStyle=1;verticalAlign=top;align=left;spacingLeft=10;" value="程序代码与数据到 CPU 的完整执行流程" vertex="1">
+          <mxGeometry height="3180" width="1880" x="20" y="20" as="geometry" />
+        </mxCell>
+        <mxCell id="flow_intro" parent="flow_swimlane" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;spacingLeft=8;verticalAlign=top;spacingTop=5;fillColor=#dae8fc;strokeColor=#6c8ebf;fontStyle=1;" value="&lt;b&gt;完整执行流程&lt;/b&gt;&lt;br&gt;把“程序在哪里、数据在哪里、线程由谁执行、CPU 又从哪里拿到代码和数据”串成同一张图" vertex="1">
+          <mxGeometry height="92" width="220" x="70" y="1313" as="geometry" />
+        </mxCell>
+        <mxCell id="virt_cat" parent="flow_swimlane" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;spacingLeft=8;verticalAlign=top;spacingTop=5;fillColor=#dae8fc;strokeColor=#6c8ebf;fontStyle=1;" value="&lt;b&gt;程序与虚拟地址空间&lt;/b&gt;" vertex="1">
+          <mxGeometry height="42" width="220" x="416" y="292" as="geometry" />
+        </mxCell>
+        <mxCell id="e_intro_virt" edge="1" parent="flow_swimlane" source="flow_intro" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="virt_cat">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="virt_1" parent="flow_swimlane" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;spacingLeft=8;verticalAlign=top;spacingTop=5;fillColor=#dae8fc;strokeColor=#6c8ebf;" value="&lt;b&gt;程序最初在哪里&lt;/b&gt;&lt;br&gt;可执行文件、动态库等最初保存在 SSD / 磁盘。CPU 不会直接把 SSD 当作自己的工作内存来执行程序。" vertex="1">
+          <mxGeometry height="58" width="650" x="796" y="130" as="geometry" />
+        </mxCell>
+        <mxCell id="e_virt_1" edge="1" parent="flow_swimlane" source="virt_cat" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="virt_1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="virt_2" parent="flow_swimlane" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;spacingLeft=8;verticalAlign=top;spacingTop=5;fillColor=#dae8fc;strokeColor=#6c8ebf;" value="&lt;b&gt;进程启动后&lt;/b&gt;&lt;br&gt;操作系统为进程建立独立的虚拟地址空间；代码段、全局数据、堆、线程栈等都以“虚拟地址”的形式组织。" vertex="1">
+          <mxGeometry height="58" width="650" x="796" y="224" as="geometry" />
+        </mxCell>
+        <mxCell id="e_virt_2" edge="1" parent="flow_swimlane" source="virt_cat" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="virt_2">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="virt_3" parent="flow_swimlane" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;spacingLeft=8;verticalAlign=top;spacingTop=5;fillColor=#dae8fc;strokeColor=#6c8ebf;" value="&lt;b&gt;虚拟地址不是物理位置&lt;/b&gt;&lt;br&gt;例如某个指针值只是这个进程看到的地址。CPU 访问它时，还需要通过 MMU / 页表把虚拟地址翻译成物理内存位置。" vertex="1">
+          <mxGeometry height="76" width="650" x="796" y="318" as="geometry" />
+        </mxCell>
+        <mxCell id="e_virt_3" edge="1" parent="flow_swimlane" source="virt_cat" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="virt_3">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="virt_4" parent="flow_swimlane" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;spacingLeft=8;verticalAlign=top;spacingTop=5;fillColor=#fff2cc;strokeColor=#d6b656;fontStyle=1;" value="&lt;b&gt;关键认知&lt;/b&gt;&lt;br&gt;“代码和数据在进程虚拟地址空间里”描述的是地址视图；真正被 CPU 直接访问的页面，最终必须有对应的物理内存或缓存内容。" vertex="1">
+          <mxGeometry height="76" width="650" x="796" y="430" as="geometry" />
+        </mxCell>
+        <mxCell id="e_virt_4" edge="1" parent="flow_swimlane" source="virt_cat" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="virt_4">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="dram_cat" parent="flow_swimlane" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;spacingLeft=8;verticalAlign=top;spacingTop=5;fillColor=#dae8fc;strokeColor=#6c8ebf;fontStyle=1;" value="&lt;b&gt;页面与 DRAM&lt;/b&gt;" vertex="1">
+          <mxGeometry height="42" width="220" x="416" y="792" as="geometry" />
+        </mxCell>
+        <mxCell id="e_intro_dram" edge="1" parent="flow_swimlane" source="flow_intro" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="dram_cat">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="dram_1" parent="flow_swimlane" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;spacingLeft=8;verticalAlign=top;spacingTop=5;fillColor=#dae8fc;strokeColor=#6c8ebf;" value="&lt;b&gt;DRAM 是什么&lt;/b&gt;&lt;br&gt;DRAM 就是我们平时说的主内存 / 内存条，例如 DDR4。它比 SSD 快得多，但仍远慢于 CPU Core 内部的 Cache。" vertex="1">
+          <mxGeometry height="58" width="650" x="796" y="620" as="geometry" />
+        </mxCell>
+        <mxCell id="e_dram_1" edge="1" parent="flow_swimlane" source="dram_cat" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="dram_1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="dram_2" parent="flow_swimlane" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;spacingLeft=8;verticalAlign=top;spacingTop=5;fillColor=#dae8fc;strokeColor=#6c8ebf;" value="&lt;b&gt;按需分页&lt;/b&gt;&lt;br&gt;程序启动并不意味着整个可执行文件一次性全部复制进 DRAM。真正访问到某个尚未驻留的页面时，操作系统才按需准备它。" vertex="1">
+          <mxGeometry height="76" width="650" x="796" y="714" as="geometry" />
+        </mxCell>
+        <mxCell id="e_dram_2" edge="1" parent="flow_swimlane" source="dram_cat" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="dram_2">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="dram_3" parent="flow_swimlane" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;spacingLeft=8;verticalAlign=top;spacingTop=5;fillColor=#dae8fc;strokeColor=#6c8ebf;" value="&lt;b&gt;Page Fault&lt;/b&gt;&lt;br&gt;CPU 访问虚拟地址时，如果页表状态不满足当前访问条件，会触发 page fault 进入内核；内核处理完成后线程再继续执行。" vertex="1">
+          <mxGeometry height="76" width="650" x="796" y="826" as="geometry" />
+        </mxCell>
+        <mxCell id="e_dram_3" edge="1" parent="flow_swimlane" source="dram_cat" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="dram_3">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="dram_4" parent="flow_swimlane" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;spacingLeft=8;verticalAlign=top;spacingTop=5;fillColor=#dae8fc;strokeColor=#6c8ebf;" value="&lt;b&gt;MMU / 页表&lt;/b&gt;&lt;br&gt;线程执行 load/store 时给出虚拟地址，CPU 的 MMU 根据页表完成地址翻译，最终定位到对应的物理页面。" vertex="1">
+          <mxGeometry height="58" width="650" x="796" y="938" as="geometry" />
+        </mxCell>
+        <mxCell id="e_dram_4" edge="1" parent="flow_swimlane" source="dram_cat" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="dram_4">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="dram_5" parent="flow_swimlane" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;spacingLeft=8;verticalAlign=top;spacingTop=5;fillColor=#fff2cc;strokeColor=#d6b656;fontStyle=1;" value="&lt;b&gt;这一层解决的问题&lt;/b&gt;&lt;br&gt;虚拟地址空间负责“程序怎么看内存”；DRAM 负责“当前活跃页面实际放在哪里”。两者不是同一个概念。" vertex="1">
+          <mxGeometry height="76" width="650" x="796" y="1032" as="geometry" />
+        </mxCell>
+        <mxCell id="e_dram_5" edge="1" parent="flow_swimlane" source="dram_cat" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="dram_5">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="cache_cat" parent="flow_swimlane" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;spacingLeft=8;verticalAlign=top;spacingTop=5;fillColor=#dae8fc;strokeColor=#6c8ebf;fontStyle=1;" value="&lt;b&gt;CPU Cache 层次&lt;/b&gt;" vertex="1">
+          <mxGeometry height="42" width="220" x="416" y="1338" as="geometry" />
+        </mxCell>
+        <mxCell id="e_intro_cache" edge="1" parent="flow_swimlane" source="flow_intro" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="cache_cat">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="cache_1" parent="flow_swimlane" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;spacingLeft=8;verticalAlign=top;spacingTop=5;fillColor=#dae8fc;strokeColor=#6c8ebf;" value="&lt;b&gt;L3 / LLC&lt;/b&gt;&lt;br&gt;CPU Core 如果在更近的缓存里找不到数据，会继续向更远层级查找。L3 容量更大、速度更慢，并且通常在一组 Core 之间共享。" vertex="1">
+          <mxGeometry height="76" width="650" x="796" y="1150" as="geometry" />
+        </mxCell>
+        <mxCell id="e_cache_1" edge="1" parent="flow_swimlane" source="cache_cat" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="cache_1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="cache_2" parent="flow_swimlane" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;spacingLeft=8;verticalAlign=top;spacingTop=5;fillColor=#dae8fc;strokeColor=#6c8ebf;" value="&lt;b&gt;L2 Cache&lt;/b&gt;&lt;br&gt;比 L3 更靠近 Core，容量更小、速度更快。像 Ryzen 9 5950X 这类处理器中，L2 通常是每个物理 Core 私有。" vertex="1">
+          <mxGeometry height="76" width="650" x="796" y="1262" as="geometry" />
+        </mxCell>
+        <mxCell id="e_cache_2" edge="1" parent="flow_swimlane" source="cache_cat" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="cache_2">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="cache_3" parent="flow_swimlane" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;spacingLeft=8;verticalAlign=top;spacingTop=5;fillColor=#dae8fc;strokeColor=#6c8ebf;" value="&lt;b&gt;L1 Cache&lt;/b&gt;&lt;br&gt;离 Core 最近、容量最小、速度最快，通常分成 L1I（指令）和 L1D（数据）；每个物理 Core 拥有自己的 L1。" vertex="1">
+          <mxGeometry height="76" width="650" x="796" y="1374" as="geometry" />
+        </mxCell>
+        <mxCell id="e_cache_3" edge="1" parent="flow_swimlane" source="cache_cat" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="cache_3">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="cache_4" parent="flow_swimlane" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;spacingLeft=8;verticalAlign=top;spacingTop=5;fillColor=#dae8fc;strokeColor=#6c8ebf;" value="&lt;b&gt;Cache Line&lt;/b&gt;&lt;br&gt;Cache 搬运和一致性管理通常不是按一个 int，而是按一整条 cache line；现代 x86 常见大小为 64 Byte。" vertex="1">
+          <mxGeometry height="76" width="650" x="796" y="1486" as="geometry" />
+        </mxCell>
+        <mxCell id="e_cache_4" edge="1" parent="flow_swimlane" source="cache_cat" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="cache_4">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="cache_5" parent="flow_swimlane" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;spacingLeft=8;verticalAlign=top;spacingTop=5;fillColor=#fff2cc;strokeColor=#d6b656;fontStyle=1;" value="&lt;b&gt;关键认知&lt;/b&gt;&lt;br&gt;Cache 保存的是代码/数据的副本。对象原来的内存地址没有“搬进 CPU”；变化的是某个 Core 的缓存中是否存在那条 cache line 的有效副本。" vertex="1">
+          <mxGeometry height="76" width="650" x="796" y="1598" as="geometry" />
+        </mxCell>
+        <mxCell id="e_cache_5" edge="1" parent="flow_swimlane" source="cache_cat" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="cache_5">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="cache_6" parent="flow_swimlane" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;spacingLeft=8;verticalAlign=top;spacingTop=5;fillColor=#d5e8d4;strokeColor=#82b366;" value="&lt;b&gt;你的 5950X&lt;/b&gt;&lt;br&gt;1 颗物理 CPU、16 个物理 Core、32 个 Logical CPU；每 Core 有自己的 L1/L2，L3 按 CCD 共享，总计 64 MB。" vertex="1">
+          <mxGeometry height="76" width="650" x="796" y="1710" as="geometry" />
+        </mxCell>
+        <mxCell id="e_cache_6" edge="1" parent="flow_swimlane" source="cache_cat" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="cache_6">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="exec_cat" parent="flow_swimlane" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;spacingLeft=8;verticalAlign=top;spacingTop=5;fillColor=#dae8fc;strokeColor=#6c8ebf;fontStyle=1;" value="&lt;b&gt;寄存器与执行单元&lt;/b&gt;" vertex="1">
+          <mxGeometry height="42" width="220" x="416" y="1930" as="geometry" />
+        </mxCell>
+        <mxCell id="e_intro_exec" edge="1" parent="flow_swimlane" source="flow_intro" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="exec_cat">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="exec_1" parent="flow_swimlane" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;spacingLeft=8;verticalAlign=top;spacingTop=5;fillColor=#dae8fc;strokeColor=#6c8ebf;" value="&lt;b&gt;Registers&lt;/b&gt;&lt;br&gt;寄存器位于 Core 内部，容量极小但速度最快。真正参与算术、地址计算、控制流等操作的值，最终会进入寄存器。" vertex="1">
+          <mxGeometry height="76" width="650" x="796" y="1810" as="geometry" />
+        </mxCell>
+        <mxCell id="e_exec_1" edge="1" parent="flow_swimlane" source="exec_cat" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="exec_1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="exec_2" parent="flow_swimlane" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;spacingLeft=8;verticalAlign=top;spacingTop=5;fillColor=#dae8fc;strokeColor=#6c8ebf;" value="&lt;b&gt;执行单元&lt;/b&gt;&lt;br&gt;Core 内部的整数 ALU、浮点/向量单元、Load/Store 单元等真正执行机器指令。它们工作时不断消费寄存器中的操作数。" vertex="1">
+          <mxGeometry height="76" width="650" x="796" y="1922" as="geometry" />
+        </mxCell>
+        <mxCell id="e_exec_2" edge="1" parent="flow_swimlane" source="exec_cat" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="exec_2">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="exec_3" parent="flow_swimlane" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;spacingLeft=8;verticalAlign=top;spacingTop=5;fillColor=#dae8fc;strokeColor=#6c8ebf;" value="&lt;b&gt;代码也走缓存&lt;/b&gt;&lt;br&gt;机器指令本身也需要从内存层次取到 Core。常见路径可以粗略理解为 DRAM → L3 → L2 → L1I → 前端译码/执行。" vertex="1">
+          <mxGeometry height="76" width="650" x="796" y="2034" as="geometry" />
+        </mxCell>
+        <mxCell id="e_exec_3" edge="1" parent="flow_swimlane" source="exec_cat" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="exec_3">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="exec_4" parent="flow_swimlane" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;spacingLeft=8;verticalAlign=top;spacingTop=5;fillColor=#fff2cc;strokeColor=#d6b656;fontStyle=1;" value="&lt;b&gt;数据路径&lt;/b&gt;&lt;br&gt;数据常见路径可粗略理解为 DRAM → L3 → L2 → L1D → Registers → 执行单元；命中越靠近 Core，等待通常越少。" vertex="1">
+          <mxGeometry height="76" width="650" x="796" y="2146" as="geometry" />
+        </mxCell>
+        <mxCell id="e_exec_4" edge="1" parent="flow_swimlane" source="exec_cat" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="exec_4">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="thread_cat" parent="flow_swimlane" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;spacingLeft=8;verticalAlign=top;spacingTop=5;fillColor=#dae8fc;strokeColor=#6c8ebf;fontStyle=1;" value="&lt;b&gt;线程 → Logical CPU → Core&lt;/b&gt;" vertex="1">
+          <mxGeometry height="42" width="220" x="416" y="2410" as="geometry" />
+        </mxCell>
+        <mxCell id="e_intro_thread" edge="1" parent="flow_swimlane" source="flow_intro" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="thread_cat">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="thread_1" parent="flow_swimlane" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;spacingLeft=8;verticalAlign=top;spacingTop=5;fillColor=#dae8fc;strokeColor=#6c8ebf;" value="&lt;b&gt;Thread&lt;/b&gt;&lt;br&gt;线程是操作系统调度的执行流。它保存自己的寄存器状态、栈和程序计数器，但并不永久“拥有”某一个 Core。" vertex="1">
+          <mxGeometry height="76" width="650" x="796" y="2240" as="geometry" />
+        </mxCell>
+        <mxCell id="e_thread_1" edge="1" parent="flow_swimlane" source="thread_cat" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="thread_1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="thread_2" parent="flow_swimlane" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;spacingLeft=8;verticalAlign=top;spacingTop=5;fillColor=#dae8fc;strokeColor=#6c8ebf;" value="&lt;b&gt;Scheduler&lt;/b&gt;&lt;br&gt;线程变为 runnable 后，操作系统调度器决定让它在哪个 Logical CPU 上运行；之后也可能迁移到别的 Logical CPU。" vertex="1">
+          <mxGeometry height="76" width="650" x="796" y="2352" as="geometry" />
+        </mxCell>
+        <mxCell id="e_thread_2" edge="1" parent="flow_swimlane" source="thread_cat" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="thread_2">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="thread_3" parent="flow_swimlane" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;spacingLeft=8;verticalAlign=top;spacingTop=5;fillColor=#dae8fc;strokeColor=#6c8ebf;" value="&lt;b&gt;Logical CPU&lt;/b&gt;&lt;br&gt;Logical CPU 是操作系统看到的可调度硬件执行上下文。SMT 下，一个物理 Core 可以暴露多个 Logical CPU。" vertex="1">
+          <mxGeometry height="76" width="650" x="796" y="2464" as="geometry" />
+        </mxCell>
+        <mxCell id="e_thread_3" edge="1" parent="flow_swimlane" source="thread_cat" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="thread_3">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="thread_4" parent="flow_swimlane" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;spacingLeft=8;verticalAlign=top;spacingTop=5;fillColor=#dae8fc;strokeColor=#6c8ebf;" value="&lt;b&gt;Physical Core&lt;/b&gt;&lt;br&gt;Logical CPU 最终属于某个物理 Core；真正的 L1/L2、执行单元等硬件资源位于这个 Core 内，并可能被同 Core 的 SMT 线程共享。" vertex="1">
+          <mxGeometry height="76" width="650" x="796" y="2576" as="geometry" />
+        </mxCell>
+        <mxCell id="e_thread_4" edge="1" parent="flow_swimlane" source="thread_cat" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="thread_4">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="thread_5" parent="flow_swimlane" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;spacingLeft=8;verticalAlign=top;spacingTop=5;fillColor=#d5e8d4;strokeColor=#82b366;" value="&lt;b&gt;你的 5950X&lt;/b&gt;&lt;br&gt;16 个物理 Core、32 个 Logical CPU，意味着每个 Core 暴露 2 个硬件线程。32 个 Logical CPU 并不等于 32 个完整物理 Core。" vertex="1">
+          <mxGeometry height="76" width="650" x="796" y="2688" as="geometry" />
+        </mxCell>
+        <mxCell id="e_thread_5" edge="1" parent="flow_swimlane" source="thread_cat" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="thread_5">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="merge_cat" parent="flow_swimlane" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;spacingLeft=8;verticalAlign=top;spacingTop=5;fillColor=#dae8fc;strokeColor=#6c8ebf;fontStyle=1;" value="&lt;b&gt;两条路径在 Core 汇合&lt;/b&gt;" vertex="1">
+          <mxGeometry height="42" width="220" x="416" y="2892" as="geometry" />
+        </mxCell>
+        <mxCell id="e_intro_merge" edge="1" parent="flow_swimlane" source="flow_intro" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="merge_cat">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="merge_1" parent="flow_swimlane" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;spacingLeft=8;verticalAlign=top;spacingTop=5;fillColor=#d5e8d4;strokeColor=#82b366;" value="&lt;b&gt;代码 / 数据路径&lt;/b&gt;&lt;br&gt;SSD → 进程虚拟地址空间 → 页表 / MMU → DRAM → L3 → L2 → L1 → Registers / Core 执行单元。" vertex="1">
+          <mxGeometry height="76" width="650" x="796" y="2790" as="geometry" />
+        </mxCell>
+        <mxCell id="e_merge_1" edge="1" parent="flow_swimlane" source="merge_cat" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="merge_1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="merge_2" parent="flow_swimlane" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;spacingLeft=8;verticalAlign=top;spacingTop=5;fillColor=#d5e8d4;strokeColor=#82b366;" value="&lt;b&gt;线程执行路径&lt;/b&gt;&lt;br&gt;Thread → runnable → Scheduler → Logical CPU → 所属 Physical Core → 在该 Core 上继续执行自己的指令流。" vertex="1">
+          <mxGeometry height="76" width="650" x="796" y="2902" as="geometry" />
+        </mxCell>
+        <mxCell id="e_merge_2" edge="1" parent="flow_swimlane" source="merge_cat" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="merge_2">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="merge_3" parent="flow_swimlane" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;spacingLeft=8;verticalAlign=top;spacingTop=5;fillColor=#fff2cc;strokeColor=#d6b656;fontStyle=1;" value="&lt;b&gt;最终把整件事记成一句话&lt;/b&gt;&lt;br&gt;线程决定“谁在执行”；虚拟内存和 Cache 层次决定“执行时去哪里拿代码和数据”；两条路径最终都汇合到正在运行线程的那个物理 Core。" vertex="1">
+          <mxGeometry height="76" width="650" x="796" y="3014" as="geometry" />
+        </mxCell>
+        <mxCell id="e_merge_3" edge="1" parent="flow_swimlane" source="merge_cat" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="merge_3">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>
