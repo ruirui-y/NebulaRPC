@@ -123,15 +123,24 @@ void EventLoop::RunInLoop(Functor cb)
 
 void EventLoop::QueueInLoop(Functor cb)
 {
+    if (IsInLoopThread())
     {
-        std::lock_guard<std::mutex> lock(mutex_);
-        pending_functors_.push_back(std::move(cb));
+        local_pending_functors_.push_back(std::move(cb));
+
+        if (calling_pending_functors_.load())
+        {
+            WakeUp();
+        }
+
+        return;
     }
 
-    if (!IsInLoopThread() || calling_pending_functors_.load())
     {
-        WakeUp();
+        std::lock_guard<std::mutex> lock(remote_mutex_);
+        remote_pending_functors_.push_back(std::move(cb));
     }
+
+    WakeUp();
 }
 
 TimerId EventLoop::RunAt(TimePoint deadline, Functor cb)
@@ -189,7 +198,7 @@ void EventLoop::NotifyFromSignal() noexcept
 {
     signal_pending_.store(true, std::memory_order_release);
 
-    // 信号上下文里唯一安全的动作：原子写 + write；QueueInLoop 会取 mutex，不能用
+    // 信号上下文里唯一安全的动作：原子写 + write；QueueInLoop 不是 async-signal-safe，不能用
     constexpr std::uint64_t one = 1;
     [[maybe_unused]] const ssize_t n = ::write(wakeup_fd_, &one, sizeof(one));
 }
@@ -208,11 +217,24 @@ void EventLoop::HandleWakeUpRead()
 void EventLoop::DoPendingFunctors()
 {
     std::vector<Functor> functors;
+    std::vector<Functor> remote_functors;
     calling_pending_functors_ = true;
 
+    functors.swap(local_pending_functors_);
+
     {
-        std::lock_guard<std::mutex> lock(mutex_);
-        functors.swap(pending_functors_);
+        std::lock_guard<std::mutex> lock(remote_mutex_);
+        remote_functors.swap(remote_pending_functors_);
+    }
+
+    if (!remote_functors.empty())
+    {
+        functors.reserve(functors.size() + remote_functors.size());
+
+        for (auto& functor : remote_functors)
+        {
+            functors.push_back(std::move(functor));
+        }
     }
 
     for (auto& functor : functors)

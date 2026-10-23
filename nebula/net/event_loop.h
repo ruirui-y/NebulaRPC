@@ -81,8 +81,12 @@ private:
     std::unique_ptr<TimerQueue> timer_queue_;
     ChannelList active_channels_;
 
-    mutable std::mutex mutex_;
-    std::vector<Functor> pending_functors_;
+    // Loop 线程本地投递，不需要同步
+    std::vector<Functor> local_pending_functors_;
+
+    // 跨线程投递，只在入队和批次交换时取锁
+    std::mutex remote_mutex_;
+    std::vector<Functor> remote_pending_functors_;
 };
 
 }  // namespace nebula::net
