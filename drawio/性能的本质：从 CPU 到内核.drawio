@@ -799,12 +799,12 @@
     </mxGraphModel>
   </diagram>
   <diagram name="程序代码和数据主要存在进程的虚拟地址空间中，运行时需要的页面驻留在 DRAM；CPU Core 真正执行时，会把代码和数据逐级缓存进 L3、L2、L1，最终进入寄存器和执行单元。线程由操作系统调度到 Logical CPU 上执行，而 Logical CPU 属于某个物理 Core" id="page_full_execution_flow">
-    <mxGraphModel dx="694" dy="404" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1500" pageHeight="1810" math="0" shadow="0">
+    <mxGraphModel dx="2488" dy="1450" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1500" pageHeight="1810" math="0" shadow="0">
       <root>
         <mxCell id="0" />
         <mxCell id="1" parent="0" />
         <mxCell id="flow_swimlane" parent="1" style="swimlane;html=1;startSize=32;fillColor=#fafafa;strokeColor=#888888;fontSize=14;fontStyle=1;verticalAlign=top;align=left;spacingLeft=10;" value="程序代码与数据到 CPU 的完整执行流程" vertex="1">
-          <mxGeometry height="3180" width="1880" x="20" y="20" as="geometry" />
+          <mxGeometry height="3180" width="2670" x="20" y="20" as="geometry" />
         </mxCell>
         <mxCell id="flow_intro" parent="flow_swimlane" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;spacingLeft=8;verticalAlign=top;spacingTop=5;fillColor=#dae8fc;strokeColor=#6c8ebf;fontStyle=1;" value="&lt;b&gt;完整执行流程&lt;/b&gt;&lt;br&gt;把“程序在哪里、数据在哪里、线程由谁执行、CPU 又从哪里拿到代码和数据”串成同一张图" vertex="1">
           <mxGeometry height="92" width="220" x="70" y="1313" as="geometry" />
@@ -984,27 +984,48 @@
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
         <mxCell id="merge_cat" parent="flow_swimlane" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;spacingLeft=8;verticalAlign=top;spacingTop=5;fillColor=#dae8fc;strokeColor=#6c8ebf;fontStyle=1;" value="&lt;b&gt;两条路径在 Core 汇合&lt;/b&gt;" vertex="1">
-          <mxGeometry height="42" width="220" x="416" y="2892" as="geometry" />
+          <mxGeometry height="42" width="220" x="416" y="2903" as="geometry" />
         </mxCell>
         <mxCell id="e_intro_merge" edge="1" parent="flow_swimlane" source="flow_intro" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="merge_cat">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
         <mxCell id="merge_1" parent="flow_swimlane" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;spacingLeft=8;verticalAlign=top;spacingTop=5;fillColor=#d5e8d4;strokeColor=#82b366;" value="&lt;b&gt;代码 / 数据路径&lt;/b&gt;&lt;br&gt;SSD → 进程虚拟地址空间 → 页表 / MMU → DRAM → L3 → L2 → L1 → Registers / Core 执行单元。" vertex="1">
-          <mxGeometry height="76" width="650" x="796" y="2790" as="geometry" />
+          <mxGeometry height="76" width="650" x="796" y="2801" as="geometry" />
         </mxCell>
         <mxCell id="e_merge_1" edge="1" parent="flow_swimlane" source="merge_cat" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="merge_1">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
         <mxCell id="merge_2" parent="flow_swimlane" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;spacingLeft=8;verticalAlign=top;spacingTop=5;fillColor=#d5e8d4;strokeColor=#82b366;" value="&lt;b&gt;线程执行路径&lt;/b&gt;&lt;br&gt;Thread → runnable → Scheduler → Logical CPU → 所属 Physical Core → 在该 Core 上继续执行自己的指令流。" vertex="1">
-          <mxGeometry height="76" width="650" x="796" y="2902" as="geometry" />
+          <mxGeometry height="76" width="650" x="796" y="2913" as="geometry" />
         </mxCell>
         <mxCell id="e_merge_2" edge="1" parent="flow_swimlane" source="merge_cat" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="merge_2">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
         <mxCell id="merge_3" parent="flow_swimlane" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;spacingLeft=8;verticalAlign=top;spacingTop=5;fillColor=#fff2cc;strokeColor=#d6b656;fontStyle=1;" value="&lt;b&gt;最终把整件事记成一句话&lt;/b&gt;&lt;br&gt;线程决定“谁在执行”；虚拟内存和 Cache 层次决定“执行时去哪里拿代码和数据”；两条路径最终都汇合到正在运行线程的那个物理 Core。" vertex="1">
-          <mxGeometry height="76" width="650" x="796" y="3014" as="geometry" />
+          <mxGeometry height="76" width="650" x="796" y="3025" as="geometry" />
         </mxCell>
         <mxCell id="e_merge_3" edge="1" parent="flow_swimlane" source="merge_cat" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="merge_3">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="-f8Q0TyyhYqRvod7RISP-1" parent="flow_swimlane" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;spacingLeft=8;verticalAlign=top;spacingTop=5;fillColor=#dae8fc;strokeColor=#6c8ebf;fontStyle=1;" value="程序代码和数据主要存在进程的虚拟地址空间中，运行时需要的页面驻留在 DRAM；CPU Core 真正执行时，会把代码和数据逐级缓存进 L3、L2、L1，最终进入寄存器和执行单元。线程由操作系统调度到 Logical CPU 上执行，而 Logical CPU 属于某个物理 Core" vertex="1">
+          <mxGeometry height="68" width="510" x="2030" y="1380" as="geometry" />
+        </mxCell>
+        <mxCell id="-f8Q0TyyhYqRvod7RISP-2" edge="1" parent="flow_swimlane" source="virt_3" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="-f8Q0TyyhYqRvod7RISP-1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="-f8Q0TyyhYqRvod7RISP-3" edge="1" parent="flow_swimlane" source="dram_3" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="-f8Q0TyyhYqRvod7RISP-1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="-f8Q0TyyhYqRvod7RISP-4" edge="1" parent="flow_swimlane" source="cache_3" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="-f8Q0TyyhYqRvod7RISP-1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="-f8Q0TyyhYqRvod7RISP-5" edge="1" parent="flow_swimlane" source="exec_2" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="-f8Q0TyyhYqRvod7RISP-1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="-f8Q0TyyhYqRvod7RISP-6" edge="1" parent="flow_swimlane" source="thread_2" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="-f8Q0TyyhYqRvod7RISP-1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="-f8Q0TyyhYqRvod7RISP-8" edge="1" parent="flow_swimlane" source="merge_2" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="-f8Q0TyyhYqRvod7RISP-1">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
       </root>
