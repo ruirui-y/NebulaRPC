@@ -1,80 +1,61 @@
+# EventLoop 归属线程检查：构造完成后 IsInLoopThread 必须为真。
 add_executable(nebula_net_smoke_test net_smoke_test.cpp)
 target_link_libraries(nebula_net_smoke_test PRIVATE nebula_net)
 add_test(NAME nebula_net_smoke_test COMMAND nebula_net_smoke_test)
 
+# 定时器到点触发，被取消的绝不触发。
 add_executable(nebula_timer_queue_test timer_queue_test.cpp)
 target_link_libraries(nebula_timer_queue_test PRIVATE nebula_net)
 add_test(NAME nebula_timer_queue_test COMMAND nebula_timer_queue_test)
 
+# 取消队首后的重新武装：T1 取消不能让 T2 丢失，
+# 覆盖 stale wakeup 之后 timerfd 没有被重设的场景。
+add_executable(nebula_timer_queue_lazy_cancel_test timer_queue_lazy_cancel_test.cpp)
+target_link_libraries(nebula_timer_queue_lazy_cancel_test PRIVATE nebula_net)
+add_test(NAME nebula_timer_queue_lazy_cancel_test COMMAND nebula_timer_queue_lazy_cancel_test)
+set_tests_properties(nebula_timer_queue_lazy_cancel_test PROPERTIES RUN_SERIAL TRUE)
+
+# RpcFrame 编解码往返：meta 与 payload 解出来必须与发出去的一致。
 add_executable(nebula_rpc_codec_test rpc_codec_test.cpp)
 target_link_libraries(nebula_rpc_codec_test PRIVATE nebula_rpc)
 add_test(NAME nebula_rpc_codec_test COMMAND nebula_rpc_codec_test)
 
+# 超时语义：快请求正常完成；慢请求超时先完成，迟到响应不能触发第二次 done。
 add_executable(nebula_rpc_timeout_test rpc_timeout_test.cpp)
-target_include_directories(nebula_rpc_timeout_test
-    PRIVATE
-        ${PROJECT_BINARY_DIR}/examples/rpc_echo
-)
-target_link_libraries(nebula_rpc_timeout_test
-    PRIVATE
-        nebula_rpc
-        nebula_rpc_echo_proto
-)
+target_include_directories(nebula_rpc_timeout_test PRIVATE ${PROJECT_BINARY_DIR}/examples/rpc_echo)
+target_link_libraries(nebula_rpc_timeout_test PRIVATE nebula_rpc nebula_rpc_echo_proto)
 add_test(NAME nebula_rpc_timeout_test COMMAND nebula_rpc_timeout_test)
 set_tests_properties(nebula_rpc_timeout_test PROPERTIES RUN_SERIAL TRUE)
 
+# 完成权竞争：只有第一次 TryComplete 成功，状态定格在第一个赢家。
 add_executable(nebula_rpc_call_test rpc_call_test.cpp)
 target_link_libraries(nebula_rpc_call_test PRIVATE nebula_rpc)
 add_test(NAME nebula_rpc_call_test COMMAND nebula_rpc_call_test)
 
+# 取消与响应的竞争：两条完成路径只允许触发一次 done。
 add_executable(nebula_rpc_cancel_test rpc_cancel_test.cpp)
-target_include_directories(nebula_rpc_cancel_test
-    PRIVATE
-        ${PROJECT_BINARY_DIR}/examples/rpc_echo
-)
-target_link_libraries(nebula_rpc_cancel_test
-    PRIVATE
-        nebula_rpc
-        nebula_rpc_echo_proto
-)
+target_include_directories(nebula_rpc_cancel_test PRIVATE ${PROJECT_BINARY_DIR}/examples/rpc_echo)
+target_link_libraries(nebula_rpc_cancel_test PRIVATE nebula_rpc nebula_rpc_echo_proto)
 add_test(NAME nebula_rpc_cancel_test COMMAND nebula_rpc_cancel_test)
 set_tests_properties(nebula_rpc_cancel_test PROPERTIES RUN_SERIAL TRUE)
 
+# 协程调用链：拿到响应、超时抛 RpcError、丢弃 Task 不崩、之后通道仍可用。
 add_executable(nebula_rpc_coroutine_test rpc_coroutine_test.cpp)
-target_include_directories(nebula_rpc_coroutine_test
-    PRIVATE
-        ${PROJECT_BINARY_DIR}/examples/rpc_echo
-)
-target_link_libraries(nebula_rpc_coroutine_test
-    PRIVATE
-        nebula_rpc
-        nebula_rpc_echo_proto
-)
+target_include_directories(nebula_rpc_coroutine_test PRIVATE ${PROJECT_BINARY_DIR}/examples/rpc_echo)
+target_link_libraries(nebula_rpc_coroutine_test PRIVATE nebula_rpc nebula_rpc_echo_proto)
 add_test(NAME nebula_rpc_coroutine_test COMMAND nebula_rpc_coroutine_test)
 set_tests_properties(nebula_rpc_coroutine_test PROPERTIES RUN_SERIAL TRUE)
 
+# 反压两道闸门：在途调用数超限立即失败，输出缓冲灌满后连接被硬切断。
 add_executable(nebula_rpc_backpressure_test rpc_backpressure_test.cpp)
-target_include_directories(nebula_rpc_backpressure_test
-    PRIVATE
-        ${PROJECT_BINARY_DIR}/examples/rpc_echo
-)
-target_link_libraries(nebula_rpc_backpressure_test
-    PRIVATE
-        nebula_rpc
-        nebula_rpc_echo_proto
-)
+target_include_directories(nebula_rpc_backpressure_test PRIVATE ${PROJECT_BINARY_DIR}/examples/rpc_echo)
+target_link_libraries(nebula_rpc_backpressure_test PRIVATE nebula_rpc nebula_rpc_echo_proto)
 add_test(NAME nebula_rpc_backpressure_test COMMAND nebula_rpc_backpressure_test)
 set_tests_properties(nebula_rpc_backpressure_test PROPERTIES RUN_SERIAL TRUE)
 
+# 断线重连三阶段：掉线时在途调用失败、kConnecting 期间当场拒绝、退避后恢复可用。
 add_executable(nebula_rpc_reconnect_test rpc_reconnect_test.cpp)
-target_include_directories(nebula_rpc_reconnect_test
-    PRIVATE
-        ${PROJECT_BINARY_DIR}/examples/rpc_echo
-)
-target_link_libraries(nebula_rpc_reconnect_test
-    PRIVATE
-        nebula_rpc
-        nebula_rpc_echo_proto
-)
+target_include_directories(nebula_rpc_reconnect_test PRIVATE ${PROJECT_BINARY_DIR}/examples/rpc_echo)
+target_link_libraries(nebula_rpc_reconnect_test PRIVATE nebula_rpc nebula_rpc_echo_proto)
 add_test(NAME nebula_rpc_reconnect_test COMMAND nebula_rpc_reconnect_test)
 set_tests_properties(nebula_rpc_reconnect_test PROPERTIES RUN_SERIAL TRUE)
