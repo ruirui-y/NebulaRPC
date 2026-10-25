@@ -8,6 +8,11 @@ add_executable(nebula_timer_queue_test timer_queue_test.cpp)
 target_link_libraries(nebula_timer_queue_test PRIVATE nebula_net)
 add_test(NAME nebula_timer_queue_test COMMAND nebula_timer_queue_test)
 
+# slot + indexed min-heap：乱序注册、任意取消后仍按 deadline 触发；相同 deadline 保持注册顺序。
+add_executable(nebula_timer_queue_heap_test timer_queue_heap_test.cpp)
+target_link_libraries(nebula_timer_queue_heap_test PRIVATE nebula_net)
+add_test(NAME nebula_timer_queue_heap_test COMMAND nebula_timer_queue_heap_test)
+
 # 取消队首后的重新武装：T1 取消不能让 T2 丢失，
 # 覆盖 stale wakeup 之后 timerfd 没有被重设的场景。
 add_executable(nebula_timer_queue_lazy_cancel_test timer_queue_lazy_cancel_test.cpp)

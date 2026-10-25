@@ -1,9 +1,11 @@
 #include "nebula/net/event_loop.h"
 
+#include <atomic>
 #include <chrono>
 #include <cstdint>
 #include <iostream>
 #include <memory>
+#include <thread>
 
 namespace
 {
@@ -38,6 +40,7 @@ int main()
     bool fired = false;
     bool canceled_fired = false;
     bool passed = false;
+    std::atomic_bool cross_thread_canceled_fired{false};
     auto notify_state = std::make_shared<NotifyState>();
 
     const auto canceled = loop.RunAfter(20ms, [&]
@@ -50,6 +53,21 @@ int main()
         {
             fired = true;
         });
+
+    // canceled 对应的 slot 已经释放并被后续 timer 复用；旧 TimerId 不能误取消新 timer。
+    loop.CancelTimer(canceled);
+
+    // 跨线程 Add/Cancel 保留原有兼容语义：真正修改 TimerQueue 的动作仍回到 owner loop。
+    std::thread cross_thread(
+        [&]
+        {
+            const auto cross_timer = loop.RunAfter(30ms, [&]
+                {
+                    cross_thread_canceled_fired.store(true, std::memory_order_release);
+                });
+            loop.CancelTimer(cross_timer);
+        });
+    cross_thread.join();
 
     loop.RunAt(
         nebula::net::EventLoop::Clock::now() + 60ms,
@@ -73,6 +91,7 @@ int main()
         {
             passed = fired &&
                      !canceled_fired &&
+                     !cross_thread_canceled_fired.load(std::memory_order_acquire) &&
                      notify_state->fired &&
                      notify_state->token == 42 &&
                      !expired_notify_fired;
