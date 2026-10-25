@@ -53,25 +53,23 @@ TimerQueue::~TimerQueue()
 
 TimerId TimerQueue::AddTimer(TimePoint deadline, Functor callback)
 {
-    const TimerId timer_id(next_timer_id_.fetch_add(1));
+    TimerAction action(std::in_place_type<Functor>, std::move(callback));
 
-    // owner loop 直接注册，避免为了转交给自己再构造一层 RunInLoop std::function。
+    // owner loop 直接分配可复用 slot，并插入最小堆；不再创建节点型容器。
     if (loop_->IsInLoopThread())
     {
-        AddTimerInLoop(timer_id,
-                       deadline,
-                       TimerAction(std::in_place_type<Functor>, std::move(callback)));
-        return timer_id;
+        return AddTimerInLoop(deadline, std::move(action));
     }
 
+    // 跨线程调用必须先返回一个稳定 TimerId，再由 owner loop 真正建立 timer。
+    // 这条兼容路径不是 RPC timeout 热路径。
+    const TimerId timer_id = MakeExternalTimerId();
     loop_->QueueInLoop([this,
                         timer_id,
                         deadline,
-                        callback = std::move(callback)]() mutable
+                        action = std::move(action)]() mutable
         {
-            AddTimerInLoop(timer_id,
-                           deadline,
-                           TimerAction(std::in_place_type<Functor>, std::move(callback)));
+            AddTimerInLoop(deadline, std::move(action), timer_id.Value());
         });
 
     return timer_id;
@@ -79,26 +77,21 @@ TimerId TimerQueue::AddTimer(TimePoint deadline, Functor callback)
 
 TimerId TimerQueue::AddTimer(TimePoint deadline, TimerNotify notify)
 {
-    const TimerId timer_id(next_timer_id_.fetch_add(1));
+    TimerAction action(std::in_place_type<TimerNotify>, std::move(notify));
 
-    // RPC timeout 等 owner-loop 热路径只传固定大小通知描述符，不构造 std::function。
+    // RPC timeout 热路径：固定布局通知直接进入 slot + heap，不构造 std::function 节点。
     if (loop_->IsInLoopThread())
     {
-        AddTimerInLoop(timer_id,
-                       deadline,
-                       TimerAction(std::in_place_type<TimerNotify>, std::move(notify)));
-        return timer_id;
+        return AddTimerInLoop(deadline, std::move(action));
     }
 
-    // 跨线程注册仍借用 EventLoop 的通用投递机制；这不是当前 RPC timeout 热路径。
+    const TimerId timer_id = MakeExternalTimerId();
     loop_->QueueInLoop([this,
                         timer_id,
                         deadline,
-                        notify = std::move(notify)]() mutable
+                        action = std::move(action)]() mutable
         {
-            AddTimerInLoop(timer_id,
-                           deadline,
-                           TimerAction(std::in_place_type<TimerNotify>, std::move(notify)));
+            AddTimerInLoop(deadline, std::move(action), timer_id.Value());
         });
 
     return timer_id;
@@ -111,52 +104,113 @@ void TimerQueue::Cancel(TimerId timer_id)
         return;
     }
 
-    loop_->RunInLoop([this, timer_id]
+    // owner loop 已经具备修改 TimerQueue 的权限，直接取消，避免再次包装并投递给自己。
+    if (loop_->IsInLoopThread())
+    {
+        CancelInLoop(timer_id);
+        return;
+    }
+
+    loop_->QueueInLoop([this, timer_id]
         {
             CancelInLoop(timer_id);
         });
 }
 
-void TimerQueue::AddTimerInLoop(TimerId timer_id,
-                                TimePoint deadline,
-                                TimerAction action)
+TimerId TimerQueue::AddTimerInLoop(TimePoint deadline,
+                                   TimerAction action,
+                                   std::uint64_t external_timer_id)
 {
     loop_->AssertInLoopThread();
 
-    // 只有新定时器成为最早到期项时才重设 timerfd，否则沿用已有超时。
-    const bool reset_timer_fd = deadlines_.empty() || deadline < deadlines_.begin()->first;
-    auto deadline_it = deadlines_.emplace(deadline, timer_id.Value());
-    timers_.emplace(timer_id.Value(), Timer{std::move(action), deadline_it});
+    // 只有新 timer 比当前堆顶更早时才需要立即重设 timerfd。
+    const bool reset_timer_fd = heap_.empty() || deadline < slots_[heap_.front()].deadline;
+
+    const std::uint32_t slot_index = AllocateSlot(
+        deadline,
+        std::move(action),
+        external_timer_id);
+
+    if (external_timer_id != 0)
+    {
+        try
+        {
+            external_timer_slots_.emplace(external_timer_id, slot_index);
+        }
+        catch (...)
+        {
+            ReleaseSlot(slot_index);
+            throw;
+        }
+    }
+
+    try
+    {
+        PushHeap(slot_index);
+    }
+    catch (...)
+    {
+        if (external_timer_id != 0)
+        {
+            external_timer_slots_.erase(external_timer_id);
+        }
+
+        ReleaseSlot(slot_index);
+        throw;
+    }
 
     if (reset_timer_fd)
     {
         ResetTimerFd();
     }
+
+    if (external_timer_id != 0)
+    {
+        return TimerId(external_timer_id);
+    }
+
+    const TimerSlot& slot = slots_[slot_index];
+    return MakeSlotTimerId(slot_index, slot.generation);
 }
 
 void TimerQueue::CancelInLoop(TimerId timer_id)
 {
     loop_->AssertInLoopThread();
 
-    const auto timer_it = timers_.find(timer_id.Value());
+    std::uint32_t slot_index = kInvalidSlot;
 
-    if (timer_it == timers_.end())
+    if (IsExternalTimerId(timer_id))
     {
-        return;
+        const auto timer_it = external_timer_slots_.find(timer_id.Value());
+
+        if (timer_it == external_timer_slots_.end())
+        {
+            return;
+        }
+
+        slot_index = timer_it->second;
+    }
+    else
+    {
+        std::uint32_t generation = 0;
+
+        if (!DecodeSlotTimerId(timer_id, &slot_index, &generation) ||
+            slot_index >= slots_.size())
+        {
+            return;
+        }
+
+        const TimerSlot& slot = slots_[slot_index];
+
+        // slot 已复用时 generation 会变化，旧 TimerId 不能误取消新 timer。
+        if (!slot.active || slot.generation != generation)
+        {
+            return;
+        }
     }
 
-    // 旧逻辑：取消队首时立即 ResetTimerFd，会产生高频 timerfd_settime syscall。
-    //const bool reset_timer_fd = timer_it->second.deadline_it == deadlines_.begin();
-
-    // 新逻辑：只删除用户态 timer，允许旧 deadline stale wakeup，
-    // HandleRead 最后会重新武装到新的最早 deadline。
-    deadlines_.erase(timer_it->second.deadline_it);
-    timers_.erase(timer_it);
-
-    //if (reset_timer_fd)
-    //{
-    //    ResetTimerFd();
-    //}
+    // lazy cancel：只删用户态结构，不立即重设 timerfd；允许旧 deadline stale wakeup。
+    RemoveTimerSlot(slot_index);
 }
 
 void TimerQueue::HandleRead()
@@ -175,34 +229,20 @@ void TimerQueue::HandleRead()
 
     const TimePoint now = Clock::now();
 
-    // 先摘除再执行：通知过程中 Cancel 或重新 AddTimer 不会碰到正在遍历的容器。
-    while (!deadlines_.empty() && deadlines_.begin()->first <= now)
+    // heap_[0] 永远是最早 deadline；先摘除并回收 slot，再执行通知。
+    while (!heap_.empty())
     {
-        const auto deadline_it = deadlines_.begin();
-        const std::uint64_t timer_id = deadline_it->second;
-        const auto timer_it = timers_.find(timer_id);
+        const std::uint32_t slot_index = heap_.front();
+        TimerSlot& slot = slots_[slot_index];
 
-        if (timer_it == timers_.end())
+        if (slot.deadline > now)
         {
-            deadlines_.erase(deadline_it);
-            continue;
+            break;
         }
 
-        TimerAction action = std::move(timer_it->second.action);
-        deadlines_.erase(deadline_it);
-        timers_.erase(timer_it);
-
-        if (auto* callback = std::get_if<Functor>(&action))
-        {
-            if (*callback)
-            {
-                (*callback)();
-            }
-        }
-        else
-        {
-            std::get<TimerNotify>(action).Invoke();
-        }
+        TimerAction action = std::move(slot.action);
+        RemoveTimerSlot(slot_index);
+        InvokeAction(std::move(action));
     }
 
     ResetTimerFd();
@@ -213,10 +253,11 @@ void TimerQueue::ResetTimerFd()
     // it_value 决定首次到期时间，it_interval 全 0 表示不重复；第二参数 0 表示按相对时长设置。
     itimerspec value{};
 
-    if (!deadlines_.empty())
+    if (!heap_.empty())
     {
+        const TimerSlot& earliest = slots_[heap_.front()];
         auto delay = std::chrono::duration_cast<std::chrono::nanoseconds>(
-            deadlines_.begin()->first - Clock::now());
+            earliest.deadline - Clock::now());
 
         if (delay.count() <= 0)
         {
@@ -239,6 +280,247 @@ void TimerQueue::ResetTimerFd()
     {
         throw std::runtime_error("timerfd_settime failed: " + std::string(std::strerror(errno)));
     }
+}
+
+std::uint32_t TimerQueue::AllocateSlot(TimePoint deadline,
+                                       TimerAction action,
+                                       std::uint64_t external_timer_id)
+{
+    std::uint32_t slot_index = kInvalidSlot;
+
+    if (free_slot_head_ != kInvalidSlot)
+    {
+        slot_index = free_slot_head_;
+        free_slot_head_ = slots_[slot_index].next_free;
+    }
+    else
+    {
+        // TimerId 的低 31 bit 保存 slot_index + 1。
+        if (slots_.size() >= kSlotIndexMask)
+        {
+            throw std::overflow_error("timer slot index exhausted");
+        }
+
+        slot_index = static_cast<std::uint32_t>(slots_.size());
+        slots_.emplace_back();
+    }
+
+    TimerSlot& slot = slots_[slot_index];
+    slot.generation = slot.generation == std::numeric_limits<std::uint32_t>::max()
+        ? 1
+        : slot.generation + 1;
+    slot.deadline = deadline;
+    slot.action = std::move(action);
+    slot.external_timer_id = external_timer_id;
+    slot.sequence = next_sequence_++;
+    slot.heap_index = kInvalidSlot;
+    slot.next_free = kInvalidSlot;
+    slot.active = true;
+
+    return slot_index;
+}
+
+void TimerQueue::ReleaseSlot(std::uint32_t slot_index)
+{
+    TimerSlot& slot = slots_[slot_index];
+
+    // 销毁本次 action，但保留 TimerSlot 本身供下一次 timer 复用。
+    slot.action.template emplace<Functor>();
+    slot.external_timer_id = 0;
+    slot.heap_index = kInvalidSlot;
+    slot.active = false;
+    slot.next_free = free_slot_head_;
+    free_slot_head_ = slot_index;
+}
+
+void TimerQueue::RemoveTimerSlot(std::uint32_t slot_index)
+{
+    TimerSlot& slot = slots_[slot_index];
+
+    if (!slot.active)
+    {
+        return;
+    }
+
+    if (slot.external_timer_id != 0)
+    {
+        external_timer_slots_.erase(slot.external_timer_id);
+    }
+
+    if (slot.heap_index != kInvalidSlot)
+    {
+        RemoveHeapAt(slot.heap_index);
+    }
+
+    ReleaseSlot(slot_index);
+}
+
+void TimerQueue::PushHeap(std::uint32_t slot_index)
+{
+    heap_.push_back(slot_index);
+    slots_[slot_index].heap_index = static_cast<std::uint32_t>(heap_.size() - 1);
+    SiftUp(slots_[slot_index].heap_index);
+}
+
+void TimerQueue::RemoveHeapAt(std::uint32_t heap_index)
+{
+    const std::uint32_t removed_slot = heap_[heap_index];
+    const std::uint32_t last_slot = heap_.back();
+    heap_.pop_back();
+
+    if (heap_index < heap_.size())
+    {
+        heap_[heap_index] = last_slot;
+        slots_[last_slot].heap_index = heap_index;
+
+        if (heap_index > 0)
+        {
+            const std::uint32_t parent = (heap_index - 1) / 2;
+
+            if (Earlier(last_slot, heap_[parent]))
+            {
+                SiftUp(heap_index);
+                slots_[removed_slot].heap_index = kInvalidSlot;
+                return;
+            }
+        }
+
+        SiftDown(heap_index);
+    }
+
+    slots_[removed_slot].heap_index = kInvalidSlot;
+}
+
+void TimerQueue::SiftUp(std::uint32_t heap_index)
+{
+    while (heap_index > 0)
+    {
+        const std::uint32_t parent = (heap_index - 1) / 2;
+
+        if (!Earlier(heap_[heap_index], heap_[parent]))
+        {
+            break;
+        }
+
+        SwapHeapEntries(heap_index, parent);
+        heap_index = parent;
+    }
+}
+
+void TimerQueue::SiftDown(std::uint32_t heap_index)
+{
+    while (true)
+    {
+        const std::uint32_t left = heap_index * 2 + 1;
+
+        if (left >= heap_.size())
+        {
+            return;
+        }
+
+        const std::uint32_t right = left + 1;
+        std::uint32_t earliest = left;
+
+        if (right < heap_.size() && Earlier(heap_[right], heap_[left]))
+        {
+            earliest = right;
+        }
+
+        if (!Earlier(heap_[earliest], heap_[heap_index]))
+        {
+            return;
+        }
+
+        SwapHeapEntries(heap_index, earliest);
+        heap_index = earliest;
+    }
+}
+
+void TimerQueue::SwapHeapEntries(std::uint32_t lhs, std::uint32_t rhs)
+{
+    std::swap(heap_[lhs], heap_[rhs]);
+    slots_[heap_[lhs]].heap_index = lhs;
+    slots_[heap_[rhs]].heap_index = rhs;
+}
+
+bool TimerQueue::Earlier(std::uint32_t lhs_slot,
+                         std::uint32_t rhs_slot) const
+{
+    const TimerSlot& lhs = slots_[lhs_slot];
+    const TimerSlot& rhs = slots_[rhs_slot];
+
+    if (lhs.deadline != rhs.deadline)
+    {
+        return lhs.deadline < rhs.deadline;
+    }
+
+    return lhs.sequence < rhs.sequence;
+}
+
+TimerId TimerQueue::MakeSlotTimerId(std::uint32_t slot_index,
+                                    std::uint32_t generation) const
+{
+    const std::uint64_t slot_token = static_cast<std::uint64_t>(slot_index) + 1;
+    const std::uint64_t value =
+        (static_cast<std::uint64_t>(generation) << 31) |
+        slot_token;
+
+    return TimerId(value);
+}
+
+TimerId TimerQueue::MakeExternalTimerId()
+{
+    const std::uint64_t sequence = next_external_timer_id_.fetch_add(
+        1,
+        std::memory_order_relaxed);
+    return TimerId(kExternalTimerMask | (sequence & ~kExternalTimerMask));
+}
+
+bool TimerQueue::DecodeSlotTimerId(TimerId timer_id,
+                                   std::uint32_t* slot_index,
+                                   std::uint32_t* generation) const
+{
+    if (!timer_id.Valid() ||
+        IsExternalTimerId(timer_id) ||
+        slot_index == nullptr ||
+        generation == nullptr)
+    {
+        return false;
+    }
+
+    const std::uint64_t value = timer_id.Value();
+    const std::uint64_t slot_token = value & kSlotIndexMask;
+
+    if (slot_token == 0)
+    {
+        return false;
+    }
+
+    *slot_index = static_cast<std::uint32_t>(slot_token - 1);
+    *generation = static_cast<std::uint32_t>(
+        (value >> 31) & kGenerationMask);
+
+    return *generation != 0;
+}
+
+bool TimerQueue::IsExternalTimerId(TimerId timer_id) noexcept
+{
+    return (timer_id.Value() & kExternalTimerMask) != 0;
+}
+
+void TimerQueue::InvokeAction(TimerAction action)
+{
+    if (auto* callback = std::get_if<Functor>(&action))
+    {
+        if (*callback)
+        {
+            (*callback)();
+        }
+
+        return;
+    }
+
+    std::get<TimerNotify>(action).Invoke();
 }
 
 }  // namespace nebula::net
