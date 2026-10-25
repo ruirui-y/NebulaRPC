@@ -2,6 +2,7 @@
 
 #include "nebula/base/noncopyable.h"
 #include "nebula/net/timer_id.h"
+#include "nebula/net/timer_notify.h"
 
 #include <atomic>
 #include <chrono>
@@ -44,7 +45,9 @@ public:
     }
 
     TimerId RunAt(TimePoint deadline, Functor cb);
+    TimerId RunAt(TimePoint deadline, TimerNotify notify);
     TimerId RunAfter(std::chrono::milliseconds delay, Functor cb);
+    TimerId RunAfter(std::chrono::milliseconds delay, TimerNotify notify);
     void CancelTimer(TimerId timer_id);
 
     void UpdateChannel(Channel* channel);

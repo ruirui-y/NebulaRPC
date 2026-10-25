@@ -155,9 +155,19 @@ TimerId EventLoop::RunAt(TimePoint deadline, Functor cb)
     return timer_queue_->AddTimer(deadline, std::move(cb));
 }
 
+TimerId EventLoop::RunAt(TimePoint deadline, TimerNotify notify)
+{
+    return timer_queue_->AddTimer(deadline, std::move(notify));
+}
+
 TimerId EventLoop::RunAfter(std::chrono::milliseconds delay, Functor cb)
 {
     return RunAt(Clock::now() + delay, std::move(cb));
+}
+
+TimerId EventLoop::RunAfter(std::chrono::milliseconds delay, TimerNotify notify)
+{
+    return RunAt(Clock::now() + delay, std::move(notify));
 }
 
 void EventLoop::CancelTimer(TimerId timer_id)

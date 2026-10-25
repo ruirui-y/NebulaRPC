@@ -2,6 +2,7 @@
 
 #include "nebula/base/noncopyable.h"
 #include "nebula/net/timer_id.h"
+#include "nebula/net/timer_notify.h"
 
 #include <atomic>
 #include <chrono>
@@ -10,6 +11,7 @@
 #include <map>
 #include <memory>
 #include <unordered_map>
+#include <variant>
 
 namespace nebula::net
 {
@@ -29,20 +31,22 @@ public:
     ~TimerQueue();
 
     TimerId AddTimer(TimePoint deadline, Functor callback);
+    TimerId AddTimer(TimePoint deadline, TimerNotify notify);
     void Cancel(TimerId timer_id);
 
 private:
     using DeadlineMap = std::multimap<TimePoint, std::uint64_t>;    // 同一 deadline 可挂多个定时器
+    using TimerAction = std::variant<Functor, TimerNotify>;
 
     struct Timer
     {
-        Functor callback;
+        TimerAction action;
         DeadlineMap::iterator deadline_it;                          // 指向 deadlines_ 中位置，取消时 O(1) 摘除
     };
 
     void AddTimerInLoop(TimerId timer_id,
                         TimePoint deadline,
-                        Functor callback);
+                        TimerAction action);
     void CancelInLoop(TimerId timer_id);
     void HandleRead();
     void ResetTimerFd();

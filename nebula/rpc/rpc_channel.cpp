@@ -357,8 +357,7 @@ void RpcChannel::RegisterAndSend(std::uint64_t request_id,
         return;
     }
 
-    const auto [it, inserted] = pending_calls_.emplace(
-        request_id, std::move(pending_call));
+    const auto [it, inserted] = pending_calls_.emplace(request_id, std::move(pending_call));
     assert(inserted);
 
     const int cancel_token = RegisterCancelCallback(request_id, it->second);
@@ -501,28 +500,34 @@ void RpcChannel::RegisterTimeoutTimer(std::uint64_t request_id,
         return;
     }
 
-    const std::weak_ptr<AliveGuard> weak_guard = alive_guard_;
-
+    // timeout 热路径只传轻量通知描述符，避免 weak_guard + request_id lambda
+    // 转成 std::function 时产生独立堆分配。TimerQueue 不感知 RpcChannel 类型。
     pending_call.timeout_timer = loop_->RunAt(
         *pending_call.deadline,
-        [weak_guard, request_id]
-            {
-                auto guard = weak_guard.lock();
+        net::TimerNotify{
+            .owner = std::weak_ptr<void>(alive_guard_),
+            .handler = &RpcChannel::HandleTimeoutNotify,
+            .token = request_id,
+        });
+}
 
-                if (guard == nullptr)
-                {
-                    return;
-                }
+void RpcChannel::HandleTimeoutNotify(void* owner, std::uint64_t request_id)
+{
+    auto* guard = static_cast<AliveGuard*>(owner);
 
-                RpcChannel* channel = guard->Acquire();
+    if (guard == nullptr)
+    {
+        return;
+    }
 
-                if (channel == nullptr)
-                {
-                    return;
-                }
+    RpcChannel* channel = guard->Acquire();
 
-                channel->OnTimeout(request_id);
-            });
+    if (channel == nullptr)
+    {
+        return;
+    }
+
+    channel->OnTimeout(request_id);
 }
 
 void RpcChannel::WriteRegisteredCall(std::uint64_t request_id,

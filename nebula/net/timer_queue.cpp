@@ -55,12 +55,50 @@ TimerId TimerQueue::AddTimer(TimePoint deadline, Functor callback)
 {
     const TimerId timer_id(next_timer_id_.fetch_add(1));
 
-    loop_->RunInLoop([this,
-                      timer_id,
-                      deadline,
-                      callback = std::move(callback)]() mutable
+    // owner loop 直接注册，避免为了转交给自己再构造一层 RunInLoop std::function。
+    if (loop_->IsInLoopThread())
+    {
+        AddTimerInLoop(timer_id,
+                       deadline,
+                       TimerAction(std::in_place_type<Functor>, std::move(callback)));
+        return timer_id;
+    }
+
+    loop_->QueueInLoop([this,
+                        timer_id,
+                        deadline,
+                        callback = std::move(callback)]() mutable
         {
-            AddTimerInLoop(timer_id, deadline, std::move(callback));
+            AddTimerInLoop(timer_id,
+                           deadline,
+                           TimerAction(std::in_place_type<Functor>, std::move(callback)));
+        });
+
+    return timer_id;
+}
+
+TimerId TimerQueue::AddTimer(TimePoint deadline, TimerNotify notify)
+{
+    const TimerId timer_id(next_timer_id_.fetch_add(1));
+
+    // RPC timeout 等 owner-loop 热路径只传固定大小通知描述符，不构造 std::function。
+    if (loop_->IsInLoopThread())
+    {
+        AddTimerInLoop(timer_id,
+                       deadline,
+                       TimerAction(std::in_place_type<TimerNotify>, std::move(notify)));
+        return timer_id;
+    }
+
+    // 跨线程注册仍借用 EventLoop 的通用投递机制；这不是当前 RPC timeout 热路径。
+    loop_->QueueInLoop([this,
+                        timer_id,
+                        deadline,
+                        notify = std::move(notify)]() mutable
+        {
+            AddTimerInLoop(timer_id,
+                           deadline,
+                           TimerAction(std::in_place_type<TimerNotify>, std::move(notify)));
         });
 
     return timer_id;
@@ -81,14 +119,14 @@ void TimerQueue::Cancel(TimerId timer_id)
 
 void TimerQueue::AddTimerInLoop(TimerId timer_id,
                                 TimePoint deadline,
-                                Functor callback)
+                                TimerAction action)
 {
     loop_->AssertInLoopThread();
 
     // 只有新定时器成为最早到期项时才重设 timerfd，否则沿用已有超时。
     const bool reset_timer_fd = deadlines_.empty() || deadline < deadlines_.begin()->first;
     auto deadline_it = deadlines_.emplace(deadline, timer_id.Value());
-    timers_.emplace(timer_id.Value(), Timer{std::move(callback), deadline_it});
+    timers_.emplace(timer_id.Value(), Timer{std::move(action), deadline_it});
 
     if (reset_timer_fd)
     {
@@ -137,7 +175,7 @@ void TimerQueue::HandleRead()
 
     const TimePoint now = Clock::now();
 
-    // 先摘除再执行回调：回调里 Cancel 或重新 AddTimer 不会碰到正在遍历的容器。
+    // 先摘除再执行：通知过程中 Cancel 或重新 AddTimer 不会碰到正在遍历的容器。
     while (!deadlines_.empty() && deadlines_.begin()->first <= now)
     {
         const auto deadline_it = deadlines_.begin();
@@ -150,13 +188,20 @@ void TimerQueue::HandleRead()
             continue;
         }
 
-        Functor callback = std::move(timer_it->second.callback);
+        TimerAction action = std::move(timer_it->second.action);
         deadlines_.erase(deadline_it);
         timers_.erase(timer_it);
 
-        if (callback)
+        if (auto* callback = std::get_if<Functor>(&action))
         {
-            callback();
+            if (*callback)
+            {
+                (*callback)();
+            }
+        }
+        else
+        {
+            std::get<TimerNotify>(action).Invoke();
         }
     }
 

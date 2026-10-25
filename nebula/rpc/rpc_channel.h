@@ -164,6 +164,8 @@ private:
         std::atomic<RpcChannel*> channel{nullptr};
     };
 
+    static void HandleTimeoutNotify(void* owner, std::uint64_t request_id);
+
     std::optional<PendingCall> TakePendingCall(std::uint64_t request_id);
     void CompleteCallWithFrame(std::uint64_t request_id, RpcFrame frame);
     void CompleteCallWithFailure(std::uint64_t request_id,
