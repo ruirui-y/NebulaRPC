@@ -19,6 +19,7 @@ class Channel;
 class Poller;
 class TimerQueue;
 
+// 事件循环：poll 事件、定时器、跨线程投递都收敛到所属线程执行。
 class EventLoop final : private base::Noncopyable
 {
 public:
@@ -35,11 +36,9 @@ public:
     void RunInLoop(Functor cb);
     void QueueInLoop(Functor cb);
 
-    // 信号处理函数专用：只做原子置位与 async-signal-safe 的 eventfd 写入，不取锁、不分配
-    void NotifyFromSignal() noexcept;
+    void NotifyFromSignal() noexcept;                                   // 信号处理专用：只做原子置位与 eventfd 写，不取锁不分配
 
-    // 收到信号通知后在 loop 线程执行一次；必须在 Loop() 启动前设置
-    void SetSignalCallback(Functor cb)
+    void SetSignalCallback(Functor cb)                                  // 回调在 loop 线程执行；必须在 Loop() 前设置
     {
         signal_callback_ = std::move(cb);
     }
@@ -66,14 +65,13 @@ private:
 
     using ChannelList = std::vector<Channel*>;
 
-    std::atomic_bool looping_{false};
-    std::atomic_bool quit_{false};
-    std::atomic_bool calling_pending_functors_{false};
-    std::atomic_bool signal_pending_{false};
+    std::atomic_bool looping_{ false };
+    std::atomic_bool quit_{ false };
+    std::atomic_bool calling_pending_functors_{ false };                // 批次执行中投递需要补一次 WakeUp
+    std::atomic_bool signal_pending_{ false };
     const std::thread::id thread_id_;
 
-    // 只在 Loop() 启动前写、之后只读，因此不需要额外同步
-    Functor signal_callback_;
+    Functor signal_callback_;                                           // 只在 Loop() 前写，之后只读
 
     std::unique_ptr<Poller> poller_;
     int wakeup_fd_;
@@ -81,12 +79,12 @@ private:
     std::unique_ptr<TimerQueue> timer_queue_;
     ChannelList active_channels_;
 
-    // Loop 线程本地投递，不需要同步
-    std::vector<Functor> local_pending_functors_;
+    std::vector<Functor> local_pending_functors_;                       // loop 线程本地投递缓冲
+    std::vector<Functor> local_executing_functors_;                     // 本地执行缓冲，与 pending 交换复用容量
 
-    // 跨线程投递，只在入队和批次交换时取锁
-    std::mutex remote_mutex_;
-    std::vector<Functor> remote_pending_functors_;
+    std::mutex remote_mutex_;                                           // 保护跨线程投递队列
+    std::vector<Functor> remote_pending_functors_;                      // 跨线程投递缓冲
+    std::vector<Functor> remote_executing_functors_;                    // 跨线程执行缓冲，与 pending 交换复用容量
 };
 
 }  // namespace nebula::net
