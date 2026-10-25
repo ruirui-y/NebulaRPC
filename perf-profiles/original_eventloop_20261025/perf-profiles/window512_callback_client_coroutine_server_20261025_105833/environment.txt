@@ -1,0 +1,12 @@
+label=callback_client_coroutine_server
+client=/home/yjj/.vs/NebulaRPC/build/linux-release/bin/nebula_rpc_echo_benchmark_client
+server=/home/yjj/.vs/NebulaRPC/build/linux-release/bin/nebula_rpc_echo_coroutine_server
+workers=4
+window=512
+total_inflight=2048
+requests=30000000
+payload_bytes=128
+profile_seconds=12
+server_cpu=0-3
+client_cpu=4-7
+date=2026-10-25T10:58:33+08:00
