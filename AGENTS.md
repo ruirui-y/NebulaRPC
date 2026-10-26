@@ -460,7 +460,15 @@ nebula::coro
 
 ### 10.4 行宽与换行
 
-长函数调用按参数语义换行：
+默认优先写成一行；只有一行明显写不下，或者参数较多、按语义分组后更清晰时才换行。
+
+保持单行：
+
+```cpp
+const std::size_t body_size = sizeof(std::uint32_t) + meta_size + payload_size;
+```
+
+参数较多时按语义换行：
 
 ```cpp
 auto result = co_await stub.Call<Request, Response>(
@@ -468,7 +476,7 @@ auto result = co_await stub.Call<Request, Response>(
     std::move(request));
 ```
 
-复杂条件：
+复杂条件只有在单行过长或分行后明显更清晰时才拆：
 
 ```cpp
 if (state == State::kConnected &&
@@ -477,7 +485,7 @@ if (state == State::kConnected &&
 }
 ```
 
-不要为了压成一行牺牲可读性。
+函数声明同样遵守这一原则：短签名单行，参数较多或单行过长才分行。不要为了视觉对齐主动拆行，也不要为了压成一行牺牲可读性。
 
 ### 10.5 文件模板
 
@@ -650,7 +658,8 @@ void Cancel(TimerId timer_id);
 `.h`：
 
 - 类声明：允许头顶单独一行注释；
-- 成员变量 / 成员函数：用行尾注释，同一段声明内 `//` 起始列右对齐；
+- 成员变量 / 成员函数：需要说明时优先用行尾注释，同一段声明内 `//` 起始列右对齐；
+- 协议二进制布局、ownership、生命周期等跨多个声明的隐藏契约，可以在相关声明前使用块注释；
 - 没有需要说明的成员就空着，不为了对齐凑注释。
 
 `.cpp`：
@@ -688,7 +697,48 @@ private:
 - ownership；
 - batch boundary；
 - timeout / cancel 竞争关系；
+- 协议字段边界、长度语义和二进制布局；
+- 性能代码里为什么必须避免某个中间对象 / copy / allocation；
 - 看起来反直觉但必须保持的行为。
+
+协议格式属于隐藏契约，允许用紧凑的布局图直接写清楚，不要求压成一句话：
+
+```cpp
+// Wire Format：
+//
+// +-------------------+
+// | frame_size   4B   |  后续 body 总长度，不包含自身 4B
+// +-------------------+
+// | meta_size    4B   |  RpcMeta 序列化后的长度
+// +-------------------+
+// | RpcMeta           |  meta_size 字节
+// +-------------------+
+// | payload           |  业务 protobuf 数据
+// +-------------------+
+//
+// frame_size = 4B(meta_size) + meta_size + payload_size
+```
+
+性能热路径的注释只解释设计原因，不逐行翻译实现。例如：
+
+```cpp
+// 先计算最终尺寸，只为最终 frame 分配一次连续空间。
+const std::size_t payload_size = payload.ByteSizeLong();
+
+// frame_size = meta_size字段(4B) + RpcMeta + payload。
+const std::size_t body_size = sizeof(std::uint32_t) + meta_size + payload_size;
+
+// 一次预留完整 frame，后续直接按协议顺序写入。
+output.reserve(sizeof(frame_size_be) + body_size);
+
+// Protobuf 直接序列化到 output 尾部，不再创建 meta_bytes / payload 中间字符串。
+if (!meta.AppendToString(&output) || !payload.AppendToString(&output))
+{
+    return {};
+}
+```
+
+像 `kOk`、`payload`、`SetReadCallback` 这类名字已经说明含义的内容不补注释。
 
 推荐：
 
