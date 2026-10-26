@@ -79,15 +79,22 @@ std::string RpcCodec::EncodeMessage(proto::RpcMeta meta, const google::protobuf:
     const std::uint32_t frame_size_be = htonl(static_cast<std::uint32_t>(body_size));
     const std::uint32_t meta_size_be = htonl(static_cast<std::uint32_t>(meta_size));
 
-    std::string output;
+    // ByteSizeLong 已缓存序列化大小，直接构造最终 frame，避免 AppendToString 再次计算长度。
+    std::string output(sizeof(frame_size_be) + body_size, '\0');
+    char* data = output.data();
 
-    // 一次预留完整 frame，后续直接按协议顺序写入。
-    output.reserve(sizeof(frame_size_be) + body_size);
-    output.append(reinterpret_cast<const char*>(&frame_size_be), sizeof(frame_size_be));
-    output.append(reinterpret_cast<const char*>(&meta_size_be), sizeof(meta_size_be));
+    // frame_size 和 meta_size 是固定 4B 头，直接写到最终缓冲的前 8 字节。
+    std::memcpy(data, &frame_size_be, sizeof(frame_size_be));
+    std::memcpy(data + sizeof(frame_size_be), &meta_size_be, sizeof(meta_size_be));
 
-    // Protobuf 直接序列化到 output 尾部，不再创建 meta_bytes / payload 中间字符串。
-    if (!meta.AppendToString(&output) || !payload.AppendToString(&output))
+    // RpcMeta 紧跟在两个长度字段之后，payload 再紧跟在 RpcMeta 后面。
+    auto* meta_begin = reinterpret_cast<std::uint8_t*>(data + sizeof(frame_size_be) + sizeof(meta_size_be));
+
+    std::uint8_t* payload_begin = meta.SerializeWithCachedSizesToArray(meta_begin);
+    std::uint8_t* end = payload.SerializeWithCachedSizesToArray(payload_begin);
+
+    // 最终写入位置必须刚好落在 frame 尾部，防止尺寸计算与实际序列化结果不一致。
+    if (end != reinterpret_cast<std::uint8_t*>(data + output.size()))
     {
         return {};
     }
