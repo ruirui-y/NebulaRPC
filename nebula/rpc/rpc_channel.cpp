@@ -283,13 +283,6 @@ void RpcChannel::BeginCall(
 
     const std::optional<TimePoint> deadline = ResolveDeadline(controller);
 
-    std::string payload;
-    if (!request->SerializeToString(&payload))
-    {
-        complete_invalid("request protobuf serialization failed");
-        return;
-    }
-
     const std::uint64_t request_id = next_request_id_.fetch_add(1);
     const std::string trace_id = GenerateTraceId();
 
@@ -306,7 +299,7 @@ void RpcChannel::BeginCall(
     meta.set_method_name(method->name());
     meta.set_trace_id(trace_id);
 
-    std::string bytes = RpcCodec::Encode(std::move(meta), payload);
+    std::string bytes = RpcCodec::EncodeMessage(std::move(meta), *request);
     if (bytes.empty())
     {
         complete_invalid("request frame encoding failed");
@@ -334,6 +327,13 @@ void RpcChannel::BeginCall(
         .cancel_token = -1,
         .call = {},
     });
+
+    // owner loop 直接注册，避免为了转交给自己再构造一层 RunInLoop std::function。
+    if (loop_->IsInLoopThread())
+    {
+        RegisterAndSend(request_id, std::move(bytes), std::move(*pending_call));
+        return;
+    }
 
     loop_->RunInLoop([this,
                       request_id,

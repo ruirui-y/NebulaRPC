@@ -1,6 +1,7 @@
 #include "nebula/rpc/rpc_codec.h"
 
 #include <arpa/inet.h>
+#include <google/protobuf/message_lite.h>
 
 #include <cstdint>
 #include <cstring>
@@ -23,31 +24,74 @@ void SetError(std::string* error, std::string message)
 
 std::string RpcCodec::Encode(proto::RpcMeta meta, std::string_view payload)
 {
-    meta.set_payload_size(static_cast<std::uint32_t>(payload.size()));
-
-    std::string meta_bytes;
-    if (!meta.SerializeToString(&meta_bytes))
+    if (payload.size() > std::numeric_limits<std::uint32_t>::max())
     {
         return {};
     }
 
-    const std::size_t body_size = sizeof(std::uint32_t) + meta_bytes.size() + payload.size();
+    meta.set_payload_size(static_cast<std::uint32_t>(payload.size()));
+    const std::size_t meta_size = meta.ByteSizeLong();
+    const std::size_t body_size = sizeof(std::uint32_t) + meta_size + payload.size();
+
     if (body_size > kMaxFrameSize || body_size > std::numeric_limits<std::uint32_t>::max())
     {
         return {};
     }
 
-    const auto frame_size = static_cast<std::uint32_t>(body_size);
-    const auto meta_size = static_cast<std::uint32_t>(meta_bytes.size());
-    const std::uint32_t frame_size_be = htonl(frame_size);
-    const std::uint32_t meta_size_be = htonl(meta_size);
+    const std::uint32_t frame_size_be = htonl(static_cast<std::uint32_t>(body_size));
+    const std::uint32_t meta_size_be = htonl(static_cast<std::uint32_t>(meta_size));
 
     std::string output;
     output.reserve(sizeof(frame_size_be) + body_size);
     output.append(reinterpret_cast<const char*>(&frame_size_be), sizeof(frame_size_be));
     output.append(reinterpret_cast<const char*>(&meta_size_be), sizeof(meta_size_be));
-    output.append(meta_bytes);
+
+    if (!meta.AppendToString(&output))
+    {
+        return {};
+    }
+
     output.append(payload.data(), payload.size());
+    return output;
+}
+
+std::string RpcCodec::EncodeMessage(proto::RpcMeta meta, const google::protobuf::MessageLite& payload)
+{
+    // 先计算最终尺寸，只为最终 frame 分配一次连续空间。
+    const std::size_t payload_size = payload.ByteSizeLong();
+    if (payload_size > std::numeric_limits<std::uint32_t>::max())
+    {
+        return {};
+    }
+
+    meta.set_payload_size(static_cast<std::uint32_t>(payload_size));
+
+    const std::size_t meta_size = meta.ByteSizeLong();
+
+    // frame_size = meta_size字段(4B) + RpcMeta + payload。
+    const std::size_t body_size = sizeof(std::uint32_t) + meta_size + payload_size;
+
+    if (body_size > kMaxFrameSize || body_size > std::numeric_limits<std::uint32_t>::max())
+    {
+        return {};
+    }
+
+    const std::uint32_t frame_size_be = htonl(static_cast<std::uint32_t>(body_size));
+    const std::uint32_t meta_size_be = htonl(static_cast<std::uint32_t>(meta_size));
+
+    std::string output;
+
+    // 一次预留完整 frame，后续直接按协议顺序写入。
+    output.reserve(sizeof(frame_size_be) + body_size);
+    output.append(reinterpret_cast<const char*>(&frame_size_be), sizeof(frame_size_be));
+    output.append(reinterpret_cast<const char*>(&meta_size_be), sizeof(meta_size_be));
+
+    // Protobuf 直接序列化到 output 尾部，不再创建 meta_bytes / payload 中间字符串。
+    if (!meta.AppendToString(&output) || !payload.AppendToString(&output))
+    {
+        return {};
+    }
+
     return output;
 }
 
