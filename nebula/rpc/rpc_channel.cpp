@@ -1010,10 +1010,7 @@ std::chrono::microseconds RpcChannel::RecordMetrics(const PendingCall& pending_c
     const auto latency = std::chrono::duration_cast<std::chrono::microseconds>(
         TimePoint::clock::now() - pending_call.sent_at);
 
-    metrics_.Record(pending_call.method->service()->full_name() + "." +
-                        pending_call.method->name(),
-                    state,
-                    latency);
+    metrics_.Record(pending_call.method, state, latency);
 
     // 返回实测延迟，让日志与指标用同一份数字，不各算一次
     return latency;

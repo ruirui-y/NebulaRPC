@@ -8,8 +8,12 @@
 #include <cstddef>
 #include <cstdint>
 #include <string>
-#include <string_view>
 #include <unordered_map>
+
+namespace google::protobuf
+{
+class MethodDescriptor;
+}
 
 namespace nebula::rpc
 {
@@ -56,11 +60,11 @@ private:
     LatencyHistogram latency_;
 };
 
-// 客户端侧指标表：按 "service.method" 分桶；QPS 的分母由调用方计时，这里只管计数
+// 客户端侧指标表：按 MethodDescriptor 指针分桶；QPS 的分母由调用方计时，这里只管计数
 class RpcMetrics
 {
 public:
-    void Record(std::string_view service_method,
+    void Record(const google::protobuf::MethodDescriptor* method,
                 RpcCallState state,
                 std::chrono::microseconds latency);
 
@@ -71,7 +75,7 @@ public:
     [[nodiscard]] std::string Dump() const;
 
 private:
-    std::unordered_map<std::string, MethodMetrics> methods_;
+    std::unordered_map<const google::protobuf::MethodDescriptor*, MethodMetrics> methods_;
     std::atomic_uint64_t cycle_count_{0};
 };
 

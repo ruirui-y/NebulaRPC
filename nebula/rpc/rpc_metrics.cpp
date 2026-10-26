@@ -1,5 +1,6 @@
 #include "nebula/rpc/rpc_metrics.h"
 
+#include <google/protobuf/descriptor.h>
 #include <sstream>
 
 namespace nebula::rpc
@@ -99,11 +100,16 @@ const LatencyHistogram& MethodMetrics::Latency() const noexcept
     return latency_;
 }
 
-void RpcMetrics::Record(std::string_view service_method,
+void RpcMetrics::Record(const google::protobuf::MethodDescriptor* method,
                         RpcCallState state,
                         std::chrono::microseconds latency)
 {
-    methods_[std::string(service_method)].Record(state, latency);
+    if (method == nullptr)
+    {
+        return;
+    }
+
+    methods_[method].Record(state, latency);
     cycle_count_.fetch_add(1, std::memory_order_relaxed);
 }
 
@@ -127,11 +133,19 @@ std::string RpcMetrics::Dump() const
     std::ostringstream output;
     output << "methods=" << methods_.size();
 
-    for (const auto& [name, metric] : methods_)
+    for (const auto& [method, metric] : methods_)
     {
+        if (method == nullptr)
+        {
+            continue;
+        }
+
         const LatencyHistogram& latency = metric.Latency();
 
-        output << "\n  " << name
+        output << "\n  "
+               << method->service()->full_name()
+               << "."
+               << method->name()
                << " total=" << metric.Total()
                << " failed=" << metric.Failed()
                << " timeout=" << metric.Timeout()
