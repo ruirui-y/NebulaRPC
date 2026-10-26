@@ -1,0 +1,2 @@
+framework,mode,host,port,workers,connections,window,total_inflight,payload_text_bytes,target,issued,completed,success,failed,timeout,cancelled,mismatch,unfinished,wall_seconds,success_qps,avg_us,p50_us,p95_us,p99_us,p999_us
+NebulaRPC,closed_loop_fixed_inflight,127.0.0.1,9000,4,4,512,2048,128,30000000,30000000,30000000,30000000,0,0,0,0,0,17.774269,1687833.132161,1192.664159,1092.557000,1801.766000,2245.380000,3574.093000
