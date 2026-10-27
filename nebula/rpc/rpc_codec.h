@@ -3,6 +3,7 @@
 #include "nebula/net/buffer.h"
 #include "rpc_meta.pb.h"
 
+#include <cstddef>
 #include <string>
 #include <string_view>
 
@@ -17,7 +18,8 @@ namespace nebula::rpc
 struct RpcFrame
 {
     proto::RpcMeta meta;
-    std::string payload;
+    std::string_view payload;                                               // 非 owning，底层 frame bytes 必须存活到 payload 消费完毕
+    std::size_t wire_size{0};                                               // Decode 成功时，当前完整 frame 在 input_buffer 中占用的总字节数
 };
 
 class RpcCodec
@@ -51,6 +53,7 @@ public:
 
     [[nodiscard]] static std::string EncodeMessage(proto::RpcMeta meta, const google::protobuf::MessageLite& payload);
 
+    // Decode 只建立 payload view，调用者在 payload 消费完后再 Retrieve(frame.wire_size)。
     static DecodeResult Decode(net::Buffer* buffer, RpcFrame* frame, std::string* error);
     static bool DecodeBody(std::string_view body, RpcFrame* frame, std::string* error);
 };

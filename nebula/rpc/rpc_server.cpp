@@ -277,23 +277,26 @@ void RpcServer::OnMessage(const net::TcpConnectionPtr& conn, net::Buffer* buffer
             return;
         }
 
+        const std::size_t wire_size = frame.wire_size;
+
         if (frame.meta.type() == proto::RpcMeta::HEARTBEAT)
         {
             SendHeartbeatEcho(frame.meta, flush_scope);
-            continue;
         }
-
-        if (frame.meta.type() == proto::RpcMeta::REQUEST)
+        else if (frame.meta.type() == proto::RpcMeta::REQUEST)
         {
             HandleRequest(conn, frame, flush_scope);
-            continue;
+        }
+        else
+        {
+            SendError(frame.meta.request_id(),
+                      frame.meta.trace_id(),
+                      RpcErrorCode::BadRequest,
+                      "server received a non-request/heartbeat frame",
+                      flush_scope);
         }
 
-        SendError(frame.meta.request_id(),
-                  frame.meta.trace_id(),
-                  RpcErrorCode::BadRequest,
-                  "server received a non-request/heartbeat frame",
-                  flush_scope);
+        buffer->Retrieve(wire_size);
     }
 }
 
@@ -338,7 +341,7 @@ void RpcServer::HandleRequest(const net::TcpConnectionPtr& conn,
     call->request.reset(service->GetRequestPrototype(method).New());
     call->response.reset(service->GetResponsePrototype(method).New());
 
-    if (!call->request->ParseFromString(frame.payload))
+    if (!call->request->ParseFromArray(frame.payload.data(), static_cast<int>(frame.payload.size())))
     {
         SendError(frame.meta.request_id(),
                   frame.meta.trace_id(),
@@ -387,7 +390,7 @@ void RpcServer::HandleCoroutineRequest(
     }
 
     std::unique_ptr<google::protobuf::Message> request = method->new_request();
-    if (request == nullptr || !request->ParseFromString(frame.payload))
+    if (request == nullptr || !request->ParseFromArray(frame.payload.data(), static_cast<int>(frame.payload.size())))
     {
         SendError(frame.meta.request_id(),
                   frame.meta.trace_id(),

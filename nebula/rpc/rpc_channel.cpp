@@ -103,7 +103,7 @@ void ApplyFrame(google::protobuf::Message* response,
     {
         SetControllerFailure(controller, "unexpected RPC frame type");
     }
-    else if (!response->ParseFromString(frame.payload))
+    else if (!response->ParseFromArray(frame.payload.data(), static_cast<int>(frame.payload.size())))
     {
         SetControllerFailure(controller, "response protobuf parse failed");
     }
@@ -610,7 +610,9 @@ void RpcChannel::OnMessage(const net::TcpConnectionPtr& conn, net::Buffer* buffe
             return;
         }
 
+        const std::size_t wire_size = frame.wire_size;
         HandleFrame(std::move(frame));
+        buffer->Retrieve(wire_size);
     }
 }
 

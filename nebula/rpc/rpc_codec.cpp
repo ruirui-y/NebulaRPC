@@ -122,12 +122,15 @@ RpcCodec::DecodeResult RpcCodec::Decode(net::Buffer* buffer, RpcFrame* frame, st
         return DecodeResult::kNeedMore;
     }
 
-    buffer->Retrieve(sizeof(std::uint32_t));
-    const std::string body = buffer->RetrieveAsString(frame_size);
+    // body 直接引用 Buffer 可读区，避免 RetrieveAsString 产生整帧 allocation 与 copy。
+    const std::string_view body(buffer->Peek() + sizeof(std::uint32_t), frame_size);
     if (!DecodeBody(body, frame, error))
     {
         return DecodeResult::kError;
     }
+
+    // payload 仍引用当前 Buffer；由上层完成 protobuf Parse 后再按 wire_size 消费这帧。
+    frame->wire_size = total_size;
     return DecodeResult::kOk;
 }
 
@@ -149,6 +152,7 @@ bool RpcCodec::DecodeBody(std::string_view body, RpcFrame* frame, std::string* e
         return false;
     }
 
+    // meta / payload 只切分 view，不再为 Decode 中间结果创建 owning string。
     const std::string_view meta_bytes = body.substr(sizeof(std::uint32_t), meta_size);
     const std::string_view payload = body.substr(sizeof(std::uint32_t) + meta_size);
 
@@ -166,8 +170,9 @@ bool RpcCodec::DecodeBody(std::string_view body, RpcFrame* frame, std::string* e
     }
 
     frame->meta = std::move(meta);
-    frame->payload.assign(payload.data(), payload.size());
+
+    // 非 owning view，只能在对应 Buffer 被 Retrieve 前使用，禁止跨异步挂起保存。
+    frame->payload = payload;
     return true;
 }
-
 }  // namespace nebula::rpc
