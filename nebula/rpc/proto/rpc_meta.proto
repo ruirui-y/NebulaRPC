@@ -12,10 +12,10 @@ message RpcMeta {
 
   MessageType type = 1;
   uint64 request_id = 2;
-  string service_name = 3;
-  string method_name = 4;
+  bytes service_name = 3;
+  uint32 method_index = 4;
   uint32 payload_size = 5;
   int32 error_code = 6;
   string error_text = 7;
-  string trace_id = 8;
+  fixed64 trace_id = 8;
 }

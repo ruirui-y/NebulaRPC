@@ -6,14 +6,15 @@
 #include <google/protobuf/descriptor.h>
 #include <google/protobuf/message.h>
 
+#include <cstddef>
 #include <cstdint>
 #include <functional>
 #include <memory>
 #include <stdexcept>
 #include <string>
 #include <type_traits>
-#include <unordered_map>
 #include <utility>
+#include <vector>
 
 namespace nebula::rpc
 {
@@ -23,11 +24,11 @@ class RpcServerContext final
 public:
     RpcServerContext(net::EventLoop* loop,
                      std::uint64_t request_id,
-                     std::string trace_id,
+                     std::uint64_t trace_id,
                      std::string connection_name)
         : loop_(loop),
           request_id_(request_id),
-          trace_id_(std::move(trace_id)),
+          trace_id_(trace_id),
           connection_name_(std::move(connection_name))
     {
     }
@@ -42,7 +43,7 @@ public:
         return request_id_;
     }
 
-    [[nodiscard]] const std::string& TraceId() const noexcept
+    [[nodiscard]] std::uint64_t TraceId() const noexcept
     {
         return trace_id_;
     }
@@ -55,7 +56,7 @@ public:
 private:
     net::EventLoop* loop_;
     std::uint64_t request_id_;
-    std::string trace_id_;
+    std::uint64_t trace_id_{0};
     std::string connection_name_;
 };
 
@@ -80,6 +81,8 @@ public:
         {
             throw std::invalid_argument("CoroutineService requires a service descriptor");
         }
+
+        methods_.resize(static_cast<std::size_t>(descriptor_->method_count()));
     }
 
     CoroutineService(const CoroutineService&) = delete;
@@ -142,18 +145,23 @@ public:
                 co_return std::make_unique<Response>(std::move(response));
             };
 
-        methods_[method_name] = std::move(entry);
+        methods_[static_cast<std::size_t>(method->index())] = std::move(entry);
     }
 
-    [[nodiscard]] const Method* FindMethod(const std::string& method_name) const noexcept
+    [[nodiscard]] const Method* FindMethod(std::uint32_t method_index) const noexcept
     {
-        const auto it = methods_.find(method_name);
-        return it == methods_.end() ? nullptr : &it->second;
+        const std::size_t index = static_cast<std::size_t>(method_index);
+        if (index >= methods_.size() || methods_[index].descriptor == nullptr)
+        {
+            return nullptr;
+        }
+
+        return &methods_[index];
     }
 
 private:
     const google::protobuf::ServiceDescriptor* descriptor_;
-    std::unordered_map<std::string, Method> methods_;
+    std::vector<Method> methods_;
 };
 
 }  // namespace nebula::rpc

@@ -4,11 +4,11 @@ package nebula.example;
 option cc_generic_services = true;
 
 message EchoRequest {
-  string text = 1;
+  bytes text = 1;
 }
 
 message EchoResponse {
-  string text = 1;
+  bytes text = 1;
   uint64 server_sequence = 2;
 }
 

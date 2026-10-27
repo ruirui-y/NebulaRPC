@@ -24,8 +24,8 @@ namespace
 constexpr auto kHeartbeatInterval = std::chrono::seconds(3);
 constexpr int kHeartbeatMaxMissed = 3;
 
-// trace_id 只需全局唯一：进程盐 + 单调计数 + 时钟，避免为每次调用引入随机数发生器
-std::string GenerateTraceId()
+// trace_id 直接使用 64 bit 值，避免 hex 字符串构造与 protobuf UTF-8 校验。
+std::uint64_t GenerateTraceId()
 {
     static const std::uint64_t process_salt =
         static_cast<std::uint64_t>(::getpid()) * 0x9E3779B97F4A7C15ULL;
@@ -35,18 +35,7 @@ std::string GenerateTraceId()
     value ^= counter.fetch_add(1, std::memory_order_relaxed) * 0x9E3779B97F4A7C15ULL;
     value ^= static_cast<std::uint64_t>(
         std::chrono::steady_clock::now().time_since_epoch().count());
-
-    constexpr char kHex[] = "0123456789abcdef";
-    std::string trace_id(16, '0');
-
-    for (int i = 15; i >= 0; --i)
-    {
-        trace_id[static_cast<std::size_t>(i)] =
-            kHex[static_cast<std::size_t>(value & 0x0FU)];
-        value >>= 4U;
-    }
-
-    return trace_id;
+    return value;
 }
 
 // Timeout / Deadline 二选一，同时设以 Deadline 为准
@@ -284,7 +273,7 @@ void RpcChannel::BeginCall(
     const std::optional<TimePoint> deadline = ResolveDeadline(controller);
 
     const std::uint64_t request_id = next_request_id_.fetch_add(1);
-    const std::string trace_id = GenerateTraceId();
+    const std::uint64_t trace_id = GenerateTraceId();
 
     if (coroutine_completion != nullptr)
     {
@@ -296,7 +285,7 @@ void RpcChannel::BeginCall(
     meta.set_type(proto::RpcMeta::REQUEST);
     meta.set_request_id(request_id);
     meta.set_service_name(method->service()->full_name());
-    meta.set_method_name(method->name());
+    meta.set_method_index(static_cast<std::uint32_t>(method->index()));
     meta.set_trace_id(trace_id);
 
     std::string bytes = RpcCodec::EncodeMessage(std::move(meta), *request);

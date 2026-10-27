@@ -234,7 +234,7 @@ public:
             completion != nullptr
                 ? completion->request_id.load(std::memory_order_acquire)
                 : 0U,
-            completion != nullptr ? completion->trace_id : std::string{},
+            completion != nullptr ? completion->trace_id : 0U,
             completion != nullptr ? completion->latency : std::chrono::microseconds{0},
             completion != nullptr ? completion->remote_error_code : 0);
     }

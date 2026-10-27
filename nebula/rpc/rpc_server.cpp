@@ -320,8 +320,9 @@ void RpcServer::HandleRequest(const net::TcpConnectionPtr& conn,
     }
 
     google::protobuf::Service* service = service_it->second;
-    const auto* method = service->GetDescriptor()->FindMethodByName(frame.meta.method_name());
-    if (method == nullptr)
+    const auto* descriptor = service->GetDescriptor();
+    const std::uint32_t method_index = frame.meta.method_index();
+    if (method_index >= static_cast<std::uint32_t>(descriptor->method_count()))
     {
         SendError(frame.meta.request_id(),
                   frame.meta.trace_id(),
@@ -330,6 +331,8 @@ void RpcServer::HandleRequest(const net::TcpConnectionPtr& conn,
                   flush_scope);
         return;
     }
+
+    const auto* method = descriptor->method(static_cast<int>(method_index));
 
     auto call = std::make_shared<ServerCall>();
     call->request.reset(service->GetRequestPrototype(method).New());
@@ -346,13 +349,13 @@ void RpcServer::HandleRequest(const net::TcpConnectionPtr& conn,
     }
 
     const std::uint64_t request_id = frame.meta.request_id();
-    const std::string trace_id = frame.meta.trace_id();
+    const std::uint64_t trace_id = frame.meta.trace_id();
 
     NLOG_DEBUG("rpc server dispatch request_id={} trace_id={} service={} method={} name={}",
                request_id,
                trace_id,
                frame.meta.service_name(),
-               frame.meta.method_name(),
+               method->name(),
                conn->Name());
 
     // 先计数再调用：业务可能同步回调 done，计数晚了就会在清零之后又减一次
@@ -372,7 +375,7 @@ void RpcServer::HandleCoroutineRequest(
     CoroutineService* service,
     const std::shared_ptr<ResponseFlushScope>& flush_scope)
 {
-    const CoroutineService::Method* method = service->FindMethod(frame.meta.method_name());
+    const CoroutineService::Method* method = service->FindMethod(frame.meta.method_index());
     if (method == nullptr)
     {
         SendError(frame.meta.request_id(),
@@ -395,13 +398,13 @@ void RpcServer::HandleCoroutineRequest(
     }
 
     const std::uint64_t request_id = frame.meta.request_id();
-    const std::string trace_id = frame.meta.trace_id();
+    const std::uint64_t trace_id = frame.meta.trace_id();
 
     NLOG_DEBUG("rpc coroutine dispatch request_id={} trace_id={} service={} method={} name={}",
                request_id,
                trace_id,
                frame.meta.service_name(),
-               frame.meta.method_name(),
+               method->descriptor->name(),
                conn->Name());
 
     // DetachedTask 会立刻执行到第一个挂起点。
@@ -429,7 +432,7 @@ DetachedTask RpcServer::DispatchCoroutineRequest(
     std::shared_ptr<ResponseFlushScope> flush_scope)
 {
     const std::uint64_t request_id = context.RequestId();
-    const std::string trace_id = context.TraceId();
+    const std::uint64_t trace_id = context.TraceId();
 
     try
     {
@@ -489,7 +492,7 @@ DetachedTask RpcServer::DispatchCoroutineRequest(
 }
 
 void RpcServer::SendResponse(std::uint64_t request_id,
-                             const std::string& trace_id,
+                             std::uint64_t trace_id,
                              const google::protobuf::Message& response,
                              const std::shared_ptr<ResponseFlushScope>& flush_scope)
 {
@@ -526,7 +529,7 @@ void RpcServer::SendResponse(std::uint64_t request_id,
 }
 
 void RpcServer::SendError(std::uint64_t request_id,
-                          const std::string& trace_id,
+                          std::uint64_t trace_id,
                           RpcErrorCode error_code,
                           std::string error_text,
                           const std::shared_ptr<ResponseFlushScope>& flush_scope)

@@ -30,7 +30,7 @@ public:
               std::string error_text,
               bool cancelled,
               std::uint64_t request_id,
-              std::string trace_id,
+              std::uint64_t trace_id,
               std::chrono::microseconds latency,
               std::int32_t remote_error_code)
         : response_(std::move(response)),
@@ -38,7 +38,7 @@ public:
           error_text_(std::move(error_text)),
           cancelled_(cancelled),
           request_id_(request_id),
-          trace_id_(std::move(trace_id)),
+          trace_id_(trace_id),
           latency_(latency),
           remote_error_code_(remote_error_code)
     {
@@ -74,7 +74,7 @@ public:
         return request_id_;
     }
 
-    [[nodiscard]] const std::string& TraceId() const noexcept
+    [[nodiscard]] std::uint64_t TraceId() const noexcept
     {
         return trace_id_;
     }
@@ -110,7 +110,7 @@ private:
     std::string error_text_;
     bool cancelled_{false};
     std::uint64_t request_id_{0};
-    std::string trace_id_;
+    std::uint64_t trace_id_{0};
     std::chrono::microseconds latency_{0};
     std::int32_t remote_error_code_{0};
 };

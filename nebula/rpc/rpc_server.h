@@ -77,11 +77,11 @@ private:
                                           std::unique_ptr<google::protobuf::Message> request,
                                           std::shared_ptr<ResponseFlushScope> flush_scope);
     void SendResponse(std::uint64_t request_id,
-                      const std::string& trace_id,
+                      std::uint64_t trace_id,
                       const google::protobuf::Message& response,
                       const std::shared_ptr<ResponseFlushScope>& flush_scope);
     void SendError(std::uint64_t request_id,
-                   const std::string& trace_id,
+                   std::uint64_t trace_id,
                    RpcErrorCode error_code,
                    std::string error_text,
                    const std::shared_ptr<ResponseFlushScope>& flush_scope);
