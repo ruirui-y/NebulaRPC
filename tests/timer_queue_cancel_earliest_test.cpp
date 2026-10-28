@@ -20,29 +20,20 @@ int main()
     nebula::net::EventLoop loop;
 
     // ------------------------------------------------------------
-    // 测试目标：
+    // 验证目标：
     //
-    // T1 = 100ms，作为最早 timer，使 kernel timerfd 首先武装到 T1。
-    // T2 = 300ms，作为真正需要触发的 timer。
+    // T1 = 100ms，是当前最早到期的 timer。
+    // T2 = 300ms，是真正需要触发的 timer。
     //
-    // 随后立即取消 T1。
+    // 在队列同时持有 T1、T2 时取消 T1。
     //
-    // lazy cancel 实现不会在 Cancel(T1) 时重新调用 timerfd_settime，
-    // 因此 kernel timerfd 仍然会在约 100ms 时产生一次 stale wakeup。
+    // 期望行为：
     //
-    // 正确行为应该是：
+    //   被取消的 T1 绝不能执行 callback；
+    //   取消 T1 不能让 T2 丢失 —— T2 仍必须在 300ms 附近触发。
     //
-    //   100ms:
-    //       timerfd 唤醒
-    //       T1 已取消，不执行 T1 callback
-    //       T2 尚未到期，不执行 T2 callback
-    //       HandleRead() 最后重新把 timerfd 武装到 T2
-    //
-    //   300ms:
-    //       T2 正常触发
-    //
-    // 如果 stale wakeup 后没有正确重新武装 timerfd，
-    // 那么 T2 将永远不会触发，外部 watchdog 会使测试失败。
+    // 内部用什么结构推进到期判断不在本测试范围内，
+    // 只要"取消一个 timer 不影响其他 timer"这条外部行为成立即可。
     // ------------------------------------------------------------
 
     const auto started = Clock::now();
@@ -61,8 +52,8 @@ int main()
     // 外部 watchdog 不能使用 TimerQueue 自己实现。
     //
     // 因为我们测试的正是 TimerQueue：
-    // 如果 timerfd 在 stale wakeup 后没有重新武装，
-    // 再注册一个 TimerQueue watchdog 也同样可能永远不会触发。
+    // 如果取消之后队列不再推进，再注册一个 TimerQueue watchdog
+    // 也同样可能永远不会触发。
     //
     // 因此这里使用独立 OS 线程，在 1500ms 后强制退出 EventLoop。
     // ------------------------------------------------------------
@@ -87,11 +78,7 @@ int main()
         });
 
     // ------------------------------------------------------------
-    // T1：100ms。
-    //
-    // 因为当前 TimerQueue 为空，所以加入 T1 时，
-    // AddTimerInLoop 会调用 ResetTimerFd，
-    // kernel timerfd 被武装到 started + 100ms。
+    // T1：100ms，作为当前最早到期的 timer 注册。
     // ------------------------------------------------------------
     const auto cancelled_timer = loop.RunAt(
         started + 100ms,
@@ -102,9 +89,6 @@ int main()
 
     // ------------------------------------------------------------
     // T2：300ms。
-    //
-    // T1 此时仍然是队首，因此加入 T2 不需要重新设置 timerfd。
-    // kernel timerfd 仍然指向 100ms。
     // ------------------------------------------------------------
     loop.RunAt(
         started + 300ms,
@@ -120,19 +104,9 @@ int main()
         });
 
     // ------------------------------------------------------------
-    // 关键操作：
+    // 关键操作：取消最早到期的 T1。
     //
-    // 删除当前最早的 T1。
-    //
-    // lazy cancel 下这里只删除用户态 TimerQueue 记录，
-    // 不重新调用 timerfd_settime。
-    //
-    // 因此：
-    //
-    //   deadlines_   -> 只剩 T2 = 300ms
-    //   kernel timerfd -> 仍然是 T1 = 100ms
-    //
-    // 这正是我们要人为制造的 stale wakeup。
+    // 此后队列里只剩 T2，T2 的触发不能被这次取消影响。
     // ------------------------------------------------------------
     loop.CancelTimer(cancelled_timer);
 
@@ -158,17 +132,14 @@ int main()
 
     // ------------------------------------------------------------
     // 检查 2：
-    // 如果 watchdog 超时，说明：
-    //
-    // stale timerfd 在 100ms 唤醒以后，
-    // HandleRead 没有把 timerfd 重新武装到 T2，
-    // 导致真正的 300ms timer 丢失。
+    // 如果 watchdog 超时，说明取消最早到期的 timer 之后
+    // 队列不再推进到后续 timer，T2 被丢失。
     // ------------------------------------------------------------
     if (watchdog_timeout.load(std::memory_order_acquire))
     {
         std::cerr
             << "[FAIL] watchdog timeout: "
-            << "timerfd was not rearmed after stale wakeup\n";
+            << "later timer was lost after cancelling the earliest one\n";
         return 2;
     }
 
@@ -192,8 +163,7 @@ int main()
     // T2 目标是 300ms。
     //
     // 下限给 200ms：
-    // 如果 stale wakeup 在约 100ms 时错误地触发了 T2，
-    // 这里能够发现。
+    // 如果取消操作把后续 timer 的到期时间算错、导致过早触发，这里能够发现。
     //
     // 上限给 1000ms：
     // 给虚拟机调度留下较大容差，但不能无限拖延。
@@ -217,11 +187,10 @@ int main()
     }
 
     std::cout
-        << "[PASS] lazy timer cancellation is correct\n"
+        << "[PASS] cancelling the earliest timer keeps later timers alive\n"
         << "  cancelled timer fired : no\n"
-        << "  stale wakeup           : survived\n"
-        << "  real timer fired       : yes\n"
-        << "  real timer elapsed     : "
+        << "  later timer fired     : yes\n"
+        << "  later timer elapsed   : "
         << elapsed.count()
         << " ms\n";
 

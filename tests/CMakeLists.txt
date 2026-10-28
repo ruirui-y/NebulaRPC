@@ -8,17 +8,16 @@ add_executable(nebula_timer_queue_test timer_queue_test.cpp)
 target_link_libraries(nebula_timer_queue_test PRIVATE nebula_net)
 add_test(NAME nebula_timer_queue_test COMMAND nebula_timer_queue_test)
 
-# slot + indexed min-heap：乱序注册、任意取消后仍按 deadline 触发；相同 deadline 保持注册顺序。
-add_executable(nebula_timer_queue_heap_test timer_queue_heap_test.cpp)
-target_link_libraries(nebula_timer_queue_heap_test PRIVATE nebula_net)
-add_test(NAME nebula_timer_queue_heap_test COMMAND nebula_timer_queue_heap_test)
+# 乱序注册的 timer 按 deadline 依次触发；被取消的不触发；相同 deadline 保持注册顺序。
+add_executable(nebula_timer_queue_deadline_order_test timer_queue_deadline_order_test.cpp)
+target_link_libraries(nebula_timer_queue_deadline_order_test PRIVATE nebula_net)
+add_test(NAME nebula_timer_queue_deadline_order_test COMMAND nebula_timer_queue_deadline_order_test)
 
-# 取消队首后的重新武装：T1 取消不能让 T2 丢失，
-# 覆盖 stale wakeup 之后 timerfd 没有被重设的场景。
-add_executable(nebula_timer_queue_lazy_cancel_test timer_queue_lazy_cancel_test.cpp)
-target_link_libraries(nebula_timer_queue_lazy_cancel_test PRIVATE nebula_net)
-add_test(NAME nebula_timer_queue_lazy_cancel_test COMMAND nebula_timer_queue_lazy_cancel_test)
-set_tests_properties(nebula_timer_queue_lazy_cancel_test PROPERTIES RUN_SERIAL TRUE)
+# 取消最早到期的 timer 不能影响后续 timer 的触发。
+add_executable(nebula_timer_queue_cancel_earliest_test timer_queue_cancel_earliest_test.cpp)
+target_link_libraries(nebula_timer_queue_cancel_earliest_test PRIVATE nebula_net)
+add_test(NAME nebula_timer_queue_cancel_earliest_test COMMAND nebula_timer_queue_cancel_earliest_test)
+set_tests_properties(nebula_timer_queue_cancel_earliest_test PROPERTIES RUN_SERIAL TRUE)
 
 # RpcFrame 编解码往返：meta 与 payload 解出来必须与发出去的一致。
 add_executable(nebula_rpc_codec_test rpc_codec_test.cpp)

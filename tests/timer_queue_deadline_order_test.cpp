@@ -18,11 +18,11 @@ int main()
     const auto cancel_70 = loop.RunAt(now + 70ms, [&] { fired_order.push_back(70); });
     loop.RunAt(now + 40ms, [&] { fired_order.push_back(40); });
 
-    // 从 heap 中间和后部删除 timer，剩余 timer 仍必须保持最小堆顺序。
+    // 乱序注册之后再取消中间与末尾各一个，剩余 timer 仍必须按 deadline 触发。
     loop.CancelTimer(cancel_30);
     loop.CancelTimer(cancel_70);
 
-    // 相同 deadline 保持注册顺序，与原 multimap 行为一致。
+    // 相同 deadline 的 timer 必须保持注册顺序。
     const auto same_deadline = now + 60ms;
     loop.RunAt(same_deadline, [&] { fired_order.push_back(61); });
     loop.RunAt(same_deadline, [&] { fired_order.push_back(62); });
@@ -35,7 +35,7 @@ int main()
 
     if (fired_order != expected)
     {
-        std::cerr << "timer heap order test failed:";
+        std::cerr << "timer deadline order test failed:";
 
         for (const int value : fired_order)
         {
@@ -46,6 +46,6 @@ int main()
         return 1;
     }
 
-    std::cout << "timer heap order test passed\n";
+    std::cout << "timer deadline order test passed\n";
     return 0;
 }

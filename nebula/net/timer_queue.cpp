@@ -55,7 +55,7 @@ TimerId TimerQueue::AddTimer(TimePoint deadline, Functor callback)
 {
     TimerAction action(std::in_place_type<Functor>, std::move(callback));
 
-    // owner loop 直接分配可复用 slot，并插入最小堆；不再创建节点型容器。
+    // owner loop 直接分配可复用 slot 并挂入时间轮；不再维护 heap，也不创建节点型容器。
     if (loop_->IsInLoopThread())
     {
         return AddTimerInLoop(deadline, std::move(action));
@@ -79,7 +79,7 @@ TimerId TimerQueue::AddTimer(TimePoint deadline, TimerNotify notify)
 {
     TimerAction action(std::in_place_type<TimerNotify>, std::move(notify));
 
-    // RPC timeout 热路径：固定布局通知直接进入 slot + heap，不构造 std::function 节点。
+    // RPC timeout 热路径：固定布局通知直接进入 slot + timing wheel，不构造 std::function 节点。
     if (loop_->IsInLoopThread())
     {
         return AddTimerInLoop(deadline, std::move(action));
@@ -121,8 +121,11 @@ TimerId TimerQueue::AddTimerInLoop(TimePoint deadline, TimerAction action, std::
 {
     loop_->AssertInLoopThread();
 
-    // 只有新 timer 比当前堆顶更早时才需要立即重设 timerfd。
-    const bool reset_timer_fd = heap_.empty() || deadline < slots_[heap_.front()].deadline;
+    // timerfd 关闭期间没有活动 timer，可以直接把逻辑 tick 快进到当前毫秒再安排新节点。
+    if (!timer_fd_armed_)
+    {
+        SyncCurrentTick();
+    }
 
     const std::uint32_t slot_index = AllocateSlot(
         deadline,
@@ -142,24 +145,21 @@ TimerId TimerQueue::AddTimerInLoop(TimePoint deadline, TimerAction action, std::
         }
     }
 
-    try
+    ScheduleTimerSlot(slot_index);
+    ++active_timer_count_;
+
+    // 周期 timerfd 只在第一个活动 timer 到来时启动，后续 Add/Cancel 不重复 settime。
+    if (!timer_fd_armed_)
     {
-        PushHeap(slot_index);
-    }
-    catch (...)
-    {
-        if (external_timer_id != 0)
+        try
         {
-            external_timer_slots_.erase(external_timer_id);
+            ArmTimerFd();
         }
-
-        ReleaseSlot(slot_index);
-        throw;
-    }
-
-    if (reset_timer_fd)
-    {
-        ResetTimerFd();
+        catch (...)
+        {
+            RemoveTimerSlot(slot_index);
+            throw;
+        }
     }
 
     // 跨线程调用在入队前就拿到了 id，这里必须原样返回，不能换成槽位 id。
@@ -208,8 +208,13 @@ void TimerQueue::CancelInLoop(TimerId timer_id)
         }
     }
 
-    // lazy cancel：只删用户态结构，不立即重设 timerfd；允许旧 deadline stale wakeup。
+    // bucket 是侵入式双向链表，任意 Timer Cancel 都直接摘链并立即归还 slot。
     RemoveTimerSlot(slot_index);
+
+    if (active_timer_count_ == 0)
+    {
+        DisarmTimerFd();
+    }
 }
 
 void TimerQueue::HandleRead()
@@ -217,67 +222,91 @@ void TimerQueue::HandleRead()
     loop_->AssertInLoopThread();
 
     std::uint64_t expirations = 0;
-    // timerfd 的 read 返回累计到期次数，必须一次读满 8 字节；读完计数清零。
+    // timerfd 的 read 返回累计到期次数，必须一次读满 8 字节；每次 expiration 对应一个 1ms tick。
     const ssize_t n = ::read(timer_fd_, &expirations, sizeof(expirations));
 
-    // 非阻塞 fd 无到期数据时是 EAGAIN，被信号打断是 EINTR，两者都不算错误。
-    if (n < 0 && errno != EAGAIN && errno != EINTR)
+    // 非阻塞 fd 无到期数据时是 EAGAIN，被信号打断是 EINTR，两者都不推进时间轮。
+    if (n < 0)
     {
+        if (errno == EAGAIN || errno == EINTR)
+        {
+            return;
+        }
+
         throw std::runtime_error("timerfd read failed: " + std::string(std::strerror(errno)));
     }
 
-    const TimePoint now = Clock::now();
+    AdvanceWheel(expirations);
 
-    // heap_[0] 永远是最早 deadline；先摘除并回收 slot，再执行通知。
-    while (!heap_.empty())
+    // HandleRead 内 callback 可能取消最后一个 timer；统一在本轮推进完成后再 disarm。
+    if (active_timer_count_ == 0)
     {
-        const std::uint32_t slot_index = heap_.front();
-        TimerSlot& slot = slots_[slot_index];
-
-        if (slot.deadline > now)
-        {
-            break;
-        }
-
-        TimerAction action = std::move(slot.action);
-        RemoveTimerSlot(slot_index);
-        InvokeAction(std::move(action));
+        DisarmTimerFd();
     }
-
-    ResetTimerFd();
 }
 
-void TimerQueue::ResetTimerFd()
+void TimerQueue::ArmTimerFd()
 {
-    // it_value 决定首次到期时间，it_interval 全 0 表示不重复；第二参数 0 表示按相对时长设置。
-    itimerspec value{};
-
-    if (!heap_.empty())
+    if (timer_fd_armed_)
     {
-        const TimerSlot& earliest = slots_[heap_.front()];
-        auto delay = std::chrono::duration_cast<std::chrono::nanoseconds>(
-            earliest.deadline - Clock::now());
-
-        if (delay.count() <= 0)
-        {
-            // 已过期时给 1ns 而不是 0：it_value 为 0 表示解除 timerfd 定时。
-            delay = std::chrono::nanoseconds(1);
-        }
-
-        // itimerspec 只认 {秒, 纳秒} 两段，chrono 的纳秒时长要在这里拆开。
-        constexpr std::int64_t kNanosecondsPerSecond = 1000000000LL;
-        const std::int64_t total_nanoseconds = delay.count();
-
-        value.it_value.tv_sec = static_cast<time_t>(
-            total_nanoseconds / kNanosecondsPerSecond);
-        value.it_value.tv_nsec = static_cast<long>(
-            total_nanoseconds % kNanosecondsPerSecond);
+        return;
     }
 
-    // 空表时 value 全 0 等于 disarm；非空时按相对时长重新武装，两种情况都要走一次系统调用。
+    const TimePoint next_tick = wheel_epoch_ + std::chrono::milliseconds(static_cast<std::int64_t>(current_tick_ + 1));
+    auto delay = std::chrono::duration_cast<std::chrono::nanoseconds>(next_tick - Clock::now());
+
+    if (delay.count() <= 0)
+    {
+        // it_value 为 0 表示 disarm；已经跨过边界时用 1ns 立即补上下一 tick。
+        delay = std::chrono::nanoseconds(1);
+    }
+
+    itimerspec value{};
+    constexpr std::int64_t kNanosecondsPerSecond = 1000000000LL;
+    const std::int64_t total_nanoseconds = delay.count();
+    value.it_value.tv_sec = static_cast<time_t>(total_nanoseconds / kNanosecondsPerSecond);
+    value.it_value.tv_nsec = static_cast<long>(total_nanoseconds % kNanosecondsPerSecond);
+    value.it_interval.tv_sec = 0;
+    value.it_interval.tv_nsec = 1000000L;
+
+    // 首次到期对齐下一毫秒边界，之后固定 1ms 周期；累计 expiration 由 HandleRead 一次补齐。
     if (::timerfd_settime(timer_fd_, 0, &value, nullptr) < 0)
     {
         throw std::runtime_error("timerfd_settime failed: " + std::string(std::strerror(errno)));
+    }
+
+    timer_fd_armed_ = true;
+}
+
+void TimerQueue::DisarmTimerFd()
+{
+    if (!timer_fd_armed_)
+    {
+        return;
+    }
+
+    itimerspec value{};
+
+    if (::timerfd_settime(timer_fd_, 0, &value, nullptr) < 0)
+    {
+        throw std::runtime_error("timerfd_settime failed: " + std::string(std::strerror(errno)));
+    }
+
+    timer_fd_armed_ = false;
+}
+
+void TimerQueue::SyncCurrentTick()
+{
+    const auto elapsed = Clock::now() - wheel_epoch_;
+    const auto elapsed_ms = std::chrono::duration_cast<std::chrono::milliseconds>(elapsed);
+    const std::uint64_t now_tick = elapsed_ms.count() > 0
+        ? static_cast<std::uint64_t>(elapsed_ms.count())
+        : 0;
+
+    // 只有 timerfd 已 disarm 才调用这里，此时没有活动节点，快进不会跳过任何 timeout。
+    if (now_tick > current_tick_)
+    {
+        current_tick_ = now_tick;
     }
 }
 
@@ -311,9 +340,12 @@ std::uint32_t TimerQueue::AllocateSlot(TimePoint deadline, TimerAction action, s
     slot.deadline = deadline;
     slot.action = std::move(action);
     slot.external_timer_id = external_timer_id;
-    slot.sequence = next_sequence_++;
-    slot.heap_index = kInvalidSlot;
+    slot.wheel_rounds = 0;
+    slot.wheel_prev = kInvalidSlot;
+    slot.wheel_next = kInvalidSlot;
     slot.next_free = kInvalidSlot;
+    slot.wheel_level = kInvalidWheelLevel;
+    slot.bucket_index = kInvalidBucket;
     slot.active = true;
 
     return slot_index;
@@ -323,16 +355,20 @@ void TimerQueue::ReleaseSlot(std::uint32_t slot_index)
 {
     TimerSlot& slot = slots_[slot_index];
 
-    // 销毁本次 action，但保留 TimerSlot 本身供下一次 timer 复用。
+    // action 的 RAII 析构发生在这里；TimerSlot 本体保留并挂回 free list 供下一次 timer 复用。
     slot.action.template emplace<Functor>();
     slot.external_timer_id = 0;
-    slot.heap_index = kInvalidSlot;
+    slot.wheel_rounds = 0;
+    slot.wheel_prev = kInvalidSlot;
+    slot.wheel_next = kInvalidSlot;
+    slot.wheel_level = kInvalidWheelLevel;
+    slot.bucket_index = kInvalidBucket;
     slot.active = false;
     slot.next_free = free_slot_head_;
     free_slot_head_ = slot_index;
 }
 
-// 摘除三件事一起做：外部 id 映射、堆位置、槽位归还；任何一步都不能漏。
+// 摘除三件事一起做：外部 id 映射、bucket 链位置、槽位归还；任何一步都不能漏。
 void TimerQueue::RemoveTimerSlot(std::uint32_t slot_index)
 {
     TimerSlot& slot = slots_[slot_index];
@@ -347,115 +383,217 @@ void TimerQueue::RemoveTimerSlot(std::uint32_t slot_index)
         external_timer_slots_.erase(slot.external_timer_id);
     }
 
-    if (slot.heap_index != kInvalidSlot)
+    if (slot.wheel_level != kInvalidWheelLevel)
     {
-        RemoveHeapAt(slot.heap_index);
+        UnlinkTimerSlot(slot_index);
     }
 
+    --active_timer_count_;
     ReleaseSlot(slot_index);
 }
 
-void TimerQueue::PushHeap(std::uint32_t slot_index)
+void TimerQueue::ScheduleTimerSlot(std::uint32_t slot_index)
 {
-    heap_.push_back(slot_index);
-    slots_[slot_index].heap_index = static_cast<std::uint32_t>(heap_.size() - 1);
-    SiftUp(slots_[slot_index].heap_index);
-}
+    std::uint64_t expiry_tick = DeadlineTick(slots_[slot_index].deadline);
 
-// 摘除任意位置：末尾元素填坑后可能比父早（需上浮）也可能比子晚（需下沉）。
-void TimerQueue::RemoveHeapAt(std::uint32_t heap_index)
-{
-    const std::uint32_t removed_slot = heap_[heap_index];
-    const std::uint32_t last_slot = heap_.back();
-    heap_.pop_back();
-
-    if (heap_index < heap_.size())
+    // 新增 timer 已经过期时也不能提前在当前 bucket 执行，统一安排到下一 1ms tick。
+    if (expiry_tick <= current_tick_)
     {
-        heap_[heap_index] = last_slot;
-        slots_[last_slot].heap_index = heap_index;
-
-        if (heap_index > 0)
-        {
-            const std::uint32_t parent = (heap_index - 1) / 2;
-
-            if (Earlier(last_slot, heap_[parent]))
-            {
-                SiftUp(heap_index);
-                slots_[removed_slot].heap_index = kInvalidSlot;
-                return;
-            }
-        }
-
-        SiftDown(heap_index);
+        expiry_tick = current_tick_ + 1;
     }
 
-    slots_[removed_slot].heap_index = kInvalidSlot;
+    PlaceTimerSlot(slot_index, expiry_tick);
 }
 
-void TimerQueue::SiftUp(std::uint32_t heap_index)
+void TimerQueue::PlaceTimerSlot(std::uint32_t slot_index, std::uint64_t expiry_tick)
 {
-    while (heap_index > 0)
-    {
-        const std::uint32_t parent = (heap_index - 1) / 2;
+    TimerSlot& slot = slots_[slot_index];
+    const std::uint64_t delta_ticks = expiry_tick - current_tick_;
+    std::uint8_t wheel_level = 0;
 
-        if (!Earlier(heap_[heap_index], heap_[parent]))
+    if (delta_ticks < 10)
+    {
+        wheel_level = 0;
+    }
+    else if (delta_ticks < 100)
+    {
+        wheel_level = 1;
+    }
+    else if (delta_ticks < 1000)
+    {
+        wheel_level = 2;
+    }
+    else
+    {
+        wheel_level = 3;
+    }
+
+    const std::uint64_t quantum_ticks = kWheelQuantumTicks[wheel_level];
+    const std::uint8_t bucket_index = static_cast<std::uint8_t>((expiry_tick / quantum_ticks) % kWheelSize);
+    slot.wheel_rounds = 0;
+
+    // L3 每个 bucket 10s 才再次访问一次，rounds 让四级轮仍能承载任意更长的 timeout。
+    if (wheel_level == 3)
+    {
+        const std::uint64_t expiry_level_tick = expiry_tick / quantum_ticks;
+        const std::uint64_t current_level_tick = current_tick_ / quantum_ticks;
+        const std::uint64_t level_distance = expiry_level_tick - current_level_tick;
+        slot.wheel_rounds = (level_distance - 1) / kWheelSize;
+    }
+
+    LinkTimerSlot(slot_index, wheel_level, bucket_index);
+}
+
+void TimerQueue::LinkTimerSlot(std::uint32_t slot_index, std::uint8_t wheel_level, std::uint8_t bucket_index)
+{
+    TimerSlot& slot = slots_[slot_index];
+    TimerBucket& bucket = wheel_[wheel_level][bucket_index];
+
+    slot.wheel_level = wheel_level;
+    slot.bucket_index = bucket_index;
+    slot.wheel_prev = bucket.tail;
+    slot.wheel_next = kInvalidSlot;
+
+    if (bucket.tail != kInvalidSlot)
+    {
+        slots_[bucket.tail].wheel_next = slot_index;
+    }
+    else
+    {
+        bucket.head = slot_index;
+    }
+
+    bucket.tail = slot_index;
+}
+
+void TimerQueue::UnlinkTimerSlot(std::uint32_t slot_index)
+{
+    TimerSlot& slot = slots_[slot_index];
+    TimerBucket& bucket = wheel_[slot.wheel_level][slot.bucket_index];
+
+    if (slot.wheel_prev != kInvalidSlot)
+    {
+        slots_[slot.wheel_prev].wheel_next = slot.wheel_next;
+    }
+    else
+    {
+        bucket.head = slot.wheel_next;
+    }
+
+    if (slot.wheel_next != kInvalidSlot)
+    {
+        slots_[slot.wheel_next].wheel_prev = slot.wheel_prev;
+    }
+    else
+    {
+        bucket.tail = slot.wheel_prev;
+    }
+
+    slot.wheel_prev = kInvalidSlot;
+    slot.wheel_next = kInvalidSlot;
+    slot.wheel_level = kInvalidWheelLevel;
+    slot.bucket_index = kInvalidBucket;
+}
+
+void TimerQueue::AdvanceWheel(std::uint64_t expirations)
+{
+    for (std::uint64_t i = 0; i < expirations; ++i)
+    {
+        ++current_tick_;
+
+        // 高层先下放，保证恰好落在当前 tick 的 timer 能在本轮进入 L0 并立即触发。
+        if (current_tick_ % kWheelQuantumTicks[3] == 0)
         {
-            break;
+            CascadeLevel(3);
         }
 
-        SwapHeapEntries(heap_index, parent);
-        heap_index = parent;
+        if (current_tick_ % kWheelQuantumTicks[2] == 0)
+        {
+            CascadeLevel(2);
+        }
+
+        if (current_tick_ % kWheelQuantumTicks[1] == 0)
+        {
+            CascadeLevel(1);
+        }
+
+        ExpireCurrentBucket();
     }
 }
 
-void TimerQueue::SiftDown(std::uint32_t heap_index)
+void TimerQueue::CascadeLevel(std::uint8_t wheel_level)
 {
-    while (true)
+    const std::uint64_t quantum_ticks = kWheelQuantumTicks[wheel_level];
+    const std::uint8_t bucket_index = static_cast<std::uint8_t>((current_tick_ / quantum_ticks) % kWheelSize);
+    TimerBucket& bucket = wheel_[wheel_level][bucket_index];
+    std::uint32_t slot_index = bucket.head;
+
+    while (slot_index != kInvalidSlot)
     {
-        const std::uint32_t left = heap_index * 2 + 1;
+        TimerSlot& slot = slots_[slot_index];
+        const std::uint32_t next_slot = slot.wheel_next;
 
-        if (left >= heap_.size())
+        // 超过 10s 的 Timer 只在 L3 对应 bucket 再次转到时扣一圈，不需要额外 overflow 结构。
+        if (wheel_level == 3 && slot.wheel_rounds > 0)
         {
-            return;
+            --slot.wheel_rounds;
+            slot_index = next_slot;
+            continue;
         }
 
-        const std::uint32_t right = left + 1;
-        std::uint32_t earliest = left;
+        UnlinkTimerSlot(slot_index);
+        const std::uint64_t expiry_tick = DeadlineTick(slot.deadline);
 
-        if (right < heap_.size() && Earlier(heap_[right], heap_[left]))
+        // deadline 恰好落在当前边界时先挂进当前 L0，统一由 ExpireCurrentBucket 发通知。
+        if (expiry_tick <= current_tick_)
         {
-            earliest = right;
+            LinkTimerSlot(slot_index, 0, static_cast<std::uint8_t>(current_tick_ % kWheelSize));
+        }
+        else
+        {
+            PlaceTimerSlot(slot_index, expiry_tick);
         }
 
-        if (!Earlier(heap_[earliest], heap_[heap_index]))
-        {
-            return;
-        }
-
-        SwapHeapEntries(heap_index, earliest);
-        heap_index = earliest;
+        slot_index = next_slot;
     }
 }
 
-// 唯一同时改 heap_ 与 heap_index 的地方，两者必须成对更新。
-void TimerQueue::SwapHeapEntries(std::uint32_t lhs, std::uint32_t rhs)
+void TimerQueue::ExpireCurrentBucket()
 {
-    std::swap(heap_[lhs], heap_[rhs]);
-    slots_[heap_[lhs]].heap_index = lhs;
-    slots_[heap_[rhs]].heap_index = rhs;
+    TimerBucket& bucket = wheel_[0][static_cast<std::uint8_t>(current_tick_ % kWheelSize)];
+
+    // callback 前先摘链并回收 slot，回调里即使继续 Add/Cancel 也不会破坏当前 bucket 遍历。
+    while (bucket.head != kInvalidSlot)
+    {
+        const std::uint32_t slot_index = bucket.head;
+        TimerSlot& slot = slots_[slot_index];
+        const std::uint64_t expiry_tick = DeadlineTick(slot.deadline);
+
+        // 防止任何边界计算误把未来 timer 提前触发；重新分层最多只会让它晚一个 1ms tick。
+        if (expiry_tick > current_tick_)
+        {
+            UnlinkTimerSlot(slot_index);
+            PlaceTimerSlot(slot_index, expiry_tick);
+            continue;
+        }
+
+        TimerAction action = std::move(slot.action);
+        RemoveTimerSlot(slot_index);
+        InvokeAction(std::move(action));
+    }
 }
 
-bool TimerQueue::Earlier(std::uint32_t lhs_slot, std::uint32_t rhs_slot) const
+std::uint64_t TimerQueue::DeadlineTick(TimePoint deadline) const
 {
-    const TimerSlot& lhs = slots_[lhs_slot];
-    const TimerSlot& rhs = slots_[rhs_slot];
-
-    if (lhs.deadline != rhs.deadline)
+    if (deadline <= wheel_epoch_)
     {
-        return lhs.deadline < rhs.deadline;
+        return 0;
     }
 
-    return lhs.sequence < rhs.sequence;
+    // ceil 到毫秒保证 timeout 只会等于或晚于 deadline，绝不因为离散 tick 提前触发。
+    const auto elapsed = deadline - wheel_epoch_;
+    const auto elapsed_ms = std::chrono::ceil<std::chrono::milliseconds>(elapsed);
+    return static_cast<std::uint64_t>(elapsed_ms.count());
 }
 
 TimerId TimerQueue::MakeSlotTimerId(std::uint32_t slot_index, std::uint32_t generation) const
