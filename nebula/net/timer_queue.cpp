@@ -117,9 +117,7 @@ void TimerQueue::Cancel(TimerId timer_id)
         });
 }
 
-TimerId TimerQueue::AddTimerInLoop(TimePoint deadline,
-                                   TimerAction action,
-                                   std::uint64_t external_timer_id)
+TimerId TimerQueue::AddTimerInLoop(TimePoint deadline, TimerAction action, std::uint64_t external_timer_id)
 {
     loop_->AssertInLoopThread();
 
@@ -164,6 +162,7 @@ TimerId TimerQueue::AddTimerInLoop(TimePoint deadline,
         ResetTimerFd();
     }
 
+    // 跨线程调用在入队前就拿到了 id，这里必须原样返回，不能换成槽位 id。
     if (external_timer_id != 0)
     {
         return TimerId(external_timer_id);
@@ -282,12 +281,11 @@ void TimerQueue::ResetTimerFd()
     }
 }
 
-std::uint32_t TimerQueue::AllocateSlot(TimePoint deadline,
-                                       TimerAction action,
-                                       std::uint64_t external_timer_id)
+std::uint32_t TimerQueue::AllocateSlot(TimePoint deadline, TimerAction action, std::uint64_t external_timer_id)
 {
     std::uint32_t slot_index = kInvalidSlot;
 
+    // 复用优先：free list 非空就不扩 slots_，否则长时间运行后槽位只增不减。
     if (free_slot_head_ != kInvalidSlot)
     {
         slot_index = free_slot_head_;
@@ -306,6 +304,7 @@ std::uint32_t TimerQueue::AllocateSlot(TimePoint deadline,
     }
 
     TimerSlot& slot = slots_[slot_index];
+    // 回绕时跳 0：0 是无效 id 的标记，跳过它才能保证旧 TimerId 一定不等于新 TimerId。
     slot.generation = slot.generation == std::numeric_limits<std::uint32_t>::max()
         ? 1
         : slot.generation + 1;
@@ -333,6 +332,7 @@ void TimerQueue::ReleaseSlot(std::uint32_t slot_index)
     free_slot_head_ = slot_index;
 }
 
+// 摘除三件事一起做：外部 id 映射、堆位置、槽位归还；任何一步都不能漏。
 void TimerQueue::RemoveTimerSlot(std::uint32_t slot_index)
 {
     TimerSlot& slot = slots_[slot_index];
@@ -362,6 +362,7 @@ void TimerQueue::PushHeap(std::uint32_t slot_index)
     SiftUp(slots_[slot_index].heap_index);
 }
 
+// 摘除任意位置：末尾元素填坑后可能比父早（需上浮）也可能比子晚（需下沉）。
 void TimerQueue::RemoveHeapAt(std::uint32_t heap_index)
 {
     const std::uint32_t removed_slot = heap_[heap_index];
@@ -436,6 +437,7 @@ void TimerQueue::SiftDown(std::uint32_t heap_index)
     }
 }
 
+// 唯一同时改 heap_ 与 heap_index 的地方，两者必须成对更新。
 void TimerQueue::SwapHeapEntries(std::uint32_t lhs, std::uint32_t rhs)
 {
     std::swap(heap_[lhs], heap_[rhs]);
@@ -443,8 +445,7 @@ void TimerQueue::SwapHeapEntries(std::uint32_t lhs, std::uint32_t rhs)
     slots_[heap_[rhs]].heap_index = rhs;
 }
 
-bool TimerQueue::Earlier(std::uint32_t lhs_slot,
-                         std::uint32_t rhs_slot) const
+bool TimerQueue::Earlier(std::uint32_t lhs_slot, std::uint32_t rhs_slot) const
 {
     const TimerSlot& lhs = slots_[lhs_slot];
     const TimerSlot& rhs = slots_[rhs_slot];
@@ -457,8 +458,7 @@ bool TimerQueue::Earlier(std::uint32_t lhs_slot,
     return lhs.sequence < rhs.sequence;
 }
 
-TimerId TimerQueue::MakeSlotTimerId(std::uint32_t slot_index,
-                                    std::uint32_t generation) const
+TimerId TimerQueue::MakeSlotTimerId(std::uint32_t slot_index, std::uint32_t generation) const
 {
     const std::uint64_t slot_token = static_cast<std::uint64_t>(slot_index) + 1;
     const std::uint64_t value =
@@ -468,6 +468,7 @@ TimerId TimerQueue::MakeSlotTimerId(std::uint32_t slot_index,
     return TimerId(value);
 }
 
+// 高位置 1 作跨线程标记，低 63 bit 直接取序号；DecodeSlotTimerId 靠这一位把它挡回去。
 TimerId TimerQueue::MakeExternalTimerId()
 {
     const std::uint64_t sequence = next_external_timer_id_.fetch_add(
@@ -476,9 +477,7 @@ TimerId TimerQueue::MakeExternalTimerId()
     return TimerId(kExternalTimerMask | (sequence & ~kExternalTimerMask));
 }
 
-bool TimerQueue::DecodeSlotTimerId(TimerId timer_id,
-                                   std::uint32_t* slot_index,
-                                   std::uint32_t* generation) const
+bool TimerQueue::DecodeSlotTimerId(TimerId timer_id, std::uint32_t* slot_index, std::uint32_t* generation) const
 {
     if (!timer_id.Valid() ||
         IsExternalTimerId(timer_id) ||
@@ -488,6 +487,7 @@ bool TimerQueue::DecodeSlotTimerId(TimerId timer_id,
         return false;
     }
 
+    // 与 MakeSlotTimerId 对称：低 31 bit 是槽位 token，bit62..31 是 generation。
     const std::uint64_t value = timer_id.Value();
     const std::uint64_t slot_token = value & kSlotIndexMask;
 
