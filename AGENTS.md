@@ -518,27 +518,27 @@ namespace nebula::net
 class Channel;
 class EventLoop;
 
-// 定时器队列：timerfd 以 1ms tick 驱动四级时间轮，定时回调统一在本 loop 线程执行。
-// TimerSlot 既是时间轮侵入式链表节点也是 free list 节点，取消与槽位复用都不产生节点分配。
+// TimerQueue 管一组定时器：Linux timerfd 每 1ms 提醒一次 EventLoop，时间轮据此判断哪些 timer 到期。
+// TimerSlot 用完后不会释放，而是放回空闲链表复用，避免 Add/Cancel 时反复创建和销毁节点。
 class TimerQueue final : private base::Noncopyable
 {
 public:
-    using Clock = std::chrono::steady_clock;                                    // 单调时钟，不受系统时间跳变影响
-    using TimePoint = Clock::time_point;
-    using Functor = std::function<void()>;
+    using Clock = std::chrono::steady_clock;                                                            // 只会向前走的时钟；系统改时间不会影响 timeout
+    using TimePoint = Clock::time_point;                                                                // Clock 时间轴上的一个具体时刻，例如 Clock::now() + 100ms；不是“100ms”这种时长
+    using Functor = std::function<void()>;                                                              // timer 到期后要执行的回调
 
     explicit TimerQueue(EventLoop* loop);
     ~TimerQueue();
 
-    TimerId AddTimer(TimePoint deadline, Functor callback);                     // 通用路径：回调是 std::function，会分配
-    TimerId AddTimer(TimePoint deadline, TimerNotify notify);                   // 热路径：固定布局通知，不构造 std::function
-    void Cancel(TimerId timer_id);                                              // owner loop 内 O(1) 从 bucket 摘除并立即复用 slot
+    TimerId AddTimer(TimePoint deadline, Functor callback);                                             // 普通回调版本；std::function 可能发生内存分配
+    TimerId AddTimer(TimePoint deadline, TimerNotify notify);                                           // RPC 热路径版本；固定大小通知，避免 std::function 分配
+    void Cancel(TimerId timer_id);                                                                      // 取消 timer；在所属 EventLoop 线程里可直接从时间轮摘掉
 
 private:
-    using TimerAction = std::variant<Functor, TimerNotify>;                     // 二选一：热路径不构造 std::function
+    using TimerAction = std::variant<Functor, TimerNotify>;                                             // timer 到期后，要么执行普通回调，要么发送 TimerNotify
 
-    // TimerId 布局（64 bit）：bit63 = 跨线程标记，bit62..31 = generation，bit30..0 = slot_index + 1。
-    // 下标 +1 让 0 成为无效哨兵；generation 非 0 让槽位复用后的旧 id 自然失效。
+    // TimerId 同时保存“是否跨线程”“slot 在哪”“这个 slot 是第几次被复用”三类信息。
+    // generation 每复用一次都会变化，所以旧 TimerId 不会误指向后来占用同一 slot 的新 timer。
     static constexpr std::uint32_t kInvalidSlot = std::numeric_limits<std::uint32_t>::max();
     static constexpr std::uint64_t kExternalTimerMask = std::uint64_t{1} << 63;
     static constexpr std::uint64_t kSlotIndexMask = (std::uint64_t{1} << 31) - 1;
@@ -548,78 +548,79 @@ private:
     static constexpr std::uint8_t kWheelSize = 10;
     static constexpr std::uint8_t kInvalidWheelLevel = std::numeric_limits<std::uint8_t>::max();
     static constexpr std::uint8_t kInvalidBucket = std::numeric_limits<std::uint8_t>::max();
-    static constexpr std::array<std::uint64_t, kWheelLevelCount> kWheelQuantumTicks{1, 10, 100, 1000};
+    static constexpr std::array<std::uint64_t, kWheelLevelCount> kWheelQuantumTicks{1, 10, 100, 1000};  // L0~L3 每个格子分别代表 1/10/100/1000ms
 
     struct TimerBucket
     {
-        std::uint32_t head{kInvalidSlot};                                       // bucket 内侵入式双向链表头
-        std::uint32_t tail{kInvalidSlot};                                       // 尾插保持同 tick timer 的注册顺序
+        std::uint32_t head{kInvalidSlot};                                                               // 这个 bucket 里第一个 timer 的 slot 下标
+        std::uint32_t tail{kInvalidSlot};                                                               // 这个 bucket 里最后一个 timer 的 slot 下标
     };
 
-    // Active 时 prev/next 属于 wheel bucket；Free 时 next_free 属于 free list，两种链不会同时有效。
+    // slot 正在使用时，wheel_prev/wheel_next 把它串在 bucket 里；空闲时只用 next_free 串进复用链表。
     struct TimerSlot
     {
-        TimePoint deadline{};
-        TimerAction action{};
-        std::uint64_t external_timer_id{0};                                     // 仅跨线程兼容路径使用
-        std::uint64_t wheel_rounds{0};                                          // 仅 L3 使用，支持超过 10s 的 deadline
-        std::uint32_t wheel_prev{kInvalidSlot};                                 // 当前 bucket 前驱，头节点为 kInvalidSlot
-        std::uint32_t wheel_next{kInvalidSlot};                                 // 当前 bucket 后继，尾节点为 kInvalidSlot
-        std::uint32_t next_free{kInvalidSlot};                                  // 空闲链指针，仅 active == false 时有意义
-        std::uint32_t generation{0};                                            // 每次复用 +1 且跳过 0，旧 TimerId 靠它失效
-        std::uint8_t wheel_level{kInvalidWheelLevel};                           // 0..3，kInvalidWheelLevel 表示当前未挂入时间轮
-        std::uint8_t bucket_index{kInvalidBucket};                              // 当前层 0..9 的 bucket 下标
-        bool active{false};
+        TimePoint deadline{};                                                                          // 这个 timer 真正应该到期的时间点
+        TimerAction action{};                                                                           // 到期后要执行的回调或通知
+        std::uint64_t external_timer_id{0};                                                             // 跨线程 AddTimer 预先返回的 id；普通路径为 0
+        std::uint64_t wheel_rounds{0};                                                                  // timer 放在最粗的 1s 层（L3）时还要多等几整圈；用于超过 10s 的 timeout
+        std::uint32_t wheel_prev{kInvalidSlot};                                                         // 同一个 bucket 里前一个 timer 的 slot 下标
+        std::uint32_t wheel_next{kInvalidSlot};                                                         // 同一个 bucket 里后一个 timer 的 slot 下标
+        std::uint32_t next_free{kInvalidSlot};                                                          // slot 空闲时，下一个可复用 slot 的下标
+        std::uint32_t generation{0};                                                                    // slot 每复用一次就 +1，让旧 TimerId 自动失效
+        std::uint8_t wheel_level{kInvalidWheelLevel};                                                   // 当前在哪一层：0=1ms，1=10ms，2=100ms，3=1s
+        std::uint8_t bucket_index{kInvalidBucket};                                                      // 当前在这一层的第几个格子，范围 0~9
+        bool active{false};                                                                             // 这个 slot 当前是否正被一个 timer 使用
     };
 
     TimerId AddTimerInLoop(TimePoint deadline, TimerAction action, std::uint64_t external_timer_id = 0);
     void CancelInLoop(TimerId timer_id);
     void HandleRead();
-    void ArmTimerFd();
-    void DisarmTimerFd();
-    void SyncCurrentTick();
+    void ArmTimerFd();                                                                                  // 启动 1ms“时钟”，让时间轮继续往前走
+    void DisarmTimerFd();                                                                               // 没有 timer 时停掉 1ms“时钟”，避免 EventLoop 空转
+    void SyncCurrentTick();                                                                             // timerfd 停着时，用真实经过的毫秒数把 current_tick_ 追到现在
 
-    // 三个动作分工：取槽位（优先复用 free list）、归还槽位、从时间轮与外部映射摘除。
-    std::uint32_t AllocateSlot(TimePoint deadline, TimerAction action, std::uint64_t external_timer_id);
-    void ReleaseSlot(std::uint32_t slot_index);
-    void RemoveTimerSlot(std::uint32_t slot_index);
+    // 这三个函数管 slot 的一生：拿一个空位给新 timer 用、用完放回空闲链表、删除 timer 时顺便回收。
+    std::uint32_t AllocateSlot(TimePoint deadline, TimerAction action, std::uint64_t external_timer_id); // 拿一个可复用 slot，并填入新 timer 的数据
+    void ReleaseSlot(std::uint32_t slot_index);                                                         // 清空这个 slot，并放回复用链表
+    void RemoveTimerSlot(std::uint32_t slot_index);                                                     // 把 timer 从映射和时间轮中移除，再回收 slot
 
-    void ScheduleTimerSlot(std::uint32_t slot_index);
-    void PlaceTimerSlot(std::uint32_t slot_index, std::uint64_t expiry_tick);
-    void LinkTimerSlot(std::uint32_t slot_index, std::uint8_t wheel_level, std::uint8_t bucket_index);
-    void UnlinkTimerSlot(std::uint32_t slot_index);
-    void AdvanceWheel(std::uint64_t expirations);
-    void CascadeLevel(std::uint8_t wheel_level);
-    void ExpireCurrentBucket();
+    // 下面这一组负责把 timer 放进或移出时间轮；时间往前走时，再把远处的 timer 一层层搬近并执行到期 timer。
+    void ScheduleTimerSlot(std::uint32_t slot_index);                                                   // 根据 timer 的到期时间，把它放进时间轮
+    void PlaceTimerSlot(std::uint32_t slot_index, std::uint64_t expiry_tick);                           // 看 timer 还剩多久，决定放哪一级、哪一个格子
+    void LinkTimerSlot(std::uint32_t slot_index, std::uint8_t wheel_level, std::uint8_t bucket_index);  // 把 timer 接到指定 bucket 链表末尾
+    void UnlinkTimerSlot(std::uint32_t slot_index);                                                     // 把 timer 从当前 bucket 链表里摘下来
+    void AdvanceWheel(std::uint64_t expirations);                                                       // 过去了多少毫秒，时间轮就往前走多少格
+    void CascadeLevel(std::uint8_t wheel_level);                                                        // 上层格子走到当前时，把里面的 timer 重新放到更细的层级
+    void ExpireCurrentBucket();                                                                         // 检查当前 1ms 格子：到期就执行，没到期就重新安排
 
-    [[nodiscard]] std::uint64_t DeadlineTick(TimePoint deadline) const;
-    [[nodiscard]] TimerId MakeSlotTimerId(std::uint32_t slot_index, std::uint32_t generation) const;
-    [[nodiscard]] TimerId MakeExternalTimerId();                                // 跨线程冷路径 id：高位置标记，与槽位 id 区分
-    [[nodiscard]] bool DecodeSlotTimerId(TimerId timer_id, std::uint32_t* slot_index, std::uint32_t* generation) const;
-    [[nodiscard]] static bool IsExternalTimerId(TimerId timer_id) noexcept;
+    [[nodiscard]] std::uint64_t DeadlineTick(TimePoint deadline) const;                                 // 算出 deadline 是时间轮开始后的第几毫秒；不足 1ms 向后取整
+    [[nodiscard]] TimerId MakeSlotTimerId(std::uint32_t slot_index, std::uint32_t generation) const;   // 把 slot 下标和 generation 编成 TimerId
+    [[nodiscard]] TimerId MakeExternalTimerId();                                                        // 跨线程 AddTimer 先生成这个 id，真正入轮后仍使用它
+    [[nodiscard]] bool DecodeSlotTimerId(TimerId timer_id, std::uint32_t* slot_index, std::uint32_t* generation) const; // 从普通 TimerId 拆出 slot 下标和 generation
+    [[nodiscard]] static bool IsExternalTimerId(TimerId timer_id) noexcept;                            // 判断是不是跨线程路径生成的 TimerId
 
-    static void InvokeAction(TimerAction action);
+    static void InvokeAction(TimerAction action);                                                       // 执行普通 callback，或发送 TimerNotify
 
-    EventLoop* loop_;
-    int timer_fd_;
-    std::unique_ptr<Channel> timer_channel_;
+    EventLoop* loop_;                                                                                   // 这个 TimerQueue 属于哪个 EventLoop；时间轮状态只在它的线程里修改
+    int timer_fd_;                                                                                       // Linux timerfd，负责每 1ms 提醒一次 EventLoop
+    std::unique_ptr<Channel> timer_channel_;                                                            // 把 timer_fd_ 的可读事件接入 EventLoop
 
-    // owner loop 热路径：40 个 bucket 只挂 slot 下标，TimerSlot 与 free list 都复用 slots_ 内存。
-    std::vector<TimerSlot> slots_;
-    std::array<std::array<TimerBucket, kWheelSize>, kWheelLevelCount> wheel_{};
-    std::uint32_t free_slot_head_{kInvalidSlot};                                // 空闲槽链表头，kInvalidSlot 表示没有空闲槽
-    std::uint64_t active_timer_count_{0};                                       // 0->1 时 arm，1->0 时 disarm timerfd
-    TimePoint wheel_epoch_{Clock::now()};                                       // 所有 1ms tick 都相对同一单调时钟起点计算
-    std::uint64_t current_tick_{0};                                             // 已处理完成的 1ms tick 序号
-    bool timer_fd_armed_{false};                                                // 周期 timerfd 是否处于 1ms armed 状态
+    // 时间轮本身只保存 slot 下标；TimerSlot 用完后继续留在 slots_ 里复用。
+    std::vector<TimerSlot> slots_;                                                                      // 所有 timer 的槽位，空闲槽也保留在这里等待复用
+    std::array<std::array<TimerBucket, kWheelSize>, kWheelLevelCount> wheel_{};                         // 四层、每层 10 个格子；每个格子串着一组 timer
+    std::uint32_t free_slot_head_{kInvalidSlot};                                                        // 当前第一个可复用的空闲 slot；没有时为 kInvalidSlot
+    std::uint64_t active_timer_count_{0};                                                               // 当前还有多少个正在等待触发或取消的 timer
+    TimePoint wheel_epoch_{Clock::now()};                                                               // 时间轮开始计时的时间点，后面的 tick 都从这里往后数
+    std::uint64_t current_tick_{0};                                                                     // 时间轮现在已经走过了多少毫秒，1 tick = 1ms
+    bool timer_fd_armed_{false};                                                                        // 1ms 周期 timerfd 现在是否正在运行
 
-    // 跨线程 AddTimer 必须在返回前先生成可用 TimerId，因此单独保留冷路径映射。
-    // RPC timeout 热路径始终在 owner loop，不会进入这里，也不会产生节点分配。
-    std::atomic_uint64_t next_external_timer_id_{1};
-    std::unordered_map<std::uint64_t, std::uint32_t> external_timer_slots_;
+    // 别的线程调用 AddTimer 时，必须先把 TimerId 返回给调用者，再由所属 EventLoop 线程真正把 timer 放进时间轮。
+    // RPC timeout 正常就在所属 EventLoop 线程里执行，不走这套额外映射。
+    std::atomic_uint64_t next_external_timer_id_{1};                                                    // 下一个跨线程 TimerId 使用的自增序号
+    std::unordered_map<std::uint64_t, std::uint32_t> external_timer_slots_;                             // 跨线程 TimerId -> 实际 slot 下标
 };
 
-}  // namespace nebula::net
+}                                                                               // namespace nebula::net
 ```
 
 源文件模板（节选，见 `timer_queue.cpp` 全文）：
@@ -630,10 +631,10 @@ void TimerQueue::HandleRead()
     loop_->AssertInLoopThread();
 
     std::uint64_t expirations = 0;
-    // timerfd 的 read 返回累计到期次数，必须一次读满 8 字节；每次 expiration 对应一个 1ms tick。
+    // EventLoop 忙的时候可能一次错过多个 1ms 提醒；timerfd 会把次数累加起来，读到几次，时间轮就补走几毫秒。
     const ssize_t n = ::read(timer_fd_, &expirations, sizeof(expirations));
 
-    // 非阻塞 fd 无到期数据时是 EAGAIN，被信号打断是 EINTR，两者都不推进时间轮。
+    // 没有新的计时提醒时 read 会返回 EAGAIN，被信号打断时返回 EINTR；这两种情况都说明这次不用往前走时间轮。
     if (n < 0)
     {
         if (errno == EAGAIN || errno == EINTR)
@@ -646,7 +647,7 @@ void TimerQueue::HandleRead()
 
     AdvanceWheel(expirations);
 
-    // HandleRead 内 callback 可能取消最后一个 timer；统一在本轮推进完成后再 disarm。
+    // timer 回调里可能顺手取消最后一个 timer，所以这一轮处理完后再统一判断要不要停掉 timerfd。
     if (active_timer_count_ == 0)
     {
         DisarmTimerFd();
@@ -665,7 +666,7 @@ void TimerQueue::ArmTimerFd()
 
     if (delay.count() <= 0)
     {
-        // it_value 为 0 表示 disarm；已经跨过边界时用 1ns 立即补上下一 tick。
+        // timerfd 里 it_value=0 表示“关闭”。如果下一毫秒边界已经错过，就设成 1ns，让它几乎立刻补一次提醒。
         delay = std::chrono::nanoseconds(1);
     }
 
@@ -677,7 +678,7 @@ void TimerQueue::ArmTimerFd()
     value.it_interval.tv_sec = 0;
     value.it_interval.tv_nsec = 1000000L;
 
-    // 首次到期对齐下一毫秒边界，之后固定 1ms 周期；累计 expiration 由 HandleRead 一次补齐。
+    // 第一次提醒对齐到下一毫秒，之后每 1ms 提醒一次；EventLoop 忙时错过的次数会在下一次 read 时一起拿回来。
     if (::timerfd_settime(timer_fd_, 0, &value, nullptr) < 0)
     {
         throw std::runtime_error("timerfd_settime failed: " + std::string(std::strerror(errno)));
@@ -709,7 +710,7 @@ void TimerQueue::DisarmTimerFd()
 - 缩进固定 4 空格，禁止 tab；
 - 构造函数初始化列表每个成员一行，续行与 `:` 之后的第一项对齐；
 - 匿名 namespace 写法固定为 `namespace` / `{` / 内容 / `}  // namespace`；
-- 注释位置：`.h` 行尾右对齐，`.cpp` 头顶单行，规则见 §11.2；
+- 注释位置：`.h` 行尾右对齐，`.cpp` 头顶单行；内容先说人话，再补必要技术细节，规则见 §11；
 - include 分组与成员位置见 §12；
 - 本节头文件代码块必须与真实头文件逐字一致；源文件节选必须与对应实现区段逐字一致，改模板文件时同步本节。
 
@@ -719,25 +720,52 @@ void TimerQueue::DisarmTimerFd()
 
 ### 11.1 什么时候写
 
-只在这三类地方写：
+注释是写给“过一段时间再回来读代码的人”看的，不是写给刚写完代码、脑子里还记得全部上下文的人看的。
 
-- 类 / 结构体声明：说明它负责什么、线程归属；
-- 难懂或反直觉的函数：生命周期、所有权、竞争关系、时间窗口；
-- 有隐藏契约的成员：为什么是这个类型、为什么不能换别的。
+优先在这些地方写：
 
-签名本身已经把用途说清的不写。例如：
+- 类 / 结构体：先用一句人话说明它整体负责什么、在哪个线程工作；
+- 不直观的成员变量：直接说明“这个值代表什么”，必要时补单位、范围、生命周期；
+- 不直观的 helper 函数：直接说明“调用它以后发生什么”，以及它在整条流程里负责哪一步；
+- 难懂或反直觉的逻辑：再解释为什么这样设计、不能怎么用、有哪些隐藏契约。
+
+签名和名字已经把意思说清的可以不写，例如 `void Cancel(TimerId timer_id);`。
+
+但只要参数、返回值或类型别名本身容易让人误解，就算函数名看起来简单，也必须把真实语义写出来。尤其是：
+
+- `TimePoint` / `deadline`：表示“时间轴上的某一个具体时刻”，不是“还要等多少毫秒”；
+- `duration` / `delay` / `milliseconds`：表示“一段时间有多长”；
+- `tick`：必须说明 1 tick 等于多少时间，以及从哪个起点开始数；
+- `slot_index` / `bucket_index`：必须说明它是哪一个容器里的下标；
+- `TimerId` / token / handle：必须说明它是给谁用来标识什么对象的。
+
+例如 `RunAt` 和 `RunAfter` 必须让读者一眼看出差别：
 
 ```cpp
-TimerId AddTimer(TimePoint deadline, Functor callback);
-void Cancel(TimerId timer_id);
+TimerId RunAt(TimePoint deadline, Functor cb);                 // 到 deadline 这个具体时刻时执行 cb
+TimerId RunAfter(std::chrono::milliseconds delay, Functor cb); // 从现在开始再等 delay 这么久后执行 cb
 ```
 
-两个名字已经讲完“做什么”，再补 `// 添加定时器` 只是噪音。
+也不能因为函数名里有一个英文动词就默认“读者肯定懂”。像 `Schedule`、`Place`、`Cascade`、`Advance`、`Sync` 这类依赖上下文的词，
+如果单看名字不能知道它在 NebulaRPC 里具体做什么，就必须补一句人话。
 
-注释在复述代码字面同样是噪音：`SetReadCallback` 不必写“注册读回调”，
-`loop_->RunInLoop(...)` 不必写“投递到 loop 线程”。
+例如不要只写：
 
-判断标准：注释回答“为什么这么写 / 不能怎么用”，不回答“这行在做什么”。
+```cpp
+std::uint64_t current_tick_{0}; // 已处理完成的 1ms tick 序号
+```
+
+应该直接写：
+
+```cpp
+std::uint64_t current_tick_{0}; // 时间轮现在已经走过了多少毫秒，1 tick = 1ms
+```
+
+判断标准不是“只写为什么、绝不写做什么”，而是：
+
+> 先让以后回来看代码的人立刻知道“这是什么 / 这一步干什么”，再在真正需要的地方补“为什么这么设计”。
+
+仍然禁止机械逐行翻译，例如 `SetReadCallback` 不必写“注册读回调”，`return value` 不必写“返回 value”。
 
 ### 11.2 写在哪
 
@@ -751,7 +779,7 @@ void Cancel(TimerId timer_id);
 `.cpp`：
 
 - 统一头顶单独一行注释，不用行尾注释；
-- 用于解释这一段实现为什么这么写。
+- 用于说明这一段在整条流程里做什么，或为什么必须这样写；不机械逐行翻译。
 
 完整示例见 §10.5 的 `timer_queue.h` / `timer_queue.cpp` 模板。
 
@@ -761,27 +789,72 @@ void Cancel(TimerId timer_id);
 class RpcCall final
 {
 public:
-    [[nodiscard]] RpcCallState State() const noexcept;                     // 读取当前状态
-    bool TryComplete(RpcCallState state) noexcept;                         // CAS 抢占完成权，只有第一次成功
+    [[nodiscard]] RpcCallState State() const noexcept;
+    bool TryComplete(RpcCallState state) noexcept;                         // 尝试抢到这次 RPC 的完成权；只有第一个调用者会成功
 
 private:
-    std::atomic<RpcCallState> state_{RpcCallState::Pending};               // 初始为在途
+    std::atomic<RpcCallState> state_{RpcCallState::Pending};               // 这次 RPC 当前处于什么状态；多个完成路径靠它保证只完成一次
 };
 ```
 
 ### 11.3 写什么
 
-注释使用：
+注释统一采用：
 
-> 简短中文 + 必要英文技术名词。
+> **先说人话，再补必要的英文技术名词。**
 
-注释重点解释：
+第一句话优先回答下面四类问题之一：
 
-- 为什么这样设计；
-- 生命周期；
-- 线程归属；
-- ownership；
-- batch boundary；
+- 类型别名：**这个类型在业务里到底代表什么？是“一个时刻”、一段时长、ID、下标还是句柄？**
+- 变量：**这个值代表什么？单位是什么？从哪里开始算？**
+- 函数：**调用它以后发生什么？参数表示“什么时候”还是“等多久”？**
+- 复杂逻辑：**为什么必须这样做？**
+
+时间相关类型必须把“时刻”和“时长”分开写清楚。例如：
+
+```cpp
+using Clock = std::chrono::steady_clock;     // 只会向前走的时钟；系统改时间不会影响 timeout
+using TimePoint = Clock::time_point;         // Clock 时间轴上的一个具体时刻，例如 Clock::now() + 100ms；不是“100ms”这种时长
+using Functor = std::function<void()>;        // timer 到期后要执行的回调
+```
+
+看到 `TimePoint deadline` 时，读者应该立刻知道它表示“具体什么时候到期”；看到 `milliseconds delay` 时，应该立刻知道它表示“从现在开始还要等多久”。
+
+技术名词可以用，但不能拿技术名词继续解释技术名词。`tick`、`bucket`、`generation`、`owner loop`、`intrusive list` 等词，
+应该建立在已经说清人话含义的基础上。
+
+不推荐：
+
+```cpp
+std::uint64_t current_tick_{0}; // 已处理完成的 1ms tick 序号
+void ScheduleTimerSlot(...);    // deadline 转 tick 后安排到合适的时间轮 bucket
+void CascadeLevel(...);         // 上层 bucket 轮到时把 timer 下放到更细粒度层
+```
+
+推荐：
+
+```cpp
+std::uint64_t current_tick_{0}; // 时间轮现在已经走过了多少毫秒，1 tick = 1ms
+void ScheduleTimerSlot(...);    // 根据 timer 的到期时间，把它放进时间轮
+void CascadeLevel(...);         // 上层格子走到当前时，把里面的 timer 重新放到更细的层级
+```
+
+如果还需要解释实现细节，再在 `.cpp` 里补第二层说明。例如：
+
+```cpp
+// 如果这个 deadline 已经过去，最早只能放到下一毫秒；已经走过的格子不能倒回去。
+if (expiry_tick <= current_tick_)
+{
+    expiry_tick = current_tick_ + 1;
+}
+```
+
+注释重点可以包括：
+
+- 类型别名在业务里真正代表什么，特别是“时刻 / 时长 / ID / 下标 / 句柄”；
+- 一个状态变量在现实逻辑里代表什么，以及它的单位、范围、计数起点；
+- 一个 helper 在整条调用链里负责哪一步；
+- 生命周期、线程归属、ownership；
 - timeout / cancel 竞争关系；
 - 协议字段边界、长度语义和二进制布局；
 - 性能代码里为什么必须避免某个中间对象 / copy / allocation；
@@ -805,19 +878,13 @@ private:
 // frame_size = 4B(meta_size) + meta_size + payload_size
 ```
 
-性能热路径的注释只解释设计原因，不逐行翻译实现。例如：
+性能热路径也先说“这一步为什么存在”，不逐行翻译实现。例如：
 
 ```cpp
-// 先计算最终尺寸，只为最终 frame 分配一次连续空间。
+// 先算出最终大小，只分配一次完整 frame，避免中间字符串反复扩容。
 const std::size_t payload_size = payload.ByteSizeLong();
 
-// frame_size = meta_size字段(4B) + RpcMeta + payload。
-const std::size_t body_size = sizeof(std::uint32_t) + meta_size + payload_size;
-
-// 一次预留完整 frame，后续直接按协议顺序写入。
-output.reserve(sizeof(frame_size_be) + body_size);
-
-// Protobuf 直接序列化到 output 尾部，不再创建 meta_bytes / payload 中间字符串。
+// Protobuf 直接写到最终 output，不再创建 meta_bytes / payload 中间字符串。
 if (!meta.AppendToString(&output) || !payload.AppendToString(&output))
 {
     return {};
@@ -829,14 +896,14 @@ if (!meta.AppendToString(&output) || !payload.AppendToString(&output))
 推荐：
 
 ```cpp
-// Write 只入待发缓冲；Flush 由上层决定批次边界。
+// Write 只放进待发送缓冲；真正什么时候发，由上层 Flush 决定。
 connection_->Write(data);
 ```
 
 推荐：
 
 ```cpp
-// Task 必须先于 channel_ 析构，避免仍在途 Awaiter 访问失效 RpcChannel。
+// tasks_ 必须比 channel_ 先销毁，否则仍在等待的 coroutine 可能访问已经失效的 RpcChannel。
 std::vector<Task<int>> tasks_;
 ```
 
@@ -847,7 +914,7 @@ std::vector<Task<int>> tasks_;
 connection_->Write(data);
 ```
 
-不推荐写大段教程式注释。
+不推荐写大段教程式注释；目标是让代码重新变得容易读，而不是把源码变成教材。
 
 ### 11.4 CMakeLists
 
@@ -881,7 +948,7 @@ target_link_libraries(nebula_rpc_timeout_test
 **测试 target 模板**
 
 ```cmake
-# 取消最早到期的 Timer 后，后续 Timer 仍必须正常触发。
+# 取消最早到期的 timer 不能影响后续 timer 的触发。
 add_executable(nebula_timer_queue_cancel_earliest_test timer_queue_cancel_earliest_test.cpp)
 target_link_libraries(nebula_timer_queue_cancel_earliest_test PRIVATE nebula_net)
 add_test(NAME nebula_timer_queue_cancel_earliest_test COMMAND nebula_timer_queue_cancel_earliest_test)
@@ -1039,6 +1106,6 @@ protobuf Service / Closure
 6. 新异步业务没有重新引入 callback chain；
 7. 新 tests/examples 遵守 coroutine-first 原则；
 8. 没有夹带无关格式化；
-9. 注释描述的是设计原因，不是逐行翻译代码；
+9. 注释先用人话说明类型、单位、变量和 helper 到底代表什么；TimePoint/Duration、ID/下标、tick/单位等不能靠读者猜，再补必要的设计原因；不要机械逐行翻译代码；
 10. 性能结论没有超过实际实验能够证明的范围。
 ```
