@@ -50,6 +50,7 @@ public:
         max_input_buffer_bytes_ = limit;
     }
 
+    void SetIoLoopInitCallback(EventLoopInitCallback callback);  // 设置每个处理连接的 Loop 启动前要做的准备工作
     void Start(std::size_t io_thread_count = 0);
 
     // 停止接受新连接；已在册的连接不动，由 CloseAllConnections 收尾
@@ -74,6 +75,7 @@ private:
     MessageCallback message_callback_;
     WriteCompleteCallback write_complete_callback_;
     HighWatermarkCallback high_watermark_callback_;
+    EventLoopInitCallback io_loop_init_callback_;
     std::size_t high_watermark_{0};
     std::size_t max_output_buffer_bytes_{0};
     std::size_t max_input_buffer_bytes_{0};

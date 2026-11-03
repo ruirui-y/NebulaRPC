@@ -60,6 +60,9 @@ EventLoop::~EventLoop()
 {
     AssertInLoopThread();
 
+    // 先释放业务资源，让它们还有机会在当前线程注销自己注册的 Channel 和定时器。
+    context_.reset();
+
     // TimerQueue 析构时还要用 loop_ 注销自己的 timerfd channel，必须先于 wakeup channel 释放。
     timer_queue_.reset();
     wakeup_channel_->DisableAll();
@@ -173,6 +176,20 @@ TimerId EventLoop::RunAfter(std::chrono::milliseconds delay, TimerNotify notify)
 void EventLoop::CancelTimer(TimerId timer_id)
 {
     timer_queue_->Cancel(timer_id);
+}
+
+void EventLoop::SetContextImpl(std::shared_ptr<void> context)
+{
+    AssertInLoopThread();
+    if (!context)
+    {
+        throw std::invalid_argument("EventLoop context must not be empty");
+    }
+    if (context_)
+    {
+        throw std::logic_error("EventLoop context already set");
+    }
+    context_ = std::move(context);
 }
 
 void EventLoop::UpdateChannel(Channel* channel)

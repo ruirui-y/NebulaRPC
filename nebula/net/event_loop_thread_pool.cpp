@@ -4,6 +4,7 @@
 #include "nebula/net/event_loop_thread.h"
 
 #include <stdexcept>
+#include <utility>
 
 namespace nebula::net
 {
@@ -14,22 +15,48 @@ EventLoopThreadPool::EventLoopThreadPool(EventLoop* base_loop) : base_loop_(base
 
 EventLoopThreadPool::~EventLoopThreadPool() = default;
 
-void EventLoopThreadPool::Start(std::size_t thread_count)
+void EventLoopThreadPool::Start(std::size_t thread_count, EventLoopInitCallback init_callback)
 {
     base_loop_->AssertInLoopThread();
     if (started_)
     {
         throw std::logic_error("EventLoopThreadPool already started");
     }
-    started_ = true;
 
-    for (std::size_t i = 0; i < thread_count; ++i)
+    if (thread_count == 0)
     {
-        auto thread = std::make_unique<EventLoopThread>();
-        EventLoop* loop = thread->StartLoop();
-        loops_.push_back(loop);
-        threads_.push_back(std::move(thread));
+        if (init_callback)
+        {
+            init_callback(base_loop_);
+        }
+        started_ = true;
+        return;
     }
+
+    std::vector<std::unique_ptr<EventLoopThread>> new_threads;
+    std::vector<EventLoop*> new_loops;
+    new_threads.reserve(thread_count);
+    new_loops.reserve(thread_count);
+
+    try
+    {
+        for (std::size_t i = 0; i < thread_count; ++i)
+        {
+            auto thread = std::make_unique<EventLoopThread>();
+            EventLoop* loop = thread->StartLoop(init_callback);
+            new_loops.push_back(loop);
+            new_threads.push_back(std::move(thread));
+        }
+    }
+    catch (...)
+    {
+        new_threads.clear();
+        throw;
+    }
+
+    threads_ = std::move(new_threads);
+    loops_ = std::move(new_loops);
+    started_ = true;
 }
 
 EventLoop* EventLoopThreadPool::GetNextLoop()

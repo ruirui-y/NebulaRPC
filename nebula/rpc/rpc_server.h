@@ -39,6 +39,11 @@ public:
     // 旧 RegisterService 保留给已有 examples/tests 做兼容。
     void RegisterCoroutineService(CoroutineService* service);
 
+    void SetIoLoopInitCallback(net::EventLoopInitCallback callback)  // 每个负责处理连接的 Loop 启动前调用一次
+    {
+        server_.SetIoLoopInitCallback(std::move(callback));
+    }
+
     void Start(std::size_t io_thread_count = 0);
 
     // 优雅关闭：停 accept -> 等在途请求清零（上限 10s）-> 逐个 Shutdown 连接 -> 回调

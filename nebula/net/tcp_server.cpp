@@ -5,6 +5,7 @@
 #include "nebula/net/tcp_connection.h"
 
 #include <sstream>
+#include <stdexcept>
 #include <utility>
 
 namespace nebula::net
@@ -34,15 +35,24 @@ TcpServer::~TcpServer()
     }
 }
 
+void TcpServer::SetIoLoopInitCallback(EventLoopInitCallback callback)
+{
+    if (started_)
+    {
+        throw std::logic_error("IO loop initializer must be set before TcpServer::Start");
+    }
+    io_loop_init_callback_ = std::move(callback);
+}
+
 void TcpServer::Start(std::size_t io_thread_count)
 {
     if (started_)
     {
         return;
     }
-    started_ = true;
 
-    thread_pool_->Start(io_thread_count);
+    thread_pool_->Start(io_thread_count, io_loop_init_callback_);
+    started_ = true;
     loop_->RunInLoop([this]
         {
             if (!acceptor_->Listening())

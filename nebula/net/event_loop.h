@@ -37,9 +37,9 @@ public:
     void RunInLoop(Functor cb);
     void QueueInLoop(Functor cb);
 
-    void NotifyFromSignal() noexcept;                                   // 信号处理专用：只做原子置位与 eventfd 写，不取锁不分配
+    void NotifyFromSignal() noexcept;                                       // 信号处理专用：只做原子置位与 eventfd 写，不取锁不分配
 
-    void SetSignalCallback(Functor cb)                                  // 回调在 loop 线程执行；必须在 Loop() 前设置
+    void SetSignalCallback(Functor cb)                                      // 回调在 loop 线程执行；必须在 Loop() 前设置
     {
         signal_callback_ = std::move(cb);
     }
@@ -54,6 +54,19 @@ public:
     void RemoveChannel(Channel* channel);
     [[nodiscard]] bool HasChannel(Channel* channel) const;
 
+    template <typename T>
+    void SetContext(std::unique_ptr<T> context)                             // 把只属于当前 Loop 的资源交给它保管，Loop 退出时在本线程释放
+    {
+        SetContextImpl(std::shared_ptr<void>(std::move(context)));
+    }
+
+    template <typename T>
+    [[nodiscard]] T* GetContext() const                                     // 按 SetContext 时的类型取回资源；只能在所属线程中调用
+    {
+        AssertInLoopThread();
+        return static_cast<T*>(context_.get());
+    }
+
     [[nodiscard]] bool IsInLoopThread() const noexcept
     {
         return thread_id_ == std::this_thread::get_id();
@@ -62,6 +75,7 @@ public:
     void AssertInLoopThread() const;
 
 private:
+    void SetContextImpl(std::shared_ptr<void> context);
     void WakeUp();
     void HandleWakeUpRead();
     void DoPendingFunctors();
@@ -88,6 +102,7 @@ private:
     std::mutex remote_mutex_;                                           // 保护跨线程投递队列
     std::vector<Functor> remote_pending_functors_;                      // 跨线程投递缓冲
     std::vector<Functor> remote_executing_functors_;                    // 跨线程执行缓冲，与 pending 交换复用容量
+    std::shared_ptr<void> context_;                                       // 当前 Loop 独占的业务资源，随 Loop 一起销毁
 };
 
 }  // namespace nebula::net

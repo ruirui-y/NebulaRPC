@@ -1,6 +1,7 @@
 #pragma once
 
 #include "nebula/base/noncopyable.h"
+#include "nebula/net/callbacks.h"
 
 #include <cstddef>
 #include <memory>
@@ -18,7 +19,7 @@ public:
     explicit EventLoopThreadPool(EventLoop* base_loop);
     ~EventLoopThreadPool();
 
-    void Start(std::size_t thread_count);
+    void Start(std::size_t thread_count, EventLoopInitCallback init_callback = {});  // 等所有 Loop 初始化完成后才返回
     [[nodiscard]] EventLoop* GetNextLoop();
     [[nodiscard]] std::vector<EventLoop*> GetAllLoops() const;
 
