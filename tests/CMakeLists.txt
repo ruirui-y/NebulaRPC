@@ -3,6 +3,11 @@ add_executable(nebula_net_smoke_test net_smoke_test.cpp)
 target_link_libraries(nebula_net_smoke_test PRIVATE nebula_net)
 add_test(NAME nebula_net_smoke_test COMMAND nebula_net_smoke_test)
 
+# 每个 IO Loop 在线程内完成初始化，并在所属线程退出时释放自己的资源。
+add_executable(nebula_event_loop_init_callback_test event_loop_init_callback_test.cpp)
+target_link_libraries(nebula_event_loop_init_callback_test PRIVATE nebula_net)
+add_test(NAME nebula_event_loop_init_callback_test COMMAND nebula_event_loop_init_callback_test)
+
 # 定时器到点触发，被取消的绝不触发。
 add_executable(nebula_timer_queue_test timer_queue_test.cpp)
 target_link_libraries(nebula_timer_queue_test PRIVATE nebula_net)
